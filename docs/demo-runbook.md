@@ -2,11 +2,11 @@
 
 For the pre-freeze v4 rollout, see [CONTRACT READY v4](checkpoints/CONTRACT-READY-v4.md). Its new stream-failure regression and prompt/token bypass gates must pass before v4 API READY. The v3 demo/evidence below does not certify those new behaviors; keep the legacy concept bypass until clients and API are coordinated.
 
-Current state: CP2 code and A's cancellation/header fix are integrated and independently verified. The CP2 live gate is still open here: see [checkpoints/CP2.md](checkpoints/CP2.md) for the missing cloud real-Claude validation and human rehearsal. A reports three successful real-Claude smoke runs on its credentialed local machine. The steps below distinguish the validated fake-backed workflow from the real demo that still needs independent live acceptance.
+Current state: [C's CP3 dashboard is integrated](checkpoints/CP3.md). A's new v4 API is held for an intermittent test assertion; current real API still uses legacy concept bypass and cannot expose mid-stream model failure to the reader. Leave `VITE_PROMPT_BYPASS_API_READY_SHA` unset until E verifies A's corrected merge. C supports exact quiz headers and guarded mock prompt bypass. The CP2 live gate remains open: see [checkpoints/CP2.md](checkpoints/CP2.md). Builders' reported local real-Claude runs remain external evidence.
 
 ## Prepare
 
-Use the existing isolated checkout, not a new worktree. Read `AGENTS.md` and the contract changelog (v3). Node >=22.9 and pinned pnpm 9.15.0 are required. Keep secrets in secure environment settings or an ignored `.env`; never commit or paste them into reports.
+Use the existing isolated checkout, not a new worktree. Read `AGENTS.md` and the contract changelog (v4). Node >=22.9 and pinned pnpm 9.15.0 are required. Keep secrets in secure environment settings or an ignored `.env`; never commit or paste them into reports.
 
 Cloud shell activation:
 
@@ -30,7 +30,7 @@ A present key and a real-mode health response do not prove authentication or mod
 
 In the API terminal set `DEMO_MODE=1` and choose `USE_REAL_INTELLIGENCE=1` for the real demo or `0` for a clearly labelled fake rehearsal. Bash uses `export NAME=value`; PowerShell uses `$env:NAME='value'`. These are shell instructions, not package scripts. Keep the four `MODEL_*` values in the environment or ignored `.env`.
 
-Run `pnpm dev:api` from the root. The real API port is 8787. Confirm `/health` reports `server:'api'`, `demo:true`, contract 3 and the intended intelligence mode. A start without credentials can still report `intelligence:'real'`; model calls will fail.
+Run `pnpm dev:api` from the root. The real API port is 8787. Confirm `/health` reports `server:'api'`, `demo:true`, contract 4 and the intended intelligence mode. Version alone does not certify the v4 rollout. A start without credentials can still report `intelligence:'real'`; model calls will fail.
 
 In a second terminal run `pnpm dev:dash --host 127.0.0.1`. It uses dashboard port 5173 and defaults to API 8787. Keep `VITE_API_URL` pointed to that API. If 5173 already runs the mock dashboard, leave unrelated services alone and use `pnpm --filter @friction/dashboard dev --port 5174 --host 127.0.0.1` with `VITE_API_URL` set to the API. E validated the latter arrangement in this task.
 
@@ -40,7 +40,7 @@ Credential-free fallback development: `pnpm dev:mock` on 8788 plus `pnpm dev:das
 
 1. Run `pnpm exec tsx scripts/verify-chat-abort.ts` and require its genuine pass without weakening the pending-quiz assertion. The fix is already merged.
 2. Verify API health says real intelligence and run `pnpm smoke` **three consecutive times** against that API, with all 16 steps passing each time. Do not substitute mock/fake runs, raise the intercept budget or disable assertions. Investigate a failed sequence before starting a new sequence.
-3. Verify all six must-haves in a browser using real Claude: seeded tree, upload, L1 Socratic reply, live mastery, same question in a new chat with full assistance, bypass/quota/toast. The existing browser script assumes the deterministic fake wording; for real replies assess the semantics and UI directly rather than claiming that fake-specific regex assertions are a real-model quality test.
+3. Verify all six must-haves in a browser using real Claude: seeded tree, upload, L1 Socratic reply, live mastery, same question in a new chat with full assistance, bypass/quota/toast. C's updated browser script checks transport/UI across modes; real-model semantic acceptance still needs direct assessment. API-backed runs require an exclusive store window and `DASHBOARD_TEST_EXCLUSIVE=1`; do not run smoke/browser writers concurrently against that store.
 4. Rehearse the full three-minute sequence with the human, prepare the fallback recording, and reset before going on stage. CP3 still requires two rehearsals and the backup recording/freeze.
 5. Check that the seed tree and Alex are selected, both screens have a Live indicator, the API/console shows no request failures, and the dashboard is using the intended API mode. Models come from `MODEL_*`, never hardcoded application strings.
 
@@ -57,7 +57,7 @@ Use the sandbox as the main surface. Keep educator and student/sandbox views vis
 5. Start another new chat and ask: **How does React Context help me avoid prop drilling?** Use the bypass for this turn's concept; quota should fall from 3 to 2, the node becomes paused and the educator sees Alex's Context API bypass toast.
 6. Bonus only if D/human reconfirm GO: load `apps/extension/dist`, enable consent and point it at the intended API. Show the same useEffect flow on claude.ai. Validate the badge and hidden instruction block after reload. Stop the bonus beat if the live site fails; retain the sandbox as the main demo.
 
-The optional v3 quiz-attached header works in both the mock and real API. Until C consumes it, the dashboard uses its documented approximate hint. A low level alone does not prove that this turn attached a new quiz.
+The quiz-attached header works in both the mock and real API, and C now stores/displays its exact per-turn value. Missing headers retain an explicitly approximate fallback. A low level alone does not prove that this turn attached a new quiz.
 
 ## Recovery
 
