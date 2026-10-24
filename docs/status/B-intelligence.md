@@ -24,6 +24,8 @@ None.
 
 ## Assumptions
 - `createIntelligence(opts?)` accepts `{ client?, models? }` for test injection; with no args it reads `MODEL_*` and `ANTHROPIC_API_KEY` from env lazily, so importing the package never needs a key.
+- The quiz line is only added when `includeQuiz && level < 4` (same as the fake; contracts §4.7 never asks for a quiz at L4).
+- L4 with `feedback: {verdict: 'not_an_answer'}` still emits a block (contracts §5: "L4 with feedback ⇒ a block"), but it carries no Feedback line, so it just says "help fully". Harmless; flagging in case E prefers a passthrough.
 - The API key must be scoped to a workspace (an unscoped org key gets a 400 asking for `anthropic-workspace-id`).
 
 ## Blockers / needs from the human

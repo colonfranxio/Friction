@@ -38,9 +38,10 @@ describe('buildFrictionPrompt', () => {
     expect(at(3)).toMatch(/there is one bug to find, but not where/);
   });
 
-  it('quiz line only when includeQuiz', () => {
-    const out = buildFrictionPrompt({ raw_prompt: raw, level: 2, node, includeQuiz: false });
-    expect(out).not.toMatch(/End with one short/);
+  it('quiz line only when includeQuiz and below L4 (matches the fake)', () => {
+    expect(buildFrictionPrompt({ raw_prompt: raw, level: 2, node, includeQuiz: false })).not.toMatch(/End with one short/);
+    const l4 = buildFrictionPrompt({ raw_prompt: raw, level: 4, node, includeQuiz: true, feedback: { verdict: 'correct' } });
+    expect(l4).not.toMatch(/End with one short/);
   });
 
   it('feedback variants; not_an_answer adds nothing', () => {

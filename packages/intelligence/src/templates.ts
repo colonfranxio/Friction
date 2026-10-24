@@ -26,7 +26,7 @@ export function buildFrictionPrompt({ raw_prompt, level, node, includeQuiz, feed
   ];
   const fb = feedback && FEEDBACK[feedback.verdict];
   if (fb) lines.push(`Feedback: ${fb}`);
-  if (includeQuiz) {
+  if (includeQuiz && level < 4) {
     lines.push(`End with one short, natural question that checks their understanding of ${node.concept_name}. Don't call it a quiz.`);
   }
   return wrapInjected(raw_prompt, lines.join('\n'));
