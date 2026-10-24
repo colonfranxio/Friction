@@ -1,6 +1,6 @@
 # Harness results
 
-Run: 2026-10-24T08:21:04.167Z · models: chat=claude-opus-5-5 grade=claude-opus-5-5 classify=claude-haiku-5-5 parse=claude-opus-5-5
+Run: 2026-10-24T19:45:10.430Z · models: chat=claude-opus-5-5 grade=claude-opus-5-5 classify=claude-haiku-5-5 parse=claude-opus-5-5
 
 ## Summary
 
@@ -9,465 +9,563 @@ Run: 2026-10-24T08:21:04.167Z · models: chat=claude-opus-5-5 grade=claude-opus-
 - L3: **5/5** (CP3 gate ≥4)
 - L4: **5/5** (CP2 gate ≥4)
 - Demo answer vs the real L1 quizzes: **5/5** correct
-- Grading: **5/5** match
+- Grading: **11/11** match
 - Classify fallback: **3/3**
-- Parse text: **pass** (3 pillars, 8 nodes, useEffect present, demo question routes to it, 9630ms)
-- Parse pdf: **pass** (3 pillars, 8 nodes, useEffect present, demo question routes to it, 9833ms)
+- Parse text: **pass** (3 pillars, 8 nodes, useEffect present, demo question routes to it, 14334ms)
+- Parse pdf: **pass** (3 pillars, 8 nodes, useEffect present, demo question routes to it, 11266ms)
 - 3-turn exchange: **pass** (automatic checks; read the transcript for naturalness)
 
 ## Level compliance (`DEMO_PROMPTS.question`)
 
 ### L1: 5/5
 
-<details><summary>#1 pass · first token 1200ms · total 3209ms</summary>
+<details><summary>#1 pass · first token 1366ms · total 4130ms</summary>
 
-Infinite loops with `useEffect` are a common snag, and once you see the pattern behind them, they're much easier to spot and prevent.
+Infinite `useEffect` loops usually come from a cycle, and spotting it is the key to fixing it.
 
-Rather than handing you a fix, let's work through *why* the loop happens, because the cause tells you the cure.
+**A hint:** Think about what happens *after* your effect runs. If the effect changes something, React re-renders. Then ask yourself: what does React check after that render to decide whether to run the effect again? Look closely at the second argument you pass to `useEffect`, or notice if it's missing. If something in it gets a new value on every render, even one that *looks* the same, like a freshly created object or array, React may treat it as "changed" each time.
 
-**Hint:** Look at what your effect *does*. If it changes state or creates a new value, ask yourself what happens to the component right after that change, and whether anything then tells the effect to run *again*. The second argument you pass to `useEffect` (or leave out) is a big part of the story.
+Try tracing one full cycle in your component: render → effect runs → state updates → render → ?
+
+In your own words, what decides *when* a `useEffect` runs?
+
+</details>
+
+<details><summary>#2 pass · first token 1254ms · total 3415ms</summary>
+
+Infinite loops with `useEffect` usually come down to *when* React decides to run the effect again.
+
+**Hint:** Look at what your effect *does* (does it update state?) and what you've told React to *watch* (is there a dependency array, and what's in it?). Then trace what happens on the next render: does anything you're watching end up "changed" again?
+
+It's worth noticing that objects, arrays, and functions created inside your component are brand-new values on every render, even if they look identical.
+
+In your own words, what decides whether React re-runs a `useEffect` after a render?
+
+</details>
+
+<details><summary>#3 pass · first token 1289ms · total 4108ms</summary>
+
+Infinite loops with `useEffect` are a common snag, and figuring out *why* yours loops will help you fix this one and avoid the next.
+
+Look at your effect and ask yourself two things:
+
+1. **What does the effect change?** For example, does it call a state setter like `setSomething(...)`?
+2. **What tells React when to run the effect again?** Look at what's (or isn't) after the callback function.
+
+**Hint:** Think about the cycle. A state update causes a re-render, and React then decides whether to re-run your effect based on that second argument. If the effect itself triggers the condition that makes it run again, the cycle never ends. Also consider that objects, arrays, and functions created during render are brand-new each time, even if they look identical.
 
 In your own words, what decides when a `useEffect` runs?
 
 </details>
 
-<details><summary>#2 pass · first token 987ms · total 3265ms</summary>
+<details><summary>#4 pass · first token 1109ms · total 4086ms</summary>
 
-An infinite loop with `useEffect` almost always comes down to *when* React decides to run the effect again. Think about what happens step by step: your component renders, the effect runs, and then something in that effect may cause the component to render again.
+Infinite loops with `useEffect` almost always come down to one thing: something about the effect keeps telling React "run me again." Let's work out what that something is in your case.
 
-**Hint:** Look at the second argument you pass to `useEffect` (or notice whether you're passing one at all). Then check whether your effect updates any piece of state that the effect itself depends on. Picture the cycle "render → effect → state change → render" and ask what would ever make it stop.
+**A hint:** Think about the chain of events. Your effect runs, and inside it you probably do something that causes the component to re-render, like updating state. After that re-render, what does React check to decide whether to run the effect *again*? If that check always says "yes, things changed," you get a loop.
 
-Before we dig into your specific code, how would you describe in your own words what decides whether `useEffect` runs again after a render?
+It's also worth looking at whether you passed a second argument to `useEffect` at all, and if you did, what's in it. Some values, such as objects, arrays, or functions created during render, can look "new" to React on every single render even when their contents haven't changed.
 
-</details>
-
-<details><summary>#3 pass · first token 1083ms · total 3001ms</summary>
-
-Infinite loops with `useEffect` usually come down to one thing: what triggers the effect to run again, and whether the effect itself causes that trigger.
-
-**Hint:** Think about the cycle. Your effect runs after a render. If the effect updates state, that causes another render. What does React check after that render to decide whether to run the effect again? Look closely at what you're passing as the second argument to `useEffect`, or whether you're passing one at all.
-
-If you share your effect, we can trace the cycle step by step.
-
-In your own words, what decides when a `useEffect` runs again after a re-render?
+In your own words, what decides *when* a `useEffect` runs?
 
 </details>
 
-<details><summary>#4 pass · first token 1083ms · total 3959ms</summary>
+<details><summary>#5 pass · first token 1288ms · total 5022ms</summary>
 
-Infinite loops with `useEffect` almost always come down to *when* React decides to run your effect, so it's worth working out the cause rather than just patching it.
+Infinite loops with `useEffect` almost always come down to one thing: something inside the effect causes a re-render, and something about that re-render tells React to run the effect again. Before jumping to a fix, it helps to pin down *why* your particular effect keeps firing.
 
-**A hint:** Trace what happens step by step. Your component renders, then the effect runs. Ask yourself:
+**Hint:** Look closely at the second argument you pass to `useEffect`, or notice if you didn't pass one at all. Then look at what your effect *does*. Does it update state? If so, think about what happens on the very next render and whether React sees a reason to run your effect again.
 
-- Does the effect change anything (like state) that causes another render?
-- After that render, what tells React whether to run the effect again?
-- Look at the second argument you pass to `useEffect`, or notice if it's missing. What role might it play in that decision?
+It's also worth checking whether anything in that second argument is an object, array, or function created fresh during each render. React compares those by reference, not by contents.
 
-If you follow that cycle once or twice, you'll probably see where the loop closes on itself.
+If you share the effect you're working with, we can trace through one render cycle together and spot exactly where the loop closes.
 
-In your own words, what determines when a `useEffect` callback runs after a render?
-
-</details>
-
-<details><summary>#5 pass · first token 1083ms · total 3438ms</summary>
-
-Infinite loops with `useEffect` almost always come down to *when* React decides to run the effect again. Once that's clear, the fix usually follows.
-
-**Hint:** Look at what your effect *does* (does it update state?) and then at what's in the dependency array, or whether there is one at all. Trace what happens after your effect runs: what changes, what React does in response, and whether that sends you back to the start.
-
-If you'd like, paste your effect afterward and we can trace it step by step.
-
-In your own words, what determines when a `useEffect` runs again after the first render?
+In your own words, how does React decide when to re-run a `useEffect`?
 
 </details>
 
 ### L2: 5/5
 
-<details><summary>#1 pass · first token 2640ms · total 11243ms</summary>
+<details><summary>#1 pass · first token 2022ms · total 11490ms</summary>
 
-An infinite `useEffect` loop almost always follows the same cycle:
+An infinite `useEffect` loop almost always comes from the same cycle:
 
-1. The component renders.
-2. The effect runs.
-3. The effect **updates state**.
-4. The state change causes a **re-render**, which brings you back to step 2.
+1. The component **renders**
+2. The effect **runs** after the render
+3. The effect **updates state** (or something it depends on)
+4. The state change causes a **re-render**, and the cycle repeats
 
-The fix is to tell React *when* the effect actually needs to re-run, using the **dependency array**.
+To break the loop, you need to control **when** the effect is allowed to run again. That's the job of the **dependency array**, the second argument to `useEffect`.
 
-## Step 1: Check whether you have a dependency array
+### Step 1: Diagnose which case you're in
 
-With no second argument, the effect runs after **every** render. If it also sets state, it loops forever.
-
-```
-useEffect( () => {
-    ____ // your side effect (fetch, subscribe, etc.)
-}, ____ )   // <- what goes here?
-```
-
-Ask yourself which version you need:
-
-| Second argument | When the effect runs |
+| What your effect looks like | What happens |
 |---|---|
-| *(nothing)* | After every render |
-| `[ ]` (empty) | ____ |
-| `[ someValue ]` | ____ |
+| No dependency array at all | Runs after **every** render |
+| Dependency array includes the state it sets | Runs every time it changes that state |
+| Dependency array includes an object, array, or function created during render | That value is "new" on every render, so the effect runs every time |
+| Empty dependency array | Runs only after the **first** render |
 
-## Step 2: Don't depend on the state you're setting
+### Step 2: Fill in the skeleton
 
-A common trap is updating the same value that's listed as a dependency:
-
-```
-useEffect( () => {
-    set____( ____ + 1 )
-}, [ ____ ] )   // if this is the same value you just set, what happens?
-```
-
-If you need the previous value, consider the **updater function** form of the setter, so the value itself doesn't need to be a dependency:
-
-```
-set____( (prev) => ____ )
-```
-
-## Step 3: Watch out for objects, arrays, and functions
-
-Even with a dependency array, the loop can continue if a dependency is **recreated on every render**:
-
-```
-const options = { ____ }        // new object each render
-const handler = () => { ____ }  // new function each render
-
-useEffect( () => { ____ }, [ options ] )  // React sees a "new" value every time
-```
-
-Possible fixes to explore:
-- Move the object or function **inside** the effect, or **outside** the component.
-- Depend on the **primitive values** (strings, numbers) inside the object instead of the object itself.
-- Memoize it with `useMemo` (for values) or `useCallback` (for functions).
-
-## Debugging checklist
-
-- [ ] Does the effect have a dependency array?
-- [ ] Does the effect set any state that's also in the dependency array?
-- [ ] Are any dependencies objects, arrays, or functions created during render?
-- [ ] Does each dependency actually need to trigger a re-run?
-
-Try filling in the blanks for your own component. If you share the effect that's looping, I can help you spot which step applies.
-
-In your own words, what does the dependency array tell React about when an effect should run?
-
-</details>
-
-<details><summary>#2 pass · first token 2023ms · total 11160ms</summary>
-
-An infinite loop with `useEffect` almost always follows the same cycle:
-
-1. The component renders.
-2. The effect runs and **updates state** (or something else that triggers a re-render).
-3. The re-render makes React think the effect needs to run **again**.
-4. Back to step 2, forever.
-
-The fix is to break that cycle, usually by controlling **when** the effect re-runs. That's the dependency array's job.
-
----
-
-### Step 1: Check the dependency array
-
-Ask yourself which of these your effect looks like:
-
-| Dependency array | When the effect runs |
-|---|---|
-| *(missing entirely)* | after **every** render |
-| `____` (empty) | only **once**, after the first render |
-| `[ ____ ]` (some values) | only when one of those values **changes** |
-
-If your effect sets state and has **no dependency array at all**, that's your loop.
-
----
-
-### Step 2: Fill in the outline
+Here's the shape of a safe effect. Fill in the blanks for your situation:
 
 ```
 useEffect( () => {
-    // do the side effect (fetch data, subscribe, etc.)
-    ____ ( newValue )        // the state setter
-}, ____ )                    // what should go here?
+    // do the side effect (fetch, subscribe, etc.)
+    // update state ONLY IF ____ (a condition that eventually stops being true)
+}, [ ____ ] )   // <- list only the values the effect actually READS from outside
 ```
 
-Ask yourself:
-- Should this effect run **once**, or **whenever something specific changes**?
-- Is the state you're *setting* also listed in the dependency array? If so, the effect triggers itself. That's a loop.
+Questions to guide the blanks:
+- **Second blank:** Which props or state does the effect *read*? Those go in the array. Does it need to re-run when they change, or only once on mount? If only once, what goes in the array?
+- **First blank:** If the effect must set a state value that's also in the array, what condition keeps it from setting that state again with the same result?
 
----
+### Step 3: Watch for "secretly new" dependencies
 
-### Step 3: Watch for "sneaky" dependencies
-
-Even with a dependency array, you can still loop if a dependency is **recreated on every render**:
+If you have something like this:
 
 ```
-inside component:
-    options = { ____ }            // new object every render
-    handleData = function ____    // new function every render
-
-useEffect( ..., [ options ] )      // always "changed"
+const options = { ____ }   // created fresh every render
+useEffect( ..., [options] )
 ```
 
-React compares dependencies by **reference**, so a brand-new object, array, or function counts as "changed" every render, even if its contents look identical.
+the array sees a brand-new `options` each render, so the effect always re-runs. Your options:
+- Move the object or function **inside** the effect
+- Move it **outside** the component if it doesn't depend on props or state
+- Memoize it with `____` (for objects or arrays) or `____` (for functions) so it keeps the same identity between renders
 
-Ways to stabilize it (fill in which fits your case):
-- Move the object or function **outside** the component, or **inside** the effect itself
-- Depend on a **primitive** (like `options.id`) instead of the whole object
-- Wrap a function with `use____` or an object with `use____` so it keeps the same reference
+### Step 4: Set state from the previous value
 
----
+If the effect only reads a state variable so it can update it (for example, adding to a count), use the **functional updater** form of the setter: `setX( prev => ____ )`. Then you can leave that state out of the dependency array.
 
-### Step 4: Guard against unnecessary updates (optional)
-
-If the effect *must* depend on a value it also updates, add a condition:
-
-```
-if ( ____ !== ____ ) {
-    setValue( ____ )
-}
-```
-
-That way it only updates when the value actually differs, and the cycle stops.
-
----
-
-**Quick checklist:**
-- ☐ Does the effect have a dependency array?
-- ☐ Does it set state that's also in its own dependencies?
-- ☐ Are any dependencies objects, arrays, or functions created during render?
-
-If you paste your effect, I can help you work out which case it is.
-
-In your own words, what does the dependency array tell React about when to run an effect?
-
-</details>
-
-<details><summary>#3 pass · first token 1250ms · total 9740ms</summary>
-
-An infinite loop with `useEffect` almost always comes from this cycle:
-
-1. The effect runs.
-2. Inside it, you **update state** (or create a new object/array/function).
-3. That update causes a **re-render**.
-4. After the re-render, React decides the effect needs to run again, so you're back at step 1.
-
-The thing that controls step 4 is the **dependency array**, the second argument to `useEffect`.
-
-### How React decides whether to re-run
-
-| Dependency array | When the effect runs |
-|---|---|
-| *(omitted entirely)* | After **every** render |
-| `[]` (empty) | Only **once**, after the first render |
-| `[a, b]` | After the first render, then only when `a` or `b` **changes** |
-
-If you leave the array out and set state inside the effect, you've built a loop.
-
-### Outline to fix it
-
-```
-useEffect( () => {
-    // do your work here (fetch data, subscribe, etc.)
-    ____ ( newValue )   // the state update
-}, ____ )               // what goes here?
-```
-
-Ask yourself:
-
-- **Should this run only once (on mount)?** Then the blank after the comma should be ____.
-- **Should it re-run when some specific value changes?** Then list ____ in the array, and *not* the state you're setting inside the effect (unless you guard it).
-
-### Common sneaky causes (even with an array)
-
-- **Including the state you set.** If the effect sets `count` and `count` is in the array, it re-triggers itself. Either remove it or add a condition like `if (____) return`.
-- **Objects, arrays, or functions as dependencies.** These are recreated on every render, so React sees them as "changed" each time, even if their contents are identical. Consider:
-  - moving them **inside** the effect,
-  - depending on a ____ (primitive) value instead of the whole object, or
-  - memoizing them with `useMemo` / `useCallback`.
-
-### Quick checklist
-
-1. Does the effect update state? → Which state?
-2. Is that same state (or something derived from it) in the dependency array?
-3. Are any dependencies objects/functions created during render?
-4. Is the dependency array missing altogether?
-
-Try filling in the blanks for your specific effect. If you share your code, I can help you spot which of these is the culprit.
+Try applying this checklist to your effect. If you paste your version with the blanks filled in, I can help you check it.
 
 In your own words, what does the dependency array tell React about when your effect should run?
 
 </details>
 
-<details><summary>#4 pass · first token 1351ms · total 9202ms</summary>
+<details><summary>#2 pass · first token 1163ms · total 9241ms</summary>
 
-An infinite `useEffect` loop almost always comes from this cycle:
+An infinite `useEffect` loop almost always follows this cycle:
 
-1. The component renders
-2. The effect runs and **updates state**
-3. The state change triggers a **re-render**
-4. The effect runs again, so you go back to step 2
+1. The component renders.
+2. The effect runs **after** the render.
+3. The effect updates state (e.g., `setSomething(...)`).
+4. The state change triggers a **re-render**.
+5. React checks whether the effect should run again, and if nothing stops it, you're back to step 2.
 
-To break the cycle, you need to control *when* the effect re-runs. That's the job of the **dependency array**, the second argument to `useEffect`.
+The **dependency array** (the second argument to `useEffect`) is what breaks the cycle. It tells React to re-run the effect only when one of these values has changed since the last render.
 
 ### The three cases
 
-| Dependency array | When the effect runs |
+| What you pass as the 2nd argument | When the effect runs |
 |---|---|
-| Missing entirely | After **every** render (the usual loop culprit) |
-| Empty `[]` | Only **once**, after the first render |
-| `[a, b]` | Only when `a` or `b` **changes** |
+| nothing at all | after **every** render (most common cause of loops) |
+| an empty array | only **once**, after the first render |
+| an array with values | only when one of **those values** changes |
 
-### Outline of a fix
+### Outline with blanks
 
 ```
-useEffect( () => {
-    fetch or compute something
-    call ____ (your state setter) with the result
-}, ____ )   // <- what goes here decides when this re-runs
+useEffect(
+  () => {
+    // do some work (fetch data, compute something, etc.)
+    // possibly call a state setter: set____( ____ )
+  },
+  [ ____ ]   // ← which values should cause this effect to re-run?
+)
 ```
 
-Fill the second blank by asking: *"Which values, if they changed, should cause this effect to run again?"*
+For each blank, ask yourself:
 
-- If the answer is "nothing, just do it on mount," the blank is ____.
-- If it depends on a prop like `userId`, the blank should contain ____.
+- **What does the effect read from outside itself?** Props, state, or variables it uses should usually go in the array.
+- **Is the state you're setting also in the array?** If the effect sets `X` and `X` is a dependency, every run changes `X`, which re-runs the effect. That's a loop.
+- **Should this run only once (e.g., an initial fetch)?** Then the array might be ____.
 
-### Common traps, even with a dependency array
+### Two sneakier causes
 
-- **Including the state you're setting.** If the effect sets `data` and `data` is in the array, every update re-triggers the effect. Ask yourself whether the effect really needs to *read* that value.
-- **Objects, arrays, or functions created during render.** Something like `const options = { ... }` inside the component is a *new reference* on every render, so React sees it as "changed" each time. Possible fixes:
-  - move it ____ the component (outside), or
-  - memoize it with ____ (for objects/arrays) or ____ (for functions), or
-  - depend on its primitive fields instead of the whole object.
-- **Updating state based on the previous state.** Instead of reading `count` and listing it as a dependency, use the ____ form of the setter, `setCount(prev => ____)`, so `count` doesn't need to be in the array.
+- **Objects, arrays, or functions created during render.** If you write something like `const options = { ... }` inside the component and put `options` in the array, it's a *new* object on every render. React compares by reference, so it always looks "changed." You can fix this by moving it ____ the component, or by memoizing it with a hook like `use____`.
+- **Setting state to a new value every time.** If the effect does `setItems([...something])` unconditionally, each run produces a new array. Consider adding a ____ (a condition) so you only set state when the value actually differs.
 
 ### Debugging checklist
 
-1. Does the effect call a state setter? → ____
-2. Is there a dependency array at all? → ____
-3. Is anything in the array an object, array, or function defined in the component body? → ____
-4. Is the state being set also listed as a dependency? → ____
+1. Is there a dependency array at all?
+2. Does the effect set a state value that's also listed as a dependency?
+3. Are any dependencies objects, arrays, or functions recreated each render?
 
-If you share your effect code, I can help you figure out which of these is causing your loop.
+If you share your effect, I can help you work out which blank applies to your case.
 
-In your own words, what does the dependency array tell React about when an effect should run?
+In your own words, what is the dependency array actually telling React to do?
 
 </details>
 
-<details><summary>#5 pass · first token 2680ms · total 9818ms</summary>
+<details><summary>#3 pass · first token 1940ms · total 9639ms</summary>
 
 An infinite loop with `useEffect` almost always comes from this cycle:
 
-**render → effect runs → effect updates state → state change triggers re-render → effect runs again → …**
+1. The component **renders**
+2. The effect **runs** after the render
+3. The effect **updates state**
+4. The state change triggers a **re-render**
+5. React checks whether the effect should run again, and if nothing stops it, it goes back to step 2
 
-The fix is to tell React exactly *when* the effect should re-run. That's what the **dependency array** is for.
+The **dependency array** is what decides whether the effect runs again at step 5.
 
----
+### The three common culprits
 
-### Step 1: Diagnose which pattern you have
+**1. No dependency array at all**
 
-Check your effect against these common culprits:
+```
+useEffect(() => {
+  ____ // something that sets state
+})   // ← what's missing here?
+```
+
+Without the second argument, React runs the effect after **every** render. Ask yourself: *what should go after the callback, and what should be inside it?*
+
+**2. Depending on the same state you're setting**
+
+```
+useEffect(() => {
+  setCount(____ + 1)
+}, [____])
+```
+
+If the effect updates a value **and** lists that value as a dependency, each update triggers the effect again. Ask yourself: *does this effect really need to re-run when that value changes, or only when something else changes?*
+
+**3. Objects, arrays, or functions created during render**
+
+```
+const options = { page: 1 }   // created fresh on every render
+
+useEffect(() => {
+  fetchData(options)
+}, [options])
+```
+
+React compares dependencies by **reference**. A new object on every render counts as "changed" every time, even if its contents are identical. Some ways to fix it:
+- Move the object/function **____** the component, or **____** the effect
+- Depend on the **primitive values** inside it (e.g., `____.page`) instead of the whole object
+- Use a hook that keeps the reference stable between renders (one for values, one for functions: `use____` and `use____`)
+
+### A debugging checklist
+
+- [ ] Does my effect set state? Which state?
+- [ ] Is there a dependency array? What's in it?
+- [ ] Is any dependency something the effect itself changes?
+- [ ] Is any dependency a non-primitive created during render?
+- [ ] Should this run once on mount (empty array `[____]`), or when specific values change?
+
+Try putting a `console.log` at the top of your effect and inside your component body. Watching which one fires repeatedly will show you where the cycle is.
+
+What does the dependency array tell React about when to run an effect?
+
+</details>
+
+<details><summary>#4 pass · first token 1215ms · total 9649ms</summary>
+
+An infinite useEffect loop almost always follows the same chain:
+
+1. Your effect runs.
+2. Inside it, you **update state** (e.g., `setSomething(...)`).
+3. The state change causes a **re-render**.
+4. After the re-render, React checks whether the effect should run again. If nothing tells it to skip, it runs again, and you're back at step 1.
+
+So the fix comes down to **telling React exactly when the effect should re-run.** That's the job of the **dependency array**, the second argument to `useEffect`.
+
+### The Three Dependency Array Cases
+
+| What you pass | When the effect runs |
+|---|---|
+| Nothing (no second argument) | After **every** render |
+| An **empty** array | ____ (fill in) |
+| An array **with values** | Only when ____ changes |
+
+### A Typical Buggy Pattern
+
+```
+useEffect(() => {
+  fetch data
+  then setData(result)
+})   ← what's missing here?
+```
+
+The effect sets state, setting state re-renders, and with no second argument it runs again forever.
+
+### Fixed Version
+
+```
+useEffect(() => {
+  fetch data
+  then setData(result)
+}, ____ )   ← what should go here if you only want this once, on mount?
+```
+
+And if the fetch depends on something like a `userId` prop:
+
+```
+useEffect(() => {
+  fetch data for ____
+  then setData(result)
+}, [ ____ ])   ← which value should trigger a re-fetch?
+```
+
+### Other Common Traps
+
+- **Listing the state you're setting as a dependency.** If the effect sets `data` and `data` is in the array, you've rebuilt the loop. Ask yourself: does this effect actually need to *read* that value?
+- **Objects, arrays, or functions created during render.** React compares dependencies by *reference*, and a new `{}` or `() => {}` is "different" on every render even if its contents look identical. Possible fixes: move the value ____ the component, or create it ____ the effect, or memoize it.
+- **Unconditional state updates.** If an effect must set state based on a dependency, consider adding a check like `if (____ !== ____)` before setting.
+
+### Debugging Checklist
+
+1. Does the effect call a state setter? → ____
+2. Is there a dependency array at all? → ____
+3. Does any dependency change *because of* what the effect does? → ____
+4. Are any dependencies objects/functions recreated each render? → ____
+
+In your own words, what is the dependency array telling React to do?
+
+</details>
+
+<details><summary>#5 pass · first token 1632ms · total 9070ms</summary>
+
+An infinite loop usually comes from this cycle:
+
+1. The component **renders**
+2. `useEffect` **runs** after the render
+3. The effect **updates state**
+4. The state change triggers a **re-render**, and the cycle repeats
+
+The fix is to tell React *when* the effect should re-run, using the dependency array.
+
+### Step 1: Diagnose which case you're in
 
 | Symptom | Likely cause |
 |---|---|
-| No second argument to `useEffect` at all | Effect runs after **every** render |
-| You set a state variable that's also listed as a dependency | Effect changes its own trigger |
-| A dependency is an object, array, or function created inside the component body | It's a **new reference** each render, so React thinks it changed |
-
----
+| No second argument passed to `useEffect` | Effect runs after **every** render |
+| The state you set is also in the dependency array | Effect changes its own trigger |
+| An object, array, or function defined in the component body is in the array | A **new reference** is created each render, so React sees it as "changed" |
 
 ### Step 2: Fill in the outline
 
 ```
 useEffect( () => {
-    // do the side effect (fetch, subscribe, etc.)
-    // possibly: update some state with ____
+    // do the work (fetch, subscribe, etc.)
+    // update state with the result
 }, [ ____ ] )
 ```
 
-Ask yourself for the blank in the brackets:
+Ask yourself:
+- Should this run **only once on mount**? Then the array should contain ____.
+- Should it re-run when a specific value changes? Then list **only** ____ (the values the effect *reads*, not the ones it *writes*).
 
-- Should this run **only once** after the first render? The array should contain ____.
-- Should it re-run **when a specific value changes**? Put ____ in the array.
-- Are you updating a state variable *and* listing it as a dependency? Consider using the ____ form of the setter (the one that receives the previous value) so you can remove that state from the array.
-
----
-
-### Step 3: Stabilize "unstable" dependencies
-
-If a dependency is an object, array, or function defined in your component:
+### Step 3: If a dependency is an object, array, or function
 
 ```
-// Option A: move its creation ____ the effect
-// Option B: memoize it with ____ (for values) or ____ (for functions)
-// Option C: depend on a primitive piece of it (e.g. obj.____) instead of the whole object
+// Problem: this is recreated on every render
+const options = { ... }
+
+// Options to fix:
+//   a) Move it ____ the component (or inside the effect)
+//   b) Wrap it with ____ (for objects/arrays) or ____ (for functions)
+//   c) Depend on a ____ value inside it instead of the whole thing
 ```
 
----
+### Step 4: If you must update state based on previous state
 
-### Step 4: Verify
+```
+setCount( ____ => ____ + 1 )
+```
 
-Add a temporary log inside the effect. After your change, it should print only when the values you intended actually change, not continuously.
+Using the updater form means the effect doesn't need to *read* `count`, so `count` doesn't need to be a dependency.
 
----
+### Quick checklist
+- [ ] Is there a dependency array at all?
+- [ ] Am I setting a value that is also listed as a dependency?
+- [ ] Are any dependencies recreated on every render?
 
-If you paste your effect, I can help you figure out which of these patterns applies.
+If you share your effect, I can help you work out which case it is.
 
-In your own words, what does the dependency array tell React to do?
+In your own words, what determines when a `useEffect` runs again?
 
 </details>
 
 ### L3: 5/5
 
-<details><summary>#1 pass · first token 7566ms · total 16571ms</summary>
+<details><summary>#1 pass · first token 6409ms · total 16340ms</summary>
 
-An infinite `useEffect` loop almost always follows the same cycle:
+An infinite `useEffect` loop almost always follows the same pattern: **the effect updates something, that update triggers a re-render, and the re-render makes React think the effect needs to run again.**
 
-1. The component renders.
-2. The effect runs and **updates state**.
-3. The state update triggers a **re-render**.
-4. React checks the dependency array, decides the effect should run again, and you're back at step 2.
+## The three usual causes
 
-## Common causes
+### 1. No dependency array
+```jsx
+useEffect(() => {
+  setCount(c => c + 1);
+}); // ❌ no array: runs after EVERY render
+```
+Without a second argument, the effect runs after every render. If it sets state, that causes a render, which runs the effect again.
 
-**1. No dependency array at all**
+**Fix:** add a dependency array.
+```jsx
+useEffect(() => {
+  setCount(c => c + 1);
+}, []); // ✅ runs once after mount
+```
+
+### 2. Depending on the state you're setting
 ```jsx
 useEffect(() => {
   setCount(count + 1);
-}); // runs after EVERY render, so it loops forever
+}, [count]); // ❌ count changes → effect runs → count changes → ...
 ```
-
-**2. Depending on the same state you set**
+**Fix:** use a functional update so you don't need `count` as a dependency.
 ```jsx
 useEffect(() => {
-  setItems([...items, newItem]);
-}, [items]); // items changes, effect runs, items changes again...
+  setCount(c => c + 1);
+}, []); // ✅
 ```
-Fix: use the functional updater (`setItems(prev => [...prev, newItem])`) and remove `items` from the deps.
+
+### 3. Objects, arrays, or functions created during render
+React compares dependencies with `Object.is`, so a new `{}` or `() => {}` is "different" on every render, even if its contents are identical.
+```jsx
+const options = { userId };           // new object every render
+useEffect(() => { /* ... */ }, [options]); // ❌ always "changed"
+```
+**Fixes:**
+```jsx
+// Depend on the primitive instead
+useEffect(() => { /* ... */ }, [userId]); // ✅
+
+// Or memoize the object
+const options = useMemo(() => ({ userId }), [userId]);
+useEffect(() => { /* ... */ }, [options]); // ✅
+
+// Same idea for functions
+const load = useCallback(() => { /* ... */ }, [userId]);
+useEffect(() => { load(); }, [load]); // ✅
+```
+
+## A complete data-fetching example
+
+Here's a typical "fetch on prop change" component. **I've hidden exactly one bug in it. See if you can find it before running it:**
+
+```jsx
+import { useState, useEffect } from "react";
+
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`/api/users/${userId}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (!cancelled) setUser(data);
+      })
+      .catch(err => {
+        if (!cancelled) setError(err);
+      });
+
+    return () => {
+      cancelled = true; // ignore stale responses if userId changes
+    };
+  }, [userId, user]);
+
+  if (error) return <p>Something went wrong: {error.message}</p>;
+  if (!user) return <p>Loading…</p>;
+  return <h1>{user.name}</h1>;
+}
+```
+
+## Debugging tips
+- **Turn on the `react-hooks/exhaustive-deps` ESLint rule.** It flags missing deps, and if it pushes you toward adding something that causes a loop, that's a sign to restructure (functional updates, `useMemo`, moving logic inside the effect).
+- **Log inside the effect** (`console.log("effect ran", deps)`) to see which value keeps changing.
+- **In development, React 18+ Strict Mode runs effects twice on mount.** That's intentional and isn't an infinite loop.
+
+In your own words, what is a dependency array telling React about when an effect should run?
+
+</details>
+
+<details><summary>#2 pass · first token 5677ms · total 15089ms</summary>
+
+## Why it loops
+
+An infinite `useEffect` loop almost always follows this cycle:
+
+1. The component renders.
+2. The effect runs and **updates state**.
+3. The state change triggers a **re-render**.
+4. React checks the dependency array, decides something "changed," and **runs the effect again**.
+5. Back to step 2.
+
+The fix is to make sure the effect only re-runs when something has *actually* changed.
+
+## The three usual culprits
+
+**1. No dependency array at all**
+
+```jsx
+useEffect(() => {
+  setCount(count + 1);
+}); // ❌ runs after EVERY render
+```
+
+Without the second argument, the effect runs after every render. Add an array:
+
+```jsx
+useEffect(() => {
+  // runs once on mount
+}, []);
+```
+
+**2. Setting state that's also a dependency**
+
+```jsx
+useEffect(() => {
+  setCount(count + 1);
+}, [count]); // ❌ count changes → effect runs → count changes → ...
+```
+
+If you need the previous value, use a functional update and drop the dependency:
+
+```jsx
+useEffect(() => {
+  setCount(c => c + 1);
+}, []); // ✅
+```
 
 **3. Objects, arrays, or functions as dependencies**
-React compares dependencies by reference (`Object.is`). Any object, array, or function **created inside the component body** is a brand-new reference on every render, so React treats it as "changed" every time.
+
+React compares dependencies with `Object.is`, which checks **reference**, not contents. `{a: 1}` and `{a: 1}` are *different* objects, so anything created inside the component body is "new" on every render:
+
 ```jsx
-const config = { page: 1 };       // new object every render
-useEffect(() => { ... }, [config]); // runs every render
+const filters = { status: 'active' };
+useEffect(() => { ... }, [filters]); // ❌ new object every render
 ```
-Fix: move it outside the component, wrap it in `useMemo`/`useCallback`, or depend on the primitive values inside it (e.g. `config.page`).
+
+Fixes: depend on primitive values instead, move the object inside the effect, or memoize it with `useMemo` / `useCallback`.
 
 ## A full example
 
-Here's a data-fetching component written with these rules in mind. **It still contains exactly one bug that will cause an infinite loop.** See if you can find it before running it:
+Here's a data-fetching component that applies these ideas. **It contains exactly one bug that will still cause an infinite loop.** See if you can find it before running it.
 
 ```jsx
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function UserProfile({ userId }) {
   const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchOptions = {
+  const requestOptions = {
+    userId,
     headers: { Accept: 'application/json' },
   };
 
@@ -475,114 +573,291 @@ function UserProfile({ userId }) {
     let cancelled = false;
     setLoading(true);
 
-    fetch(`/api/users/${userId}`, fetchOptions)
-      .then((res) => {
+    fetch(`/api/users/${requestOptions.userId}`, {
+      headers: requestOptions.headers,
+    })
+      .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
-      .then((data) => {
+      .then(data => {
         if (!cancelled) setUser(data);
       })
-      .catch((err) => {
+      .catch(err => {
         if (!cancelled) setError(err);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
 
-    // Cleanup: ignore results if userId changes or the component unmounts
     return () => {
-      cancelled = true;
+      cancelled = true; // ignore results from stale requests
     };
-  }, [userId, fetchOptions]);
+  }, [requestOptions]);
 
   if (loading) return <p>Loading…</p>;
   if (error) return <p>Error: {error.message}</p>;
   return <h1>{user?.name}</h1>;
 }
-
-export default UserProfile;
 ```
 
-**Debugging tips while you hunt:**
-- Put a `console.log('effect ran', ...)` at the top of the effect and watch how often it fires.
-- Install the `eslint-plugin-react-hooks` rule `exhaustive-deps`. It catches many of these problems before they reach the browser.
-- For each item in a dependency array, ask whether it's a primitive or something that gets recreated on every render.
+A debugging tip: if you suspect a loop, put `console.log('effect ran')` inside the effect. If it floods the console, look at each item in the dependency array and ask, *"Is this a new value on every render?"*
 
-In your own words, what is `useEffect` actually for?
+In your own words, what determines whether React re-runs a `useEffect` after a render?
 
 </details>
 
-<details><summary>#2 pass · first token 6854ms · total 15538ms</summary>
+<details><summary>#3 pass · first token 8390ms · total 15758ms</summary>
 
-An infinite `useEffect` loop almost always follows this cycle:
+# Why useEffect Loops Forever
 
-1. The component renders.
-2. The effect runs and **updates state**.
-3. The state change triggers a **re-render**.
-4. React checks the dependency array, sees something "changed," and **runs the effect again**.
-5. Repeat forever.
+An infinite loop happens when **the effect causes a re-render, and that re-render triggers the effect again.** The usual causes are:
 
-To break the cycle, make sure the effect only re-runs when something *meaningful* changes.
+1. **No dependency array.** The effect runs after *every* render.
+   ```jsx
+   useEffect(() => {
+     setCount(count + 1); // re-render → effect → re-render → ...
+   });
+   ```
 
-## The three usual causes
+2. **Setting state that's also a dependency.**
+   ```jsx
+   useEffect(() => {
+     setCount(count + 1);
+   }, [count]); // count changes → effect runs → count changes → ...
+   ```
+
+3. **Dependencies that change identity on every render.** React compares dependencies with `Object.is`, which checks *reference* for objects, arrays and functions, not their contents.
+
+## The General Fixes
+
+- **Run once on mount:** use an empty array `[]`.
+- **Depend only on what the effect actually reads,** preferably primitives like strings and numbers.
+- **Don't read state just to update it.** Use a functional update instead: `setCount(c => c + 1)`.
+- **Stabilize non-primitive values** with `useMemo`, `useCallback`, or by moving them inside the effect or outside the component.
+
+## A Complete Example
+
+Here's a component that fetches a user whenever `userId` changes. **There is exactly one bug in this code that will still cause an infinite loop.** Try to find it before running it.
+
+```jsx
+import { useState, useEffect } from 'react';
+
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const query = { id: userId, include: 'posts' };
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    fetch(`/api/users/${query.id}?include=${query.include}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) {
+          setUser(data);
+          setLoading(false);
+        }
+      });
+
+    // Cleanup: ignore responses from stale requests
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
+
+  if (loading) return <p>Loading...</p>;
+  return <h1>{user.name}</h1>;
+}
+```
+
+The `cancelled` flag in the cleanup function is a good habit. It prevents a slow, outdated request from overwriting newer data after `userId` changes.
+
+**Debugging tip:** If you're unsure what's re-triggering an effect, temporarily log each dependency inside it. The ESLint rule `react-hooks/exhaustive-deps` will also flag many of these problems automatically.
+
+In your own words, what determines when React decides to re-run a `useEffect`?
+
+</details>
+
+<details><summary>#4 pass · first token 7731ms · total 17589ms</summary>
+
+An infinite `useEffect` loop almost always follows this pattern:
+
+1. The effect runs.
+2. The effect updates state (`setSomething`).
+3. The state change triggers a re-render.
+4. After the render, React decides the effect needs to run again.
+5. Go back to step 1.
+
+The fix is to make sure step 4 doesn't happen unless something has actually changed. That comes down to the dependency array.
+
+## The three most common causes
 
 **1. No dependency array at all**
 
 ```jsx
 useEffect(() => {
-  setCount(count + 1);
-}); // runs after EVERY render
+  fetch('/api/user').then(r => r.json()).then(setUser);
+}); // no array: runs after EVERY render
 ```
 
-Without a second argument, the effect runs after every render. If it sets state, it loops.
+Without a second argument, the effect runs after every render. Each `setUser` triggers a render, so the loop never ends.
+
+**2. A dependency that's recreated on every render**
+
+```jsx
+const options = { method: 'GET' }; // new object every render
+
+useEffect(() => {
+  fetch('/api/user', options).then(r => r.json()).then(setUser);
+}, [options]); // options is never "the same" twice
+```
+
+React compares dependencies with `Object.is`. A freshly created object, array, or function is never equal to the previous one, so the effect always reruns.
+
+**3. Depending on the state the effect itself sets**
+
+```jsx
+useEffect(() => {
+  setCount(count + 1);
+}, [count]); // updates count, which triggers the effect again
+```
+
+## The fixes
+
+- **Always pass a dependency array.** Use `[]` if the effect should run only on mount.
+- **List only the values the effect actually reads**, and make sure those values are stable.
+- **Move objects and functions inside the effect**, or stabilize them with `useMemo` or `useCallback`.
+- **Use functional updates** (`setCount(c => c + 1)`) so you don't need the state in the dependency array.
+- Turn on the `react-hooks/exhaustive-deps` ESLint rule. It catches most of these mistakes.
+
+## A complete example
+
+Here is a component that fetches a user's posts whenever `userId` changes, using the patterns above.
+
+**Heads up: I've deliberately left exactly one bug in this code, and it will still cause an infinite loop. See if you can find it before running it.**
+
+```jsx
+import { useState, useEffect, useCallback } from 'react';
+
+function UserPosts({ userId }) {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Stabilize the fetch function so it isn't recreated every render
+  const fetchPosts = useCallback(async (signal) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/users/${userId}/posts`, { signal });
+      const data = await res.json();
+      setPosts(data);
+    } catch (err) {
+      if (err.name !== 'AbortError') console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, posts]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchPosts(controller.signal);
+
+    // Cleanup: cancel the request if userId changes or the component unmounts
+    return () => controller.abort();
+  }, [fetchPosts]);
+
+  if (loading) return <p>Loading…</p>;
+
+  return (
+    <ul>
+      {posts.map(post => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+To find it, trace the render cycle by hand. Ask what changes after `setPosts` runs, and whether that change makes the effect fire again.
+
+In your own words, what is a `useEffect` dependency array actually telling React?
+
+</details>
+
+<details><summary>#5 pass · first token 7229ms · total 15795ms</summary>
+
+An infinite `useEffect` loop almost always follows this cycle:
+
+1. The effect runs.
+2. The effect updates state.
+3. The state update causes a re-render.
+4. React decides the effect needs to run again, and the cycle repeats.
+
+To break it, you control **when** React re-runs the effect. That's what the dependency array does.
+
+## The three common culprits
+
+**1. No dependency array at all**
+
+```jsx
+useEffect(() => {
+  setCount(count + 1); // runs after EVERY render, forever
+});
+```
+
+Without a second argument, the effect runs after every render.
 
 **2. Depending on the state you're setting**
 
 ```jsx
 useEffect(() => {
   setItems([...items, newItem]);
-}, [items]); // setting items -> items changes -> effect runs again
+}, [items]); // items changes, effect runs, items changes again...
 ```
 
-Fix this with a functional update so you don't need `items` as a dependency:
+**3. Depending on something recreated every render**
 
-```jsx
-useEffect(() => {
+React compares dependencies with `Object.is`, which checks identity for objects. Objects, arrays, and functions declared in the component body are brand-new on each render, so React treats them as "changed" every time.
+
+## Fixes
+
+- **Run once on mount:** pass an empty array `[]`.
+- **Run when specific values change:** list only primitives (strings, numbers, booleans) or stable references.
+- **Need previous state?** Use the functional updater so the state doesn't have to be a dependency:
+  ```jsx
   setItems(prev => [...prev, newItem]);
-}, [newItem]);
-```
-
-**3. Objects, arrays, or functions created during render**
-
-React compares dependencies with `Object.is`, which checks *reference* equality for objects. `{a: 1} !== {a: 1}`, so a freshly created object is "different" every render. Depend on primitive values instead, or stabilize the object with `useMemo` or `useCallback`.
+  ```
+- **Need an object or function as a dependency?** Stabilize it with `useMemo` or `useCallback`, or move it inside the effect.
 
 ## A full example
 
-Here's a component that fetches posts for a user, with a loading state and cleanup to avoid setting state after unmount:
+Here's a component that fetches users for a team, applies these ideas, and cleans up properly. **There is exactly one bug in this code that will still cause an infinite loop. See if you can find it.**
 
 ```jsx
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
-function UserPosts({ userId }) {
-  const [posts, setPosts] = useState([]);
+function UserList({ teamId }) {
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const query = { userId, limit: 10 };
+  const query = { teamId, active: true };
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
 
-    fetch(`/api/posts?userId=${query.userId}&limit=${query.limit}`)
+    fetch(`/api/users?team=${query.teamId}&active=${query.active}`)
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) {
-          setPosts(data);
+          setUsers(data);
           setLoading(false);
         }
       });
 
+    // Cleanup: ignore stale responses if the effect re-runs or the component unmounts
     return () => {
       cancelled = true;
     };
@@ -592,378 +867,38 @@ function UserPosts({ userId }) {
 
   return (
     <ul>
-      {posts.map((post) => (
-        <li key={post.id}>{post.title}</li>
+      {users.map((u) => (
+        <li key={u.id}>{u.name}</li>
       ))}
     </ul>
   );
 }
-
-export default UserPosts;
 ```
 
-⚠️ **There is exactly one bug in this code, and it causes the very infinite loop you're trying to avoid.** See if you can find it by tracing what happens after `setPosts` and `setLoading` trigger a re-render. Which value in the dependency array does React think has changed?
-
-Once you've found it, there are a couple of valid ways to fix it. Consider which one is cleanest.
-
-**Debugging tip:** If you're unsure which dependency is triggering the loop, temporarily add `console.log` statements for each dependency inside the effect. You can also install the `eslint-plugin-react-hooks` lint rule, which flags many of these issues automatically.
-
-In your own words, what determines whether a `useEffect` runs again after a render?
-
-</details>
-
-<details><summary>#3 pass · first token 7112ms · total 16179ms</summary>
-
-# Fixing an Infinite `useEffect` Loop
-
-An infinite loop happens when your effect **updates something that causes the effect to run again**. The cycle looks like this:
-
-```
-render → effect runs → setState → re-render → effect runs → setState → ...
-```
-
-## The Three Usual Culprits
-
-### 1. No dependency array at all
-
-```jsx
-useEffect(() => {
-  setCount(count + 1);
-}); // ❌ runs after EVERY render
-```
-
-Without a second argument, the effect runs after every render. If it sets state, that state change triggers another render, and the cycle never ends.
-
-### 2. Depending on the state you're setting
-
-```jsx
-useEffect(() => {
-  setCount(count + 1);
-}, [count]); // ❌ count changes → effect runs → count changes → ...
-```
-
-### 3. Depending on a value that's "new" every render
-
-Objects, arrays, and functions created inside the component body get a **new identity on every render**. React compares dependencies with `Object.is`, so `{} !== {}` and the effect sees a "change" every time.
-
-## The Fixes
-
-**Use an empty array if it should run once (on mount):**
-
-```jsx
-useEffect(() => {
-  setCount(c => c + 1);
-}, []); // ✅ runs once
-```
-
-**Use a functional update so you don't need the state as a dependency:**
-
-```jsx
-useEffect(() => {
-  const id = setInterval(() => {
-    setCount(c => c + 1); // reads the latest value without depending on it
-  }, 1000);
-  return () => clearInterval(id);
-}, []); // ✅
-```
-
-**List only the values that should actually re-trigger the effect:**
-
-Here's a full, realistic example: fetching a user whenever `userId` changes.
-
-```jsx
-import { useState, useEffect } from 'react';
-
-function UserProfile({ userId }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const options = { headers: { Accept: 'application/json' } };
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    fetch(`/api/users/${userId}`, options)
-      .then(res => res.json())
-      .then(data => {
-        if (!cancelled) {
-          setUser(data);
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true; // ignore stale responses if userId changes mid-request
-    };
-  }, [userId, options]);
-
-  if (loading) return <p>Loading...</p>;
-  return <h1>{user.name}</h1>;
-}
-```
-
-## Quick Checklist
-
-- Does the effect call a state setter? Make sure that state isn't in the dependency array, or use a functional update.
-- Is every dependency a primitive, or a stable reference? For objects and functions, move them inside the effect, outside the component, or wrap them in `useMemo`/`useCallback`.
-- Turn on the `eslint-plugin-react-hooks` rule `exhaustive-deps`. It catches many of these issues.
-
----
-
-**Heads up:** there is exactly **one bug** hidden in the code above that would still cause an infinite loop. See if you can find it and fix it.
-
-In your own words, what determines when a `useEffect` callback re-runs?
-
-</details>
-
-<details><summary>#4 pass · first token 6949ms · total 17246ms</summary>
-
-# Fixing an infinite `useEffect` loop
-
-An infinite loop almost always follows this cycle:
-
-1. The component renders.
-2. The effect runs and updates state.
-3. The state update triggers a re-render.
-4. React decides the effect needs to run again, so the cycle repeats.
-
-To break the loop, you need to control **when React decides the effect should run again**. React makes that decision with the **dependency array**.
-
-## The three main causes
-
-### 1. No dependency array at all
-
-```jsx
-useEffect(() => {
-  setCount(c => c + 1);
-}); // ❌ runs after EVERY render
-```
-
-Without a dependency array, the effect runs after every single render. If it sets state, it loops forever.
-
-### 2. Depending on the state you're setting
-
-```jsx
-useEffect(() => {
-  setItems([...items, newItem]);
-}, [items]); // ❌ setting items changes items, which re-runs the effect
-```
-
-**Fix:** Use a functional update so you don't need `items` as a dependency:
-
-```jsx
-useEffect(() => {
-  setItems(prev => [...prev, newItem]);
-}, [newItem]); // ✅
-```
-
-### 3. Objects, arrays, or functions in the dependency array
-
-React compares dependencies with `Object.is`, which checks **reference equality**, not contents. An object, array, or function created inside your component body is a brand-new reference on every render. To React, it looks like it changed every time.
-
-```jsx
-const config = { limit: 10 };  // new object every render
-useEffect(() => { /* ... */ }, [config]); // ❌
-```
-
-**Fixes:**
-- Move the value outside the component if it's constant.
-- Move it inside the effect.
-- Wrap it in `useMemo` (for objects and arrays) or `useCallback` (for functions).
-- Depend on primitive values instead, like `config.limit`.
-
-## A complete example
-
-Here is a component that fetches a user profile. It includes cleanup to avoid setting state after unmount, and it uses a functional update.
-
-**There is exactly one bug in this code that will still cause an infinite loop.** See if you can find it.
-
-```jsx
-import { useState, useEffect } from 'react';
-
-function UserProfile({ userId }) {
-  const [user, setUser] = useState(null);
-  const [error, setError] = useState(null);
-  const [fetchCount, setFetchCount] = useState(0);
-
-  const fetchOptions = {
-    headers: { Accept: 'application/json' },
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch(`/api/users/${userId}`, fetchOptions)
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        if (!cancelled) {
-          setUser(data);
-          setFetchCount(c => c + 1);
-        }
-      })
-      .catch(err => {
-        if (!cancelled) setError(err);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, fetchOptions]);
-
-  if (error) return <p>Error: {error.message}</p>;
-  if (!user) return <p>Loading...</p>;
-
-  return (
-    <div>
-      <h2>{user.name}</h2>
-      <p>Fetched {fetchCount} time(s)</p>
-    </div>
-  );
-}
-```
-
-**Hint:** Open your browser's Network tab and watch how many requests go out. Then compare each item in the dependency array against the three causes above.
-
-## Debugging tips
-
-- Add `console.log('effect ran')` inside the effect to confirm it's looping.
-- Install `eslint-plugin-react-hooks`. The `exhaustive-deps` rule catches many of these issues automatically.
-- React DevTools' "Highlight updates when components render" option lets you see re-renders as they happen.
-
----
+As you hunt, ask of each dependency: *"Is this value actually the same between renders, or does it only look the same?"* Opening the Network tab in DevTools and watching for repeated requests will confirm whether you've fixed it.
 
 In your own words, what determines whether React re-runs a `useEffect` after a render?
 
 </details>
 
-<details><summary>#5 pass · first token 10937ms · total 21230ms</summary>
-
-# Stopping a `useEffect` Infinite Loop
-
-An infinite loop almost always follows this cycle:
-
-1. The component renders.
-2. The effect runs and updates state.
-3. The state change triggers a re-render.
-4. The effect runs **again**, and the cycle repeats.
-
-The fix is to control **when** the effect re-runs, using the dependency array.
-
-## The Three Common Causes
-
-### 1. No dependency array at all
-
-```jsx
-useEffect(() => {
-  setCount(count + 1); // runs after EVERY render
-});
-```
-
-Without a second argument, the effect runs after every render. Add an array:
-
-```jsx
-useEffect(() => {
-  // runs once, after the first render
-}, []);
-```
-
-### 2. Setting state that is also a dependency
-
-```jsx
-useEffect(() => {
-  setCount(count + 1);
-}, [count]); // count changes → effect runs → count changes → ...
-```
-
-Use a **functional update** so you don't need to read the state, and remove it from the array:
-
-```jsx
-useEffect(() => {
-  setCount(prev => prev + 1);
-}, []);
-```
-
-### 3. Objects, arrays, or functions as dependencies
-
-React compares dependencies by **reference**, not by content. Something like `{}`, `[]`, or `() => {}` written in the component body is a *new* value on every render, so the effect thinks it changed.
-
-```jsx
-const options = { method: 'GET' };      // new object every render
-useEffect(() => { /* ... */ }, [options]); // runs every render
-```
-
-Fixes:
-- Move the object or function **inside** the effect, or
-- Stabilize it with `useMemo` (for values) or `useCallback` (for functions).
-
-## A Full Example
-
-Here's a component that fetches a user and merges the result into existing state, using everything above:
-
-```jsx
-import { useState, useEffect, useCallback } from 'react';
-
-function UserProfile({ userId }) {
-  const [user, setUser] = useState({});
-  const [error, setError] = useState(null);
-
-  // Stabilize the function so it isn't recreated on every render
-  const fetchUser = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/users/${userId}`);
-      const data = await res.json();
-      setUser({ ...user, ...data });
-    } catch (err) {
-      setError(err);
-    }
-  }, [userId, user]);
-
-  // Re-run only when fetchUser changes
-  useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
-
-  if (error) return <p>Something went wrong.</p>;
-  return <h1>{user.name ?? 'Loading...'}</h1>;
-}
-```
-
-**Heads up: this example contains exactly one bug, and it causes the very problem you're trying to fix.** Trace the render cycle step by step (render → effect → state update → re-render) and look for where it fails to stop. The three causes above are your hints.
-
-## Debugging Checklist
-
-- Put a `console.log` inside the effect. If it floods the console, you've confirmed the loop.
-- Turn on the `react-hooks/exhaustive-deps` ESLint rule. It flags missing dependencies. When it asks you to add a dependency that would cause a loop, that usually means you should restructure, for example with a functional update.
-- For each dependency, ask: *Does this change every render? Does the effect itself change it?*
-
-In your own words, what determines whether a `useEffect` runs again after a render?
-
-</details>
-
 ### L4: 5/5
 
-<details><summary>#1 pass · first token 1062ms · total 13901ms</summary>
+<details><summary>#1 pass · first token 3031ms · total 16036ms</summary>
 
-An infinite `useEffect` loop almost always happens because **the effect updates something that's in its own dependency array** (or it has no dependency array at all), so each render triggers the effect, which triggers another render, and so on.
-
-Here are the common causes and how to fix each.
+An infinite `useEffect` loop almost always means the effect **updates something that triggers a re-render, and that re-render causes the effect to run again**. Here are the most common causes and how to fix each one.
 
 ---
 
 ## 1. Missing dependency array
 
 ```jsx
-// ❌ Runs after EVERY render. setData causes a render, so it loops forever
+// ❌ Runs after EVERY render. setData causes a render, so it runs again forever.
 useEffect(() => {
   fetch('/api/data').then(r => r.json()).then(setData);
 });
 ```
 
-**Fix:** Add a dependency array. Use `[]` to run once on mount:
+**Fix:** Add a dependency array. Use `[]` to run only once on mount:
 
 ```jsx
 // ✅ Runs once after the first render
@@ -977,29 +912,180 @@ useEffect(() => {
 ## 2. Setting state that's also a dependency
 
 ```jsx
-// ❌ count changes, effect runs, count changes again...
+// ❌ count changes → effect runs → count changes → ...
 useEffect(() => {
   setCount(count + 1);
 }, [count]);
 ```
 
-**Fix:** Ask whether you need an effect at all. If you do, use the functional updater so you don't depend on the value:
+**Fix:** Use a functional update so you don't need the state as a dependency:
 
 ```jsx
-// ✅ No longer depends on count
+// ✅
 useEffect(() => {
   setCount(c => c + 1);
 }, []);
 ```
 
+Or add a condition so it eventually stops:
+
+```jsx
+useEffect(() => {
+  if (count < 10) setCount(count + 1);
+}, [count]);
+```
+
 ---
+
+## 3. Object, array, or function dependencies
+
+React compares dependencies with `Object.is` (reference equality). Objects, arrays, and functions created during render are **new every render**, so the effect always sees them as "changed."
+
+```jsx
+// ❌ `options` is a new object every render
+const options = { userId: id };
+
+useEffect(() => {
+  fetchUser(options).then(setUser);
+}, [options]);
+```
+
+**Fixes (pick one):**
+
+**a) Depend on primitives instead:**
+```jsx
+useEffect(() => {
+  fetchUser({ userId: id }).then(setUser);
+}, [id]); // ✅ id is a string/number
+```
+
+**b) Move the object inside the effect:**
+```jsx
+useEffect(() => {
+  const options = { userId: id };
+  fetchUser(options).then(setUser);
+}, [id]);
+```
+
+**c) Memoize it with `useMemo`:**
+```jsx
+const options = useMemo(() => ({ userId: id }), [id]);
+
+useEffect(() => {
+  fetchUser(options).then(setUser);
+}, [options]);
+```
+
+**For functions, use `useCallback`:**
+```jsx
+// ❌ loadData is recreated every render
+const loadData = () => fetch(`/api/${id}`).then(r => r.json()).then(setData);
+
+// ✅
+const loadData = useCallback(() => {
+  fetch(`/api/${id}`).then(r => r.json()).then(setData);
+}, [id]);
+
+useEffect(() => {
+  loadData();
+}, [loadData]);
+```
+
+---
+
+## 4. Setting state to a new object/array with the same contents
+
+```jsx
+// ❌ Even if the data is identical, [...items] is a new reference
+useEffect(() => {
+  setFiltered(items.filter(i => i.active));
+}, [items, filtered]);
+```
+
+**Fix:** Don't include the state you're setting in the dependencies. Better yet, if you're just deriving data, **you don't need an effect at all**:
+
+```jsx
+// ✅ Compute during render
+const filtered = useMemo(() => items.filter(i => i.active), [items]);
+```
+
+---
+
+## 5. Values you need but shouldn't react to: use `useRef`
+
+If you need to read a value inside an effect without re-running when it changes:
+
+```jsx
+const latestValue = useRef(value);
+latestValue.current = value;
+
+useEffect(() => {
+  const id = setInterval(() => {
+    console.log(latestValue.current); // always current, no re-run
+  }, 1000);
+  return () => clearInterval(id);
+}, []);
+```
+
+---
+
+## Quick debugging checklist
+
+1. **Do you have a dependency array?** If not, add one.
+2. **Does the effect set state that's in its own dependency array?** Use a functional update or a condition.
+3. **Are any dependencies objects, arrays, or functions defined in the component?** Replace with primitives, move them inside the effect, or memoize them.
+4. **Is the effect just computing derived data?** Remove the effect and compute it during render.
+5. **Turn on the ESLint rule** `react-hooks/exhaustive-deps`. It catches many of these issues.
+
+> **Note:** In development with `<React.StrictMode>`, effects intentionally run **twice** on mount. That's not an infinite loop, and it won't happen in production.
+
+If you share your specific `useEffect` code, I can point out exactly what's causing the loop.
+
+</details>
+
+<details><summary>#2 pass · first token 1071ms · total 12786ms</summary>
+
+An infinite `useEffect` loop almost always means **the effect updates something that's in its own dependency array** (or you have no dependency array at all). Here are the common causes and fixes.
+
+---
+
+## 1. Missing dependency array
+
+```jsx
+// ❌ Runs after EVERY render → setData triggers a render → runs again...
+useEffect(() => {
+  fetchData().then(setData);
+});
+
+// ✅ Runs once on mount
+useEffect(() => {
+  fetchData().then(setData);
+}, []);
+```
+
+## 2. Setting state that's also a dependency
+
+```jsx
+// ❌ count changes → effect runs → count changes → ...
+useEffect(() => {
+  setCount(count + 1);
+}, [count]);
+```
+
+**Fix:** Ask whether this needs to be an effect at all. If it does, use a functional update and remove the dependency:
+
+```jsx
+useEffect(() => {
+  setCount(c => c + 1);
+}, []); // no longer depends on count
+```
 
 ## 3. Objects, arrays, or functions as dependencies
 
-React compares dependencies with `Object.is` (reference equality). A new object, array, or function is created on every render, so it's "different" every time:
+React compares dependencies with `Object.is`, so a **new object/array/function created each render is always "different."**
 
 ```jsx
-// ❌ options is a new object each render, so the effect runs every render
+// ❌ `options` is a new object every render
 const options = { page: 1 };
 useEffect(() => {
   fetchData(options).then(setData);
@@ -1009,261 +1095,95 @@ useEffect(() => {
 **Fixes (pick one):**
 
 ```jsx
-// ✅ a) Depend on primitive values instead
+// a) Depend on primitive values instead
 useEffect(() => {
   fetchData({ page }).then(setData);
 }, [page]);
 
-// ✅ b) Move the object inside the effect
+// b) Move the object inside the effect
 useEffect(() => {
   const options = { page: 1 };
   fetchData(options).then(setData);
 }, []);
 
-// ✅ c) Memoize it
+// c) Memoize it
 const options = useMemo(() => ({ page }), [page]);
-useEffect(() => {
-  fetchData(options).then(setData);
-}, [options]);
 ```
 
-The same applies to functions. Wrap them in `useCallback`, or define them inside the effect:
+Same for functions: define them inside the effect, or wrap them in `useCallback`:
 
 ```jsx
-// ❌ fetchUser is recreated every render
-const fetchUser = () => api.get(`/users/${id}`).then(setUser);
-useEffect(() => { fetchUser(); }, [fetchUser]);
-
-// ✅ Define it inside the effect
-useEffect(() => {
-  const fetchUser = () => api.get(`/users/${id}`).then(setUser);
-  fetchUser();
-}, [id]);
-
-// ✅ Or use useCallback
-const fetchUser = useCallback(
-  () => api.get(`/users/${id}`).then(setUser),
-  [id]
-);
-useEffect(() => { fetchUser(); }, [fetchUser]);
-```
-
----
-
-## 4. Props from a parent that change every render
-
-If a parent passes `options={{...}}` or `onChange={() => ...}` inline, the child's effect will re-run constantly. Fix it in the **parent** with `useMemo`/`useCallback`, or have the child depend on primitive fields (`props.options.id`) instead of the whole object.
-
----
-
-## 5. You might not need an effect at all
-
-Many loops come from using an effect to compute derived data:
-
-```jsx
-// ❌ Unnecessary effect + extra render
-const [fullName, setFullName] = useState('');
-useEffect(() => {
-  setFullName(`${first} ${last}`);
-}, [first, last]);
-
-// ✅ Just compute it during render
-const fullName = `${first} ${last}`;
-```
-
-For expensive calculations, use `useMemo` instead of effect + state.
-
----
-
-## Debugging checklist
-
-1. **Does the effect have a dependency array?** If not, add one.
-2. **Does it set any state that's listed in its dependencies?** Use the functional updater or rethink the logic.
-3. **Are any dependencies objects, arrays, or functions?** Stabilize them with `useMemo`/`useCallback`, move them inside the effect, or use primitives.
-4. **Is the effect just deriving data?** Compute it during render instead.
-5. **Install `eslint-plugin-react-hooks`.** The `exhaustive-deps` rule flags many of these problems. Don't silence it; fix the underlying cause.
-
-**Note:** In React 18+ Strict Mode (development only), effects intentionally run **twice** on mount. That's not an infinite loop. It's React checking that your cleanup works. It won't happen in production.
-
-If you share your specific `useEffect` code, I can point out exactly what's causing the loop.
-
-</details>
-
-<details><summary>#2 pass · first token 1750ms · total 14504ms</summary>
-
-An infinite `useEffect` loop almost always means this cycle is happening:
-
-**effect runs → updates state → component re-renders → effect runs again → …**
-
-Here are the common causes and how to fix each.
-
----
-
-## 1. Missing dependency array
-
-```jsx
-// ❌ Runs after EVERY render
-useEffect(() => {
-  setCount(count + 1);
-});
-```
-
-Without a dependency array, the effect runs after every render. Since it sets state, it triggers another render, and the loop never ends.
-
-```jsx
-// ✅ Runs once, after the first render
-useEffect(() => {
-  fetchData();
-}, []);
-```
-
----
-
-## 2. Setting state that's also a dependency
-
-```jsx
-// ❌ count changes → effect runs → count changes → ...
-useEffect(() => {
-  setCount(count + 1);
-}, [count]);
-```
-
-**Fix:** Use a functional update so you don't need the state in the dependency array:
-
-```jsx
-// ✅
-useEffect(() => {
-  setCount(prev => prev + 1);
-}, []); // runs once
-```
-
-Or reconsider whether this belongs in an effect at all. Derived values can often just be computed during render:
-
-```jsx
-// ✅ No effect or extra state needed
-const doubled = count * 2;
-```
-
----
-
-## 3. Objects, arrays, or functions as dependencies
-
-This is the sneakiest cause. React compares dependencies with `Object.is` (reference equality), and objects, arrays, and functions are **recreated on every render**, so they're always "different."
-
-```jsx
-function MyComponent() {
-  const options = { page: 1 };          // new object every render
-  const fetchData = () => { /* ... */ }; // new function every render
-
-  useEffect(() => {
-    fetchData().then(setData);           // setData → re-render → new options/fetchData
-  }, [options, fetchData]);              // ❌ always "changed"
-}
-```
-
-**Fixes (pick one):**
-
-**a) Move it inside the effect**
-```jsx
-useEffect(() => {
-  const options = { page: 1 };
-  const fetchData = async () => { /* uses options */ };
-  fetchData().then(setData);
-}, []); // ✅
-```
-
-**b) Move it outside the component** (if it doesn't depend on props or state)
-```jsx
-const options = { page: 1 };
-
-function MyComponent() {
-  useEffect(() => { /* uses options */ }, []); // ✅
-}
-```
-
-**c) Depend on primitives instead of the whole object**
-```jsx
-useEffect(() => {
-  fetchUser(user.id);
-}, [user.id]); // ✅ instead of [user]
-```
-
-**d) Memoize with `useMemo` / `useCallback`**
-```jsx
-const options = useMemo(() => ({ page }), [page]);
-const fetchData = useCallback(async () => {
-  const res = await fetch(`/api?page=${page}`);
-  return res.json();
+const loadData = useCallback(() => {
+  fetchData(page).then(setData);
 }, [page]);
 
 useEffect(() => {
-  fetchData().then(setData);
-}, [fetchData]); // ✅ only changes when page changes
+  loadData();
+}, [loadData]);
 ```
-
----
 
 ## 4. Props that are recreated by the parent
 
-If a parent passes an inline object or function, it's new on every parent render:
+If a parent passes `onChange={() => ...}` or `config={{...}}`, it's a new reference every render. Fix it in the parent with `useCallback` / `useMemo`, or depend on specific primitive fields in the child.
+
+## 5. Setting state unconditionally from derived data
 
 ```jsx
-// Parent
-<Child config={{ theme: 'dark' }} onLoad={() => console.log('hi')} />
-
-// Child
-useEffect(() => { onLoad(); }, [onLoad]); // ❌ runs every parent render
+// ❌
+useEffect(() => {
+  setFiltered(items.filter(i => i.active));
+}, [items]); // fine only if `items` is stable
 ```
 
-**Fix:** Memoize in the parent with `useMemo` / `useCallback`, or depend on primitive values in the child.
+Often you don't need state or an effect at all, just compute during render:
+
+```jsx
+const filtered = useMemo(() => items.filter(i => i.active), [items]);
+// or simply: const filtered = items.filter(i => i.active);
+```
 
 ---
 
 ## Debugging checklist
 
-1. **Does the effect have a dependency array?** If not, add one.
-2. **Does the effect set state that's in the dependency array?** Use a functional update or restructure.
-3. **Are any dependencies objects, arrays, or functions?** Stabilize them with one of the fixes above.
-4. **Do you need the effect at all?** Effects are for syncing with *external* systems (APIs, subscriptions, the DOM). If you're just transforming data, compute it during render instead.
+1. **Does it have a dependency array?** If not, add one.
+2. **Does the effect set state that's in the array?** Use a functional update or rethink the logic.
+3. **Are any dependencies objects, arrays, or functions?** Make them stable or use primitives.
+4. **Do you need the effect at all?** Derived values should be computed during render (see React's ["You Might Not Need an Effect"](https://react.dev/learn/you-might-not-need-an-effect)).
+5. **Add a guard** if you truly must set state conditionally:
+   ```jsx
+   useEffect(() => {
+     if (value !== desired) setValue(desired);
+   }, [value, desired]);
+   ```
 
-A quick way to find the culprit is to log the dependencies:
-```jsx
-useEffect(() => {
-  console.log('effect ran', { options, fetchData });
-}, [options, fetchData]);
-```
+Also, enable the `eslint-plugin-react-hooks` `exhaustive-deps` rule. It flags most of these problems. Don't silence its warnings by removing dependencies; fix the root cause instead.
 
----
+> **Note:** In development with `<StrictMode>`, effects intentionally run **twice** on mount. That's not an infinite loop and doesn't happen in production.
 
-## Note: StrictMode is not a loop
-
-In development, React's `<StrictMode>` intentionally runs effects **twice** on mount to help you catch missing cleanup. If your effect runs exactly twice and then stops, that's expected. It doesn't happen in production.
-
----
-
-If you share your actual `useEffect` code, I can point out exactly what's causing the loop.
+If you share your specific effect code, I can point out exactly what's causing the loop.
 
 </details>
 
-<details><summary>#3 pass · first token 1919ms · total 14503ms</summary>
+<details><summary>#3 pass · first token 2615ms · total 13068ms</summary>
 
-An infinite `useEffect` loop almost always happens because **the effect updates something that causes a re-render, and that re-render makes the effect run again.** Here are the common causes and their fixes.
+An infinite `useEffect` loop happens when the effect updates something that causes a re-render, and that re-render makes the effect run again. Here are the usual causes and their fixes.
 
 ---
 
 ## 1. Missing dependency array
 
 ```jsx
-// ❌ Runs after EVERY render. setData causes a render, so it loops forever
+// ❌ Runs after EVERY render. setData triggers a render, which runs the effect again, and so on.
 useEffect(() => {
   fetchData().then(setData);
 });
 ```
 
-**Fix:** Add a dependency array.
+**Fix:** Add a dependency array. Use `[]` to run only once on mount.
 
 ```jsx
-// ✅ Runs once on mount
+// ✅ Runs once after the first render
 useEffect(() => {
   fetchData().then(setData);
 }, []);
@@ -1271,183 +1191,37 @@ useEffect(() => {
 
 ---
 
-## 2. Setting state that's also a dependency
+## 2. Updating a state value that's also a dependency
 
 ```jsx
-// ❌ count changes, effect runs, count changes, effect runs...
+// ❌ count changes, the effect runs, count changes again...
 useEffect(() => {
   setCount(count + 1);
 }, [count]);
 ```
 
-**Fix:** Use a functional update so you don't need the state in the deps, or rethink whether this belongs in an effect at all.
+**Fix:** Use a functional update and remove the dependency, or add a condition.
 
 ```jsx
-// ✅
+// ✅ Functional update, so count isn't needed as a dependency
 useEffect(() => {
   setCount(c => c + 1);
-}, []); // runs once
+}, []);
+
+// ✅ Or guard it with a condition
+useEffect(() => {
+  if (count < 10) setCount(count + 1);
+}, [count]);
 ```
 
 ---
 
 ## 3. Objects, arrays, or functions as dependencies
 
-This is the most confusing cause. Objects, arrays, and functions are **recreated on every render**, so React sees a "new" value each time (it compares with `Object.is`, i.e., by reference).
+React compares dependencies by **reference**. Objects, arrays, and functions created during render are new on every render, so the effect always sees them as "changed."
 
 ```jsx
-function MyComponent() {
-  const options = { page: 1 };          // new object every render
-  const fetchItems = () => { /* ... */ }; // new function every render
-
-  // ❌ Both deps "change" every render
-  useEffect(() => {
-    fetchItems(options).then(setItems);
-  }, [options, fetchItems]);
-}
-```
-
-**Fixes (pick one):**
-
-**a) Move it inside the effect** (simplest):
-```jsx
-useEffect(() => {
-  const options = { page: 1 };
-  fetchItems(options).then(setItems);
-}, []);
-```
-
-**b) Depend on primitive values instead:**
-```jsx
-useEffect(() => {
-  fetchItems({ page }).then(setItems);
-}, [page]); // page is a number, so it compares by value
-```
-
-**c) Memoize with `useMemo` / `useCallback`:**
-```jsx
-const options = useMemo(() => ({ page }), [page]);
-const fetchItems = useCallback((opts) => api.get(opts), []);
-
-useEffect(() => {
-  fetchItems(options).then(setItems);
-}, [options, fetchItems]);
-```
-
-**d) Move it outside the component** if it doesn't depend on props or state:
-```jsx
-const DEFAULT_OPTIONS = { page: 1 };
-
-function MyComponent() {
-  useEffect(() => { /* use DEFAULT_OPTIONS */ }, []);
-}
-```
-
----
-
-## 4. Props that are objects or functions from the parent
-
-If a parent passes `onChange={() => ...}` or `config={{...}}`, it's a new reference on every parent render. Fix it in the **parent** with `useCallback` / `useMemo`, or depend on specific primitive fields (`config.id`) in the child.
-
----
-
-## 5. Fetching and setting the same state
-
-```jsx
-// ❌ setUser creates a new object, so the effect runs again
-useEffect(() => {
-  api.getUser(id).then(setUser);
-}, [user]);
-```
-
-**Fix:** Depend on what *triggers* the fetch (`id`), not the result (`user`).
-
-```jsx
-useEffect(() => {
-  api.getUser(id).then(setUser);
-}, [id]);
-```
-
----
-
-## Debugging tips
-
-- **Log the deps** to see which one changes:
-  ```jsx
-  useEffect(() => {
-    console.log('effect ran', { options, fetchItems });
-  }, [options, fetchItems]);
-  ```
-- Enable the **`eslint-plugin-react-hooks`** `exhaustive-deps` rule. It flags missing deps and often suggests the right fix.
-- **Don't silence the linter** by removing deps. That trades the infinite loop for stale-data bugs.
-- **Note:** In development with `<StrictMode>`, React 18+ intentionally runs effects **twice** on mount. That's expected behavior, not an infinite loop.
-
----
-
-## Quick checklist
-
-1. Do you have a dependency array at all?
-2. Does the effect set state that's listed in its own deps?
-3. Are any deps objects, arrays, or functions created during render?
-4. Can you depend on a primitive (ID, string, number) instead?
-5. Do you even need an effect? Derived values can often just be computed during render.
-
-If you share your specific `useEffect` code, I can point out exactly what's causing the loop.
-
-</details>
-
-<details><summary>#4 pass · first token 1942ms · total 13178ms</summary>
-
-An infinite `useEffect` loop happens when the effect **updates something that causes a re-render, and that re-render triggers the effect again**. Here are the common causes and their fixes.
-
----
-
-## 1. Missing dependency array
-
-```jsx
-// ❌ Runs after EVERY render. setData causes a render, which runs the effect again.
-useEffect(() => {
-  fetchData().then(setData);
-});
-```
-
-**Fix:** Add a dependency array.
-
-```jsx
-// ✅ Runs once on mount
-useEffect(() => {
-  fetchData().then(setData);
-}, []);
-```
-
----
-
-## 2. Setting state that's also a dependency
-
-```jsx
-// ❌ count changes → effect runs → count changes → ...
-useEffect(() => {
-  setCount(count + 1);
-}, [count]);
-```
-
-**Fix:** Use a functional update so you don't need the state as a dependency, or reconsider whether this belongs in an effect at all.
-
-```jsx
-// ✅
-useEffect(() => {
-  setCount(c => c + 1);
-}, []); // runs once
-```
-
----
-
-## 3. Objects, arrays, or functions as dependencies
-
-JavaScript compares these **by reference**, and they're recreated on every render. So React sees a "new" value each time.
-
-```jsx
-// ❌ `options` is a new object every render
+// ❌ options is a new object every render
 const options = { userId: id };
 
 useEffect(() => {
@@ -1461,7 +1235,7 @@ useEffect(() => {
 ```jsx
 useEffect(() => {
   fetchUser({ userId: id }).then(setUser);
-}, [id]); // ✅ id is a string/number
+}, [id]); // ✅ id is a string or number, so it's stable
 ```
 
 **b) Move the object inside the effect**
@@ -1472,7 +1246,130 @@ useEffect(() => {
 }, [id]);
 ```
 
-**c) Memoize it with `useMemo`**
+**c) Memoize with `useMemo` or `useCallback`**
+```jsx
+const options = useMemo(() => ({ userId: id }), [id]);
+
+const loadUser = useCallback(() => {
+  return fetchUser(options);
+}, [options]);
+
+useEffect(() => {
+  loadUser().then(setUser);
+}, [loadUser]); // ✅ stable reference unless id changes
+```
+
+---
+
+## 4. Setting state to a new object or array every time
+
+```jsx
+// ❌ Even if the data is identical, a new array is a new reference
+useEffect(() => {
+  setItems([...rawItems]);
+}, [items]);
+```
+
+**Fix:** Don't depend on the state you're setting. Ask whether you need state at all, since derived values can often be computed during render:
+
+```jsx
+// ✅ No effect needed
+const items = useMemo(() => rawItems.filter(i => i.active), [rawItems]);
+```
+
+---
+
+## Quick debugging checklist
+
+1. **Is there a dependency array?** If not, add one.
+2. **Does the effect set a state that's in its own dependency list?** Use a functional update or add a condition.
+3. **Are any dependencies objects, arrays, or functions?** Replace them with primitives, move them inside the effect, or memoize them.
+4. **Do you even need the effect?** If you're computing a value from props or state, compute it directly during render.
+5. **Enable the ESLint rule** `react-hooks/exhaustive-deps`. It catches many of these issues.
+
+> **Note:** In development with `<React.StrictMode>`, effects intentionally run **twice** on mount. That's expected, not an infinite loop. It won't happen in production.
+
+If you share your specific `useEffect` code, I can point out exactly what's causing the loop.
+
+</details>
+
+<details><summary>#4 pass · first token 1893ms · total 13641ms</summary>
+
+An infinite `useEffect` loop happens when the effect **updates something that triggers a re-render, and that re-render causes the effect to run again**. Here are the most common causes and how to fix each one.
+
+---
+
+## 1. No dependency array
+
+```jsx
+// ❌ Runs after EVERY render, and setData causes a render → infinite loop
+useEffect(() => {
+  fetch('/api/data').then(r => r.json()).then(setData);
+});
+```
+
+**Fix:** Add a dependency array. Use `[]` to run only once, after the first render (on mount).
+
+```jsx
+// ✅
+useEffect(() => {
+  fetch('/api/data').then(r => r.json()).then(setData);
+}, []);
+```
+
+---
+
+## 2. Setting state that's also a dependency
+
+```jsx
+// ❌ count changes → effect runs → count changes → ...
+useEffect(() => {
+  setCount(count + 1);
+}, [count]);
+```
+
+**Fix:** Use a **functional update** so you don't need the state as a dependency. Better still, ask whether this belongs in an effect at all.
+
+```jsx
+// ✅
+useEffect(() => {
+  setCount(c => c + 1);
+}, []); // runs once
+```
+
+---
+
+## 3. Object, array, or function dependencies
+
+React compares dependencies with `Object.is`, i.e. by **reference**. Objects, arrays, and functions created during render are new on every render, so the effect always sees them as "changed."
+
+```jsx
+// ❌ `options` is a new object every render
+const options = { userId: id };
+
+useEffect(() => {
+  fetchUser(options).then(setUser);
+}, [options]);
+```
+
+**Fixes (pick one):**
+
+**a) Depend on primitives instead:**
+```jsx
+useEffect(() => {
+  fetchUser({ userId: id }).then(setUser);
+}, [id]);
+```
+
+**b) Move the object inside the effect:**
+```jsx
+useEffect(() => {
+  const options = { userId: id };
+  fetchUser(options).then(setUser);
+}, [id]);
+```
+
+**c) Memoize it with `useMemo`:**
 ```jsx
 const options = useMemo(() => ({ userId: id }), [id]);
 
@@ -1481,77 +1378,84 @@ useEffect(() => {
 }, [options]);
 ```
 
----
-
-## 4. Functions as dependencies
-
+**d) For functions, use `useCallback`:**
 ```jsx
-// ❌ loadData is recreated every render
-const loadData = () => fetchData(id).then(setData);
-
-useEffect(() => {
-  loadData();
-}, [loadData]);
-```
-
-**Fix:** Wrap it in `useCallback`, or define it inside the effect.
-
-```jsx
-// ✅ Option A
-const loadData = useCallback(() => {
-  fetchData(id).then(setData);
+const loadUser = useCallback(() => {
+  return fetchUser(id);
 }, [id]);
 
 useEffect(() => {
-  loadData();
-}, [loadData]);
-
-// ✅ Option B (often simpler)
-useEffect(() => {
-  const loadData = () => fetchData(id).then(setData);
-  loadData();
-}, [id]);
+  loadUser().then(setUser);
+}, [loadUser]);
 ```
 
 ---
 
-## 5. Props that are new objects/functions from the parent
+## 4. Props that are recreated by the parent
 
-If a parent passes `onChange={() => ...}` or `config={{...}}` inline, the child gets a new reference every render. Fix it in the parent with `useCallback` / `useMemo`, or have the child depend on specific primitive fields.
+If a parent passes `onChange={() => ...}` or `config={{...}}`, the child gets a new reference every render. Fix it in the parent with `useCallback` or `useMemo`, or have the child depend only on primitive values.
+
+---
+
+## 5. Only update state when the value actually changes
+
+If you must set state from an effect, guard it:
+
+```jsx
+useEffect(() => {
+  const next = computeSomething(input);
+  setValue(prev => (prev === next ? prev : next));
+}, [input]);
+```
+
+When you return the previous value from a functional update, React can skip the re-render.
+
+---
+
+## 6. Ask: do you even need an effect?
+
+Many loops come from using an effect to **derive** state. Compute it during render instead:
+
+```jsx
+// ❌
+const [fullName, setFullName] = useState('');
+useEffect(() => {
+  setFullName(`${first} ${last}`);
+}, [first, last]);
+
+// ✅
+const fullName = `${first} ${last}`;
+```
 
 ---
 
 ## Debugging tips
 
-- **Log the dependencies** to see which one keeps changing:
+- Install **`eslint-plugin-react-hooks`** and enable the `exhaustive-deps` rule. It flags missing and unstable dependencies.
+- Temporarily log inside the effect to see which dependency is changing:
   ```jsx
   useEffect(() => {
-    console.log('effect ran', { a, b, c });
-  }, [a, b, c]);
+    console.log('effect ran', { dep1, dep2 });
+  }, [dep1, dep2]);
   ```
-- **Enable the ESLint rule** `react-hooks/exhaustive-deps`. It warns about missing dependencies and helps you avoid stale values. Don't silence it to "fix" a loop. Fix the unstable dependency instead.
-- **Ask whether you need an effect at all.** If you're computing a value from props/state, just calculate it during render (or with `useMemo`) instead of storing it in state via an effect. See React's guide ["You Might Not Need an Effect"](https://react.dev/learn/you-might-not-need-an-effect).
+- Note that **React Strict Mode** runs effects twice on mount in development. Running twice is expected behavior, not an infinite loop.
 
 ---
 
-**Note:** In development with React 18+ Strict Mode, effects intentionally run **twice** on mount. That's not an infinite loop. It only happens in dev, to help catch missing cleanup.
-
-If you share your specific `useEffect` code, I can point out exactly what's causing the loop.
+If you share your actual `useEffect` code, I can point out exactly what's causing the loop.
 
 </details>
 
-<details><summary>#5 pass · first token 1105ms · total 11913ms</summary>
+<details><summary>#5 pass · first token 1148ms · total 11531ms</summary>
 
-An infinite `useEffect` loop almost always means **the effect updates something that's in its own dependency array** (or it has no dependency array at all). Each render triggers the effect, the effect triggers a re-render, and so on.
-
-Here are the most common causes and their fixes.
+An infinite `useEffect` loop almost always happens because **the effect updates something that causes it to run again**. Here are the common causes and how to fix each one.
 
 ---
 
-### 1. Missing dependency array
+## 1. Missing dependency array
 
 ```jsx
-// ❌ Runs after EVERY render, and setData causes a render
+// ❌ Runs after EVERY render. setData triggers a render, which runs the effect again...
 useEffect(() => {
   fetchData().then(setData);
 });
@@ -1562,170 +1466,172 @@ useEffect(() => {
 }, []);
 ```
 
----
-
-### 2. Setting state that's also a dependency
+## 2. Setting state that's also a dependency
 
 ```jsx
 // ❌ count changes → effect runs → count changes → ...
 useEffect(() => {
   setCount(count + 1);
 }, [count]);
-```
 
-**Fixes:**
-- Ask whether this needs to be an effect at all. Derived values can often be computed during render.
-- If you only need the previous value, use the functional updater and drop the dependency:
-
-```jsx
+// ✅ Use a functional update and drop the dependency
 useEffect(() => {
   setCount(c => c + 1);
-}, []); // no longer depends on count
+}, []);
 ```
 
----
+Ask yourself whether this needs to be an effect at all. Often the value can be **derived during render** instead:
 
-### 3. Objects, arrays, or functions as dependencies
+```jsx
+// ❌ Effect + extra state
+const [fullName, setFullName] = useState('');
+useEffect(() => {
+  setFullName(`${first} ${last}`);
+}, [first, last]);
 
-React compares dependencies with `Object.is`. A new object, array, or function is created on every render, so it's "different" every time.
+// ✅ Just compute it
+const fullName = `${first} ${last}`;
+```
+
+## 3. Objects, arrays, or functions as dependencies
+
+These are **recreated on every render**, so React sees a "new" value each time (it compares with `Object.is`, i.e. by reference).
 
 ```jsx
 // ❌ options is a new object every render
 const options = { page: 1 };
 useEffect(() => {
-  fetchItems(options).then(setItems);
+  fetchData(options).then(setData);
 }, [options]);
 ```
 
-**Fixes (pick one):**
+**Fixes:**
 
 ```jsx
-// a) Depend on primitive values instead
+// ✅ Option A: depend on primitive values instead
 useEffect(() => {
-  fetchItems({ page }).then(setItems);
+  fetchData({ page }).then(setData);
 }, [page]);
 
-// b) Move the object inside the effect
+// ✅ Option B: move the object inside the effect
 useEffect(() => {
   const options = { page: 1 };
-  fetchItems(options).then(setItems);
+  fetchData(options).then(setData);
 }, []);
 
-// c) Memoize it
+// ✅ Option C: memoize it
 const options = useMemo(() => ({ page }), [page]);
-
-// d) For functions, use useCallback (or define them inside the effect)
-const loadItems = useCallback(() => fetchItems({ page }), [page]);
-useEffect(() => {
-  loadItems().then(setItems);
-}, [loadItems]);
 ```
 
----
-
-### 4. Props from a parent that change every render
-
-If a parent passes `onChange={() => ...}` or `filters={{...}}` inline, the child's effect sees a new value each time. Fix it in the parent with `useCallback` / `useMemo`, or depend on primitive fields in the child.
-
----
-
-### 5. Guard the update
-
-If you must set state based on a dependency, only update when the value actually differs:
+For functions, use `useCallback` or move the function inside the effect:
 
 ```jsx
-useEffect(() => {
-  const next = compute(input);
-  if (next !== value) setValue(next);
-}, [input, value]);
+// ❌ loadData is recreated every render
+const loadData = () => fetchData(id).then(setData);
+useEffect(() => { loadData(); }, [loadData]);
+
+// ✅ useCallback
+const loadData = useCallback(() => fetchData(id).then(setData), [id]);
+useEffect(() => { loadData(); }, [loadData]);
 ```
+
+## 4. Props that are new objects or functions from the parent
+
+If the parent passes `onChange={() => ...}` or `config={{...}}`, the child's effect will rerun each time the parent renders. Fix it in the **parent** with `useCallback`/`useMemo`, or have the child depend on specific primitive fields (`config.id` instead of `config`).
 
 ---
 
-### Debugging tips
+## Quick debugging checklist
 
-- **Enable the ESLint rule `react-hooks/exhaustive-deps`.** Don't silence it. Restructure the code instead.
-- Log which dependency is changing:
-  ```jsx
-  useEffect(() => { console.log('effect ran', { a, b, c }); }, [a, b, c]);
-  ```
-- Ask yourself: *"Does this need to be an effect?"* Computing values from props/state, or reacting to a user event, usually belongs in render logic or an event handler, not `useEffect`. (See the React docs page **"You Might Not Need an Effect."**)
+1. **Does the effect have a dependency array?** If not, add one.
+2. **Does the effect set state that's in its own dependency list?** Use a functional update, or rethink the logic.
+3. **Are any dependencies objects, arrays, or functions?** Stabilize them or replace them with primitives.
+4. **Do you need the effect at all?** If you're just transforming props or state, compute the value during render.
+5. **Enable the ESLint rule** `react-hooks/exhaustive-deps`. It catches many of these problems. Don't silence it by removing dependencies, since that causes stale-value bugs. Restructure the code instead.
 
-If you share your specific effect code, I can point out exactly what's causing the loop.
+> **Note:** In development with `<StrictMode>`, React 18+ intentionally runs effects **twice** on mount. That isn't an infinite loop. It only happens in dev and is meant to surface missing cleanup.
+
+If you share your specific `useEffect` code, I can point out exactly what's causing the loop.
 
 </details>
 
 ### Demo answer graded against each L1 reply above
 
-- #1: correct 0.85: The student accurately explains that the dependency array controls when the effect re-runs, triggering only when a listed value changes, with an empty array meaning once after mount, which is the core mechanism at this level.
-- #2: correct 0.88: The student correctly explains that the dependency array determines when the effect re-runs, rerunning only when listed values change and running once after mount when empty, which is the core mechanism at this level.
-- #3: correct 0.88: The student correctly explains that React compares the values in the dependency array after each render and re-runs the effect only when one of them changes, with an empty array meaning it runs once after mount, which is enough at this level even though they don't spell out the case of omitting the array.
-- #4: correct 0.85: The student correctly explains that the dependency array controls re-running by comparing listed values for changes, and that an empty array means the effect runs once after mount, which is the core mechanism at this level.
-- #5: correct 0.88: The student accurately explains that React re-runs an effect only when a value in its dependency array changes, and that an empty array means it runs once after mount, which is the core mechanism at this level.
+- #1: correct 0.88: The student correctly explains that the dependency array controls when the effect re-runs, re-running only when a listed value changes, and that an empty array means it runs once after mount, which is sufficient at this level.
+- #2: correct 0.85: The student correctly explains that React re-runs an effect only when a value in the dependency array changes, and that an empty array means it runs once after mount, which is the central mechanism at this level.
+- #3: correct 0.85: The student correctly explains that the dependency array determines when the effect re-runs, triggering only when a listed value changes, with an empty array meaning it runs once after mount, which is sufficient at this level.
+- #4: correct 0.90: The student correctly explains that the dependency array determines when the effect re-runs (only when a listed value changes), and that an empty array means it runs once after mount, which is the central mechanism at this level.
+- #5: correct 0.85: The student correctly explains that React re-runs the effect only when a value in the dependency array changes and that an empty array means it runs once after mount, which is sufficient at this level even though omitting the array and reference comparison aren't mentioned.
 
 ## Grading
 
 | case | level | expected | got | confidence | new_level | time | rationale |
 |---|---|---|---|---|---|---|---|
-| demo correctAnswer | L1 | correct | correct | 0.93 | L4 | 4988ms | The student correctly explains that the dependency array tells React to re-run the effect only when a listed value changes, and that an empty array means it runs once after mount, which is enough at this level. |
-| demo lazyAnswer at L3 | L3 | lazy | lazy | 0.97 | L2 | 3351ms | The student asked for code without engaging with the question about what the dependency array tells React. |
-| partial | L1 | partial | partial | 0.85 | L1 | 5162ms | The student correctly identifies the dependency array as the second argument and says it controls the effect, but never explains that it tells React to re-run the effect only when the listed values change. |
-| incorrect | L1 | incorrect | incorrect | 0.93 | L1 | 2052ms | The student thinks the dependency array controls which state the effect may modify, when in fact it lists the values React watches to decide when the effect should re-run. |
-| not_an_answer | L1 | not_an_answer | not_an_answer | 0.97 | L1 | 2257ms | The student asked an unrelated CSS question instead of explaining what the dependency array tells React. |
+| repeats original question | L1 | not_an_answer / lazy | not_an_answer | 0.90 | L1 | 1688ms | The student asked a new question about stopping an infinite loop instead of explaining what the dependency array tells React. |
+| rephrases original question | L1 | not_an_answer / lazy | not_an_answer | 0.90 | L1 | 1377ms | The student asked a new question about their own infinite loop instead of explaining what the dependency array tells React. |
+| echoes the check question | L1 | not_an_answer / lazy | not_an_answer | 0.95 | L1 | 1529ms | The student only repeated the tutor's question back and gave no explanation of what the dependency array does. |
+| keyword list | L1 | not_an_answer / partial / lazy | partial | 0.60 | L1 | 5122ms | The student's keywords point toward the right idea that the effect re-runs when listed values change, but they never form a clear explanation of how the array controls when the effect runs. |
+| short genuine answer | L1 | correct | correct | 0.88 | L4 | 1421ms | The student correctly explains that the dependency array tells React to re-run the effect only when one of the listed values changes, which is the core idea at this level. |
+| question-shaped answer | L1 | correct | correct | 0.85 | L4 | 4083ms | The student correctly explains that the dependency array lists the values the effect relies on and that React re-runs the effect only when one of those values changes, which is the core idea at this level. |
+| demo correctAnswer | L1 | correct | correct | 0.93 | L4 | 3732ms | The student accurately explains that the dependency array tells React to re-run the effect only when listed values change, and correctly notes that an empty array means it runs once after mount. |
+| demo lazyAnswer at L3 | L3 | lazy | lazy | 0.97 | L2 | 3615ms | The student asked for code instead of explaining what the dependency array tells React, so they did not engage with the question. |
+| partial | L1 | partial | partial | 0.85 | L1 | 2025ms | The student correctly identifies the dependency array as the second argument and senses that it controls the effect, but does not explain that it tells React to re-run the effect only when the listed values change. |
+| incorrect | L1 | incorrect | incorrect | 0.93 | L1 | 2139ms | The student thinks the dependency array controls which state the effect may update. It actually tells React which values to watch, so the effect re-runs only when one of them changes. |
+| not_an_answer | L1 | not_an_answer | not_an_answer | 0.97 | L1 | 2714ms | The student asked an unrelated question about centering with flexbox and did not address what the dependency array tells React. |
 
 ## Classify (LLM fallback)
 
 | prompt | expected | got | method | confidence | time |
 |---|---|---|---|---|---|
-| How can I share the current theme with deeply nested parts of my app without handing it down manually at every level? | Context API | Context API | llm | 0.95 | 813ms |
-| Why does my list re-render every time its parent does, even when its data did not change? | Performance & Memoization | Performance & Memoization | llm | 0.90 | 1436ms |
-| write a haiku about autumn leaves | null | null | none | 0.00 | 1410ms |
+| How can I share the current theme with deeply nested parts of my app without handing it down manually at every level? | Context API | Context API | llm | 0.96 | 978ms |
+| Why does my list re-render every time its parent does, even when its data did not change? | Performance & Memoization | Performance & Memoization | llm | 0.85 | 1353ms |
+| write a haiku about autumn leaves | null | null | none | 0.00 | 1342ms |
 
 ## Parse (`fixtures/demo-syllabus.md`)
 
-### text: CSE 134R — React Fundamentals (9630ms)
+### text: CSE 134R — React Fundamentals (14334ms)
 
 - **Foundations**
-  - `n1` JSX & Components · L3 minor · code · [jsx, createelement, function component, component, babel, fragment] · deps []  
-    Explains what JSX compiles to (React.createElement / jsx calls) and decomposes a UI mockup into reusable components
-  - `n2` Props · L3 minor · arrow-down · [props, children prop, one-way data flow, callback prop, prop types] · deps [n1]  
+  - `n1` JSX & Components · L3 major · code · [jsx, react.createelement, function component, adjacent jsx elements must be wrapped, fragment, component tree] · deps []  
+    Explains what JSX compiles to (React.createElement / jsx calls) and decomposes a UI mockup into reusable function components
+  - `n2` Props · L3 minor · arrow-down · [props, children prop, one-way data flow, callback props, props destructuring, lifting state up] · deps [n1]  
     Passes data and callbacks through props, uses the children prop, and explains one-way data flow
-  - `n3` State with useState · L4 major · refresh · [usestate, setstate, functional update, state not updating, re-render, batching] · deps [n2]  
-    Uses useState correctly, including functional updates, and explains why state updates are asynchronous
+  - `n3` State with useState · L3 major · box · [usestate, setstate, functional update, state not updating, asynchronous state, re-render, batching] · deps [n1]  
+    Uses useState correctly, including functional updates, and explains why a state value doesn't change immediately after calling the setter
 - **Effects & Data**
-  - `n4` React useEffect · L4 major · zap · [useeffect, dependency array, cleanup function, infinite loop, too many re-renders, side effect] · deps [n3]  
+  - `n4` React useEffect · L4 major · refresh · [useeffect, dependency array, cleanup function, infinite loop, too many re-renders, maximum update depth exceeded, side effects] · deps [n3]  
     Identifies and prevents an infinite render loop caused by a missing or wrong dependency array, and writes correct cleanup functions
-  - `n5` Data Fetching · L3 minor · download · [fetch, loading state, error state, race condition, abortcontroller, async useeffect] · deps [n4]  
-    Fetches data inside an effect with loading and error states and prevents race conditions using cleanup or AbortController
-  - `n6` Custom Hooks · L3 minor · hook · [custom hook, rules of hooks, use prefix, invalid hook call, reusable logic] · deps [n4]  
+  - `n5` Data Fetching · L3 minor · download · [fetch, loading state, error handling, race condition, abortcontroller, async useeffect] · deps [n4]  
+    Fetches data inside an effect with loading and error states, and prevents race conditions using cleanup or AbortController
+  - `n6` Custom Hooks · L3 minor · hook · [custom hook, rules of hooks, use prefix, invalid hook call, hooks called conditionally, reusable logic] · deps [n4]  
     Extracts reusable stateful logic into a custom hook and explains the rules of hooks
 - **Building Apps**
-  - `n7` Context API · L3 minor · share · [createcontext, usecontext, provider, prop drilling, global state] · deps [n3]  
-    Provides and consumes shared state with createContext/useContext and justifies when context beats prop drilling
-  - `n8` Performance & Memoization · L4 major · cpu · [react.memo, usememo, usecallback, unnecessary re-renders, memoization, referential equality] · deps [n6, n7]  
-    Diagnoses unnecessary re-renders and fixes them appropriately with React.memo, useMemo, or useCallback
+  - `n7` Context API · L3 minor · share · [createcontext, usecontext, context provider, prop drilling, global state, context value undefined] · deps [n2, n3]  
+    Shares state with createContext/useContext and justifies when context is better than prop drilling
+  - `n8` Performance & Memoization · L4 major · zap · [react.memo, usememo, usecallback, unnecessary re-renders, referential equality, react profiler] · deps [n6, n7]  
+    Diagnoses unnecessary re-renders and applies React.memo, useMemo, and useCallback appropriately, explaining when memoization is not worth it
 
-### pdf: CSE 134R - React Fundamentals (9833ms)
+### pdf: CSE 134R - React Fundamentals (11266ms)
 
 - **Module 1 - Foundations**
-  - `n1` JSX & Components · L3 major · code · [jsx, react.createelement, function component, component tree, fragment, return jsx] · deps []  
-    Explains what JSX compiles to (React.createElement / jsx function calls) and decomposes a UI mockup into reusable components
-  - `n2` Props · L3 minor · arrow-down · [props, children prop, one-way data flow, callback prop, prop drilling, destructuring props] · deps [n1]  
-    Passes data and callbacks through props and explains one-way data flow, including use of the children prop
-  - `n3` State with useState · L3 major · box · [usestate, setstate, functional update, state not updating, stale state, re-render] · deps [n2]  
+  - `n1` JSX & Components · L3 major · code · [jsx, react.createelement, function component, component tree, fragment] · deps []  
+    Explains what JSX compiles to and decomposes a mockup into reusable components
+  - `n2` Props · L3 minor · arrow-down · [props, children prop, one-way data flow, callback props, prop types] · deps [n1]  
+    Passes data and callbacks through props and explains one-way data flow
+  - `n3` State with useState · L3 minor · refresh · [usestate, setstate, functional update, stale state, re-render] · deps [n1]  
     Uses useState correctly, including functional updates, and explains why state updates are asynchronous
 - **Module 2 - Effects & Data**
-  - `n4` React useEffect · L4 major · refresh · [useeffect, dependency array, cleanup function, infinite loop, too many re-renders, side effect] · deps [n3]  
-    Identifies and prevents an infinite render loop caused by a missing or wrong dependency array, and writes correct cleanup functions
-  - `n5` Data Fetching · L3 minor · download · [fetch, async useeffect, loading state, race condition, abortcontroller, error handling] · deps [n4]  
-    Fetches data inside an effect with loading and error states and prevents race conditions using cleanup or AbortController
-  - `n6` Custom Hooks · L4 major · hook · [custom hook, rules of hooks, use prefix, hook called conditionally, reusable logic, invalid hook call] · deps [n4]  
-    Extracts reusable stateful logic into a custom hook and explains the rules of hooks
+  - `n4` React useEffect · L4 major · zap · [useeffect, dependency array, cleanup function, infinite loop, side effects, too many re-renders] · deps [n3]  
+    Identifies and prevents an infinite render loop caused by a missing or wrong dependency array
+  - `n5` Data Fetching · L3 minor · download · [fetch, loading state, error state, race condition, abortcontroller, async useeffect] · deps [n4]  
+    Fetches data in an effect with loading and error states and prevents race conditions
+  - `n6` Custom Hooks · L3 minor · hook · [custom hook, rules of hooks, use prefix, invalid hook call, reusable logic] · deps [n4]  
+    Extracts reusable stateful logic into a custom hook that follows the rules of hooks
 - **Module 3 - Building Apps**
-  - `n7` Context API · L3 minor · share · [createcontext, usecontext, context provider, prop drilling, global state, provider value] · deps [n3]  
-    Uses createContext and useContext to share state and justifies when context is preferable to prop drilling
-  - `n8` Performance & Memoization · L4 major · zap · [react.memo, usememo, usecallback, unnecessary re-renders, referential equality, memoization] · deps [n6, n7]  
-    Diagnoses unnecessary re-renders and applies React.memo, useMemo, and useCallback appropriately
+  - `n7` Context API · L3 minor · share · [createcontext, usecontext, provider, prop drilling, global state] · deps [n3]  
+    Uses createContext and useContext to share state and explains when context beats prop drilling
+  - `n8` Performance & Memoization · L4 major · cpu · [react.memo, usememo, usecallback, unnecessary re-renders, memoization, referential equality] · deps [n6, n7]  
+    Diagnoses unnecessary re-renders and fixes them appropriately with React.memo, useMemo, or useCallback
 
 ## 3-turn sandbox exchange
 
@@ -1733,130 +1639,145 @@ If you share your specific effect code, I can point out exactly what's causing t
 
 How do I stop my useEffect from running in an infinite loop?
 
-**Claude (first token 884ms):**
+**Claude (first token 1116ms):**
 
-Infinite `useEffect` loops usually come down to *when* React decides to run your effect.
+Infinite loops with `useEffect` are a common snag, and they usually come down to one key idea about *when* an effect decides to run again.
 
-**Hint:** Look at what happens inside your effect. Does it update state? A state update causes a re-render, so ask yourself what React checks after each render to decide whether to run the effect again. That second argument you pass to `useEffect` (or leave out) is where to look.
+**Hint:** Look at what your effect does. If it updates state, ask yourself what happens to the component right after that update, and whether anything in that chain tells React the effect should fire again. The answer is often in the small array at the end of the `useEffect` call, or in its absence.
 
-In your own words, what determines when a `useEffect` runs again after a render?
+Before we look at your code, in your own words, how does React decide when to re-run a `useEffect`?
 
-**Student (graded correct 0.88 → L4: The student accurately explains that React re-runs an effect only when a value in the dependency array changes and that an empty array runs it once after mount, which is the core mechanism at this level.):**
+**Student (graded correct 0.85 → L4: The student correctly explains that React re-runs an effect only when a value in the dependency array changes, and that an empty array means it runs once after mount, which is the core mechanism expected at this level.):**
 
 The dependency array lists the values the effect depends on, so React only re-runs the effect when one of those values changes. An empty array means run once after mount.
 
-**Claude (first token 1613ms):**
+**Claude (first token 2364ms):**
 
-Exactly right. React compares each dependency to its value from the previous render (using `Object.is`), and only re-runs the effect if something changed. With **no array at all**, the effect runs after *every* render.
+Exactly right. React compares each value in the dependency array to its value from the previous render and only re-runs the effect if something changed. An empty array means "nothing to watch," so it runs once after mount.
 
-## The three common causes and fixes
+An infinite loop happens when the effect **causes a change that makes it run again**. These are the usual culprits and their fixes.
 
-### 1. Missing dependency array
+---
+
+### 1. No dependency array at all
 
 ```jsx
-// ❌ Runs after every render -> setData triggers render -> runs again...
 useEffect(() => {
-  fetch('/api/items').then(r => r.json()).then(setData);
+  setCount(count + 1); // runs after EVERY render
 });
-
-// ✅ Runs once after mount
-useEffect(() => {
-  fetch('/api/items').then(r => r.json()).then(setData);
-}, []);
 ```
+Without an array, the effect runs after every render. Setting state triggers a render, which triggers the effect, and so on forever.
+
+**Fix:** Add a dependency array.
+```jsx
+useEffect(() => {
+  fetchData().then(setData);
+}, []); // run once on mount
+```
+
+---
 
 ### 2. The effect updates a value it depends on
 
 ```jsx
-// ❌ count changes -> effect runs -> count changes -> ...
 useEffect(() => {
   setCount(count + 1);
+}, [count]); // count changes → effect runs → count changes → ...
+```
+
+**Fix:** Use a functional update so you don't need the value as a dependency, or add a condition.
+```jsx
+useEffect(() => {
+  setCount(c => c + 1); // no need to depend on count
+}, []);
+```
+```jsx
+useEffect(() => {
+  if (count < 10) setCount(count + 1); // stops eventually
 }, [count]);
 ```
 
-Fix: ask whether this belongs in an effect at all. If it's derived from other state, compute it during render instead. If you really need to update based on the previous value, use the functional updater so you don't need `count` as a dependency:
+---
+
+### 3. Objects, arrays, or functions as dependencies (the sneaky one)
+
+React compares dependencies with `Object.is`, meaning **by reference**. Objects, arrays, and functions created during render are brand-new on every render, so React always sees them as "changed."
 
 ```jsx
-useEffect(() => {
-  setCount(c => c + 1);
-}, []); // runs once
-```
-
-### 3. Objects, arrays, or functions as dependencies
-
-This one is the sneakiest. These are **recreated on every render**, so they're never `Object.is`-equal to the previous version, even if their contents are identical.
-
-```jsx
-function List({ userId }) {
-  const options = { userId };           // new object every render
-  const load = () => fetchItems(options); // new function every render
+function Profile({ userId }) {
+  const options = { id: userId };       // new object every render
+  const load = () => fetchUser(userId); // new function every render
 
   useEffect(() => {
-    load().then(setItems);  // setItems -> re-render -> new `load` -> effect again
-  }, [load]);
+    load().then(setUser); // setUser → re-render → new options/load → effect runs again
+  }, [options, load]);
 }
 ```
 
-Fixes, in order of preference:
+**Fixes (pick one):**
 
-```jsx
-// ✅ a) Depend on primitives, and create objects inside the effect
-useEffect(() => {
-  fetchItems({ userId }).then(setItems);
-}, [userId]);
+- **Depend on primitives instead:**
+  ```jsx
+  useEffect(() => {
+    fetchUser(userId).then(setUser);
+  }, [userId]);
+  ```
+- **Move the object/function inside the effect:**
+  ```jsx
+  useEffect(() => {
+    const load = () => fetchUser(userId);
+    load().then(setUser);
+  }, [userId]);
+  ```
+- **Memoize it if it must live outside:**
+  ```jsx
+  const options = useMemo(() => ({ id: userId }), [userId]);
+  const load = useCallback(() => fetchUser(userId), [userId]);
+  ```
 
-// ✅ b) Memoize when the object/function must live outside the effect
-const options = useMemo(() => ({ userId }), [userId]);
-const load = useCallback(() => fetchItems(options), [options]);
+---
 
-useEffect(() => {
-  load().then(setItems);
-}, [load]);
-```
+### Quick checklist when you hit a loop
+1. Does the effect have a dependency array?
+2. Does the effect set any state that's also in the array?
+3. Are any dependencies objects, arrays, or functions created during render?
+4. Turn on the `react-hooks/exhaustive-deps` ESLint rule. It catches most of these.
 
-## Quick debugging checklist
+> Note: In development with `<StrictMode>`, React intentionally runs effects **twice** on mount. That's not an infinite loop, just a check that your cleanup works.
 
-1. **Is there a dependency array?** If not, add one.
-2. **Does the effect set state that's also in the array?** Use a functional updater, or reconsider the design.
-3. **Are any dependencies objects, arrays, or functions defined in the component body?** Move them inside the effect, depend on primitive values, or wrap them in `useMemo`/`useCallback`.
-4. **Enable the `react-hooks/exhaustive-deps` ESLint rule.** It catches missing dependencies and warns when a dependency changes on every render.
-
-**Don't** "fix" a loop by deleting real dependencies from the array to silence it. That trades an infinite loop for stale-data bugs. Fix the *reason* the dependency keeps changing instead.
-
-If you share the specific effect that's looping, I can point to which of these is causing it.
+If you paste your actual `useEffect`, I can point out which of these is causing your loop.
 
 **Student, new chat (L4, no block):**
 
 How do I stop my useEffect from running in an infinite loop?
 
-**Claude (first token 1152ms):**
+**Claude (first token 1848ms):**
 
-An infinite `useEffect` loop almost always means **the effect updates something that's in its own dependency array** (or it has no dependency array at all). The effect runs, changes state, the component re-renders, the dependency looks "changed," and the effect runs again.
+# Fixing Infinite Loops in `useEffect`
 
-Here are the common causes and their fixes.
+An infinite loop happens when your effect updates state, that update triggers a re-render, and the re-render runs the effect again. Here are the most common causes and their fixes.
 
 ---
 
-### 1. Missing dependency array
+## 1. Missing Dependency Array
+
+Without a dependency array, the effect runs after **every** render.
 
 ```jsx
-// ❌ Runs after EVERY render. Setting state causes a render, so it runs forever.
+// ❌ Runs after every render, and setData triggers another render
 useEffect(() => {
-  setCount(count + 1);
+  fetch('/api/data').then(res => res.json()).then(setData);
 });
-```
 
-**Fix:** Add a dependency array. Use `[]` to run only once on mount:
-
-```jsx
+// ✅ Runs once after the initial render
 useEffect(() => {
-  fetchData();
-}, []); // runs once after the first render
+  fetch('/api/data').then(res => res.json()).then(setData);
+}, []);
 ```
 
 ---
 
-### 2. Setting state that's also a dependency
+## 2. Updating a State Variable That's Also a Dependency
 
 ```jsx
 // ❌ count changes → effect runs → count changes → ...
@@ -1865,115 +1786,133 @@ useEffect(() => {
 }, [count]);
 ```
 
-**Fix:** Use the functional updater so you don't need the state as a dependency, or rethink whether this belongs in an effect at all:
+**Fix:** Use a functional update so you don't need `count` as a dependency. Also ask whether this logic belongs in an effect at all.
 
 ```jsx
+// ✅
 useEffect(() => {
   setCount(c => c + 1);
-}, []); // no longer depends on count
+}, []); // runs once
 ```
 
 ---
 
-### 3. Objects, arrays, or functions as dependencies
+## 3. Objects, Arrays, or Functions as Dependencies
 
-React compares dependencies with `Object.is` (reference equality). Objects, arrays, and functions created during render are **new every render**, so they always look "changed."
+React compares dependencies by **reference**. Objects, arrays, and functions created during render are new on every render, so the effect always re-runs.
 
 ```jsx
 // ❌ `options` is a new object every render
-const options = { page: 1 };
-useEffect(() => {
-  fetchData(options).then(setData); // setData triggers re-render → new options → loop
-}, [options]);
+function Component() {
+  const options = { userId: 1 };
+
+  useEffect(() => {
+    fetchData(options).then(setData);
+  }, [options]);
+}
 ```
 
-**Fixes (pick one):**
-
+### Fix A: Move it inside the effect
 ```jsx
-// a) Depend on primitive values instead
 useEffect(() => {
-  fetchData({ page }).then(setData);
-}, [page]);
-
-// b) Move the object inside the effect
-useEffect(() => {
-  const options = { page: 1 };
+  const options = { userId: 1 };
   fetchData(options).then(setData);
 }, []);
+```
 
-// c) Memoize it
-const options = useMemo(() => ({ page }), [page]);
+### Fix B: Depend on primitive values instead
+```jsx
 useEffect(() => {
-  fetchData(options).then(setData);
+  fetchData({ userId }).then(setData);
+}, [userId]); // number/string compares by value
+```
+
+### Fix C: Memoize with `useMemo` / `useCallback`
+```jsx
+const options = useMemo(() => ({ userId }), [userId]);
+
+const loadData = useCallback(() => {
+  return fetchData(options);
 }, [options]);
-```
-
-Same idea for functions, using `useCallback`:
-
-```jsx
-// ❌ fetchUser is recreated every render
-const fetchUser = () => api.get(`/users/${id}`);
-
-// ✅ stable reference unless `id` changes
-const fetchUser = useCallback(() => api.get(`/users/${id}`), [id]);
 
 useEffect(() => {
-  fetchUser().then(setUser);
-}, [fetchUser]);
+  loadData().then(setData);
+}, [loadData]);
 ```
 
-Often the simplest option is to define the function **inside** the effect.
-
----
-
-### 4. Data fetching that stores a new object every time
-
+### Fix D: Move it outside the component
+If it doesn't depend on props or state, define it outside the component entirely:
 ```jsx
-// ❌ setData always stores a new array, and data is a dependency
-useEffect(() => {
-  fetch('/api/items').then(r => r.json()).then(setData);
-}, [data]);
-```
+const OPTIONS = { userId: 1 };
 
-**Fix:** Depend on what should *trigger* the fetch (an ID, a query, etc.), not on the result:
-
-```jsx
-useEffect(() => {
-  fetch(`/api/items?q=${query}`).then(r => r.json()).then(setData);
-}, [query]);
-```
-
----
-
-### 5. You may not need an effect at all
-
-If you're computing state from other state or props, just compute it during render:
-
-```jsx
-// ❌ Unnecessary effect + extra render
-const [fullName, setFullName] = useState('');
-useEffect(() => {
-  setFullName(`${first} ${last}`);
-}, [first, last]);
-
-// ✅ Derive it directly
-const fullName = `${first} ${last}`;
-```
-
----
-
-### Debugging tips
-
-- **Install `eslint-plugin-react-hooks`** and enable `exhaustive-deps`. It flags missing or unstable dependencies.
-- **Find which dependency is changing** by logging inside the effect:
-  ```jsx
+function Component() {
   useEffect(() => {
-    console.log('effect ran', { dep1, dep2 });
-  }, [dep1, dep2]);
-  ```
-- **Don't silence the linter** by removing real dependencies. That causes stale-data bugs. Stabilize the dependency instead.
-- **Note:** In development, React 18+ Strict Mode runs effects **twice** on mount on purpose. That's expected and isn't an infinite loop.
+    fetchData(OPTIONS).then(setData);
+  }, []);
+}
+```
 
 ---
 
-If you share your specific `useEffect` code, I can point out exactly what's causing the loop.
+## 4. Setting State to a New Object or Array Each Time
+
+```jsx
+// ❌ Even if contents are identical, a new array means a new reference
+useEffect(() => {
+  setItems([...rawItems]);
+}, [items]);
+```
+
+**Fix:** Don't depend on the state you're setting. Often this is **derived state** and doesn't need an effect at all:
+
+```jsx
+// ✅ Just compute it during render
+const filteredItems = useMemo(
+  () => rawItems.filter(i => i.active),
+  [rawItems]
+);
+```
+
+---
+
+## 5. Function Props from a Parent
+
+If a parent passes an inline function, it's new on every render:
+
+```jsx
+// Parent
+<Child onLoad={() => console.log('loaded')} />  // ❌ new function every render
+
+// Child
+useEffect(() => {
+  onLoad();
+}, [onLoad]); // re-runs on every parent render
+```
+
+**Fix:** Wrap the function in `useCallback` in the parent:
+```jsx
+const handleLoad = useCallback(() => console.log('loaded'), []);
+<Child onLoad={handleLoad} />
+```
+
+---
+
+## Quick Debugging Checklist
+
+1. **Is there a dependency array?** If not, add one.
+2. **Does the effect set state that's in its own dependency list?** Use a functional update or restructure.
+3. **Are any dependencies objects, arrays, or functions?** Move them inside the effect, use primitives, or memoize them.
+4. **Do you even need an effect?** If you're computing a value from props or state, calculate it during render instead.
+5. **Enable the ESLint rule** `react-hooks/exhaustive-deps`. It flags missing and unstable dependencies.
+
+### Tip: Find what's changing
+```jsx
+useEffect(() => {
+  console.log('Effect ran', { dep1, dep2 });
+}, [dep1, dep2]);
+```
+Watch which value changes on every run. That's your culprit.
+
+---
+
+If you share the specific effect that's looping, I can point out exactly what's causing it.
