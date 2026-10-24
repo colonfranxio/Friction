@@ -66,6 +66,11 @@ export function fakeClassify(prompt: string, nodes: SkillNode[]): ClassifyResult
     : { node_id: null, confidence: 0, method: 'none' };
 }
 
+/** "How do I …?", "What is …?": the student is asking, not answering. ("Is it the dependency array?" still counts as an answer.) */
+function isNewQuestion(msg: string): boolean {
+  return /\?\s*$/.test(msg) && /^(how|what|why|when|where|which|who|can|could|should|would|do|does|will)\b/.test(msg);
+}
+
 export function fakeEvaluate(input: EvaluateInput): EvaluationResult {
   const msg = input.student_message.toLowerCase().trim();
   let verdict: EvaluationResult['verdict'];
@@ -73,7 +78,9 @@ export function fakeEvaluate(input: EvaluateInput): EvaluationResult {
   if (/\bjust (give|tell|write|show)\b|give me the (code|answer)/.test(msg)) {
     verdict = 'lazy';
     confidence = 0.8;
-  } else if (msg.length < 12) {
+  } else if (msg.length < 12 || isNewQuestion(msg)) {
+    // A new (or repeated) question is not an answer to the check question, even if it uses the
+    // concept's keywords. Without this, re-asking "How do I … useEffect …?" graded as correct.
     verdict = 'not_an_answer';
     confidence = 0.7;
   } else if (input.node.keywords.some((k) => msg.includes(k)) || msg.includes('depend')) {
