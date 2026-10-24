@@ -1,0 +1,520 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import {
+  CONTRACT_VERSION,
+  DEMO_PROMPTS,
+  FRICTION_OPEN,
+  SEED_IDS,
+  fakeEvaluate,
+  fakeIntelligence,
+  type EvaluateInput,
+  type InterceptResponse,
+  type Intelligence,
+  type ParsedTree,
+  type TreeBundle,
+} from '@friction/shared';
+import { createJsonStore } from '../src/store/json-store';
+import { makeApp, sleep } from './helpers';
+
+const S = SEED_IDS.demoStudent;
+const N = SEED_IDS.nodes;
+const intercept = (t: ReturnType<typeof makeApp>, raw: string, conv: string | null = 'c1') =>
+  t.call<InterceptResponse>('POST', '/intercept', { student_id: S, raw_prompt: raw, app_source: 'claude_web', conversation_id: conv });
+const level = (t: ReturnType<typeof makeApp>, node: string) =>
+  t.store.db.states.find((s) => s.student_id === S && s.node_id === node)!.current_blooms_level;
+
+describe('health', () => {
+  it('reports contract version and mode', async () => {
+    const t = makeApp();
+    const r = await t.call('GET', '/health');
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ ok: true, contract_version: CONTRACT_VERSION, mode: { intelligence: 'fake', demo: true, server: 'api' } });
+  });
+});
+
+describe('intercept', () => {
+  it('happy path: L1 friction block + quiz, logged, activity event emitted', async () => {
+    const t = makeApp();
+    const r = await intercept(t, DEMO_PROMPTS.question);
+    expect(r.status).toBe(200);
+    expect(r.body.node_id).toBe(N.useEffect);
+    expect(r.body.level).toBe(1);
+    expect(r.body.quiz_attached).toBe(true);
+    expect(r.body.graded).toBeNull();
+    expect(r.body.injected_prompt.startsWith(DEMO_PROMPTS.question)).toBe(true);
+    expect(r.body.injected_prompt).toContain(FRICTION_OPEN);
+    expect(t.store.db.logs).toHaveLength(1);
+    expect(t.store.db.logs[0].quiz_pending).toBe(true);
+    expect(t.events.map((e) => e.type)).toEqual(['activity']);
+  });
+
+  it('pending-quiz precedence: the answer stays on the quiz node and is graded', async () => {
+    const t = makeApp();
+    await intercept(t, DEMO_PROMPTS.question);
+    // Mentions "context" (a different node's keyword) but must still grade against useEffect.
+    const r = await intercept(t, 'The dependency array lists what the effect depends on, not context or props.');
+    expect(r.body.node_id).toBe(N.useEffect);
+    expect(r.body.graded?.verdict).toBe('correct');
+    expect(r.body.level).toBe(4); // DEMO_MODE jump
+    expect(level(t, N.useEffect)).toBe(4);
+    // intercept log, then (answer turn) graded → level change → graded activity, then this turn's own intercept log
+    expect(t.events.map((e) => e.type)).toEqual(['activity', 'student_state', 'activity', 'activity']);
+    expect(t.events.filter((e) => e.type === 'activity' && e.data.kind === 'graded')).toHaveLength(1);
+  });
+
+  it('conversation stickiness: a vague follow-up stays on the conversation\'s node', async () => {
+    const t = makeApp();
+    await intercept(t, DEMO_PROMPTS.question);
+    await intercept(t, DEMO_PROMPTS.correctAnswer); // quiz resolved, node now L4
+    const r = await intercept(t, 'explain it more please');
+    expect(r.body.node_id).toBe(N.useEffect);
+    expect(r.body.level).toBe(4);
+    expect(r.body.injected_prompt).toBe('explain it more please');
+    // A different conversation has no stickiness: no keyword match → passthrough.
+    const other = await intercept(t, 'explain it more please', 'c2');
+    expect(other.body.node_id).toBeNull();
+  });
+
+  it('passthrough: off-topic prompt, nothing logged, nothing emitted', async () => {
+    const t = makeApp();
+    const r = await intercept(t, 'Write me a haiku about the ocean');
+    expect(r.body).toEqual({
+      intercept_id: null, node_id: null, level: null, injected_prompt: 'Write me a haiku about the ocean', quiz_attached: false, graded: null,
+    });
+    expect(t.store.db.logs).toHaveLength(0);
+    expect(t.events).toHaveLength(0);
+  });
+
+  it('new chat after mastery → L4 with the prompt unchanged', async () => {
+    const t = makeApp();
+    await intercept(t, DEMO_PROMPTS.question);
+    await intercept(t, DEMO_PROMPTS.correctAnswer);
+    const r = await intercept(t, DEMO_PROMPTS.question, 'c-new');
+    expect(r.body.level).toBe(4);
+    expect(r.body.injected_prompt).toBe(DEMO_PROMPTS.question);
+  });
+
+  it('lazy answer at L1 keeps the level and the quiz resolved', async () => {
+    const t = makeApp();
+    await intercept(t, DEMO_PROMPTS.question);
+    const r = await intercept(t, DEMO_PROMPTS.lazyAnswer);
+    expect(r.body.graded?.verdict).toBe('lazy');
+    expect(level(t, N.useEffect)).toBe(1);
+  });
+
+  it('uses previous_assistant_text as the quiz when the log has no llm_response', async () => {
+    const seen: EvaluateInput[] = [];
+    const intel: Intelligence = { ...fakeIntelligence, evaluateExchange: async (i) => (seen.push(i), fakeEvaluate(i)) };
+    const t = makeApp({ intel });
+    await intercept(t, DEMO_PROMPTS.question);
+    await t.call('POST', '/intercept', {
+      student_id: S, raw_prompt: DEMO_PROMPTS.correctAnswer, app_source: 'claude_web', conversation_id: 'c1',
+      previous_assistant_text: 'Quick check: what does the dependency array do?',
+    });
+    expect(seen[0].quiz_text).toBe('Quick check: what does the dependency array do?');
+  });
+
+  it('survives a classify failure (treated as no match)', async () => {
+    const t = makeApp({ intel: { ...fakeIntelligence, classifyTopic: async () => { throw new Error('boom'); } } });
+    const r = await intercept(t, DEMO_PROMPTS.question);
+    expect(r.status).toBe(200);
+    expect(r.body.node_id).toBeNull();
+  });
+
+  it('grade failure keeps the quiz pending and the level unchanged', async () => {
+    const t = makeApp({ intel: { ...fakeIntelligence, evaluateExchange: async () => { throw new Error('boom'); } } });
+    await intercept(t, DEMO_PROMPTS.question);
+    const r = await intercept(t, DEMO_PROMPTS.correctAnswer);
+    expect(r.status).toBe(200);
+    expect(r.body.graded).toBeNull();
+    expect(level(t, N.useEffect)).toBe(1);
+    expect(t.store.db.logs[0].quiz_pending).toBe(true);
+  });
+});
+
+describe('late grade and per-student mutex (rule 4.6)', () => {
+  it('a grade that misses the budget still applies when it lands, and is pushed over SSE', async () => {
+    const intel: Intelligence = {
+      ...fakeIntelligence,
+      evaluateExchange: async (i) => (await sleep(200), fakeEvaluate(i)),
+    };
+    const t = makeApp({ intel, config: { interceptBudgetMs: 40 } });
+    await intercept(t, DEMO_PROMPTS.question);
+    const r = await intercept(t, DEMO_PROMPTS.correctAnswer);
+    expect(r.body.graded).toBeNull(); // missed the budget
+    expect(r.body.level).toBe(1); // this turn still uses the current level
+    expect(r.body.injected_prompt).not.toContain('Feedback:');
+    expect(level(t, N.useEffect)).toBe(1);
+    await sleep(350);
+    expect(level(t, N.useEffect)).toBe(4);
+    expect(t.events.map((e) => e.type)).toContain('student_state');
+    const graded = t.events.filter((e) => e.type === 'activity' && e.data.kind === 'graded');
+    expect(graded).toHaveLength(1);
+    expect(t.store.db.logs[0].quiz_pending).toBe(false);
+  });
+
+  it('two concurrent intercepts never double-grade', async () => {
+    let evaluations = 0;
+    const intel: Intelligence = {
+      ...fakeIntelligence,
+      evaluateExchange: async (i) => (evaluations++, await sleep(30), fakeEvaluate(i)),
+    };
+    const t = makeApp({ intel });
+    await intercept(t, DEMO_PROMPTS.question);
+    const [a, b] = await Promise.all([intercept(t, DEMO_PROMPTS.correctAnswer), intercept(t, DEMO_PROMPTS.correctAnswer)]);
+    expect(evaluations).toBe(1);
+    expect([a.body.graded, b.body.graded].filter(Boolean)).toHaveLength(1);
+  });
+});
+
+describe('bypass', () => {
+  it('decrements quota, pauses the node, emits events, and intercepts return L4', async () => {
+    const t = makeApp();
+    const r = await t.call('POST', '/bypass', { student_id: S, node_id: N.context });
+    expect(r.body).toEqual({ remaining_quota: 2 });
+    expect(t.events.map((e) => e.type)).toEqual(['student_state', 'bypass']);
+    const i = await intercept(t, DEMO_PROMPTS.bypassQuestion, 'c3');
+    expect(i.body.node_id).toBe(N.context);
+    expect(i.body.level).toBe(4);
+  });
+
+  it('409 quota_exhausted after the quota is used up', async () => {
+    const t = makeApp();
+    for (let i = 0; i < 3; i++) expect((await t.call('POST', '/bypass', { student_id: S, node_id: N.context })).status).toBe(200);
+    const r = await t.call('POST', '/bypass', { student_id: S, node_id: N.context });
+    expect(r.status).toBe(409);
+    expect(r.body).toEqual({ error: { code: 'quota_exhausted', message: expect.any(String) } });
+  });
+
+  it('shows up in the educator activity feed', async () => {
+    const t = makeApp();
+    await t.call('POST', '/bypass', { student_id: S, node_id: N.context });
+    const r = await t.call('GET', `/trees/${SEED_IDS.tree}/activity`);
+    expect(r.body.items[0]).toMatchObject({ kind: 'bypass', student_name: 'Alex Chen', concept_name: 'Context API' });
+  });
+});
+
+describe('tree editing', () => {
+  it('edge that would create a cycle → 409 cycle', async () => {
+    const t = makeApp();
+    // seed has jsx → props; props → jsx would close a loop
+    const r = await t.call('POST', '/edges', { parent_node_id: N.props, child_node_id: N.jsx });
+    expect(r.status).toBe(409);
+    expect(r.body.error.code).toBe('cycle');
+    expect((await t.call('POST', '/edges', { parent_node_id: N.jsx, child_node_id: N.jsx })).status).toBe(409);
+  });
+
+  it('creating an edge is idempotent and emits tree_updated', async () => {
+    const t = makeApp();
+    const a = await t.call('POST', '/edges', { parent_node_id: N.jsx, child_node_id: N.dataFetching });
+    const b = await t.call('POST', '/edges', { parent_node_id: N.jsx, child_node_id: N.dataFetching });
+    expect(a.body).toEqual(b.body);
+    expect(t.events.filter((e) => e.type === 'tree_updated')).toHaveLength(1);
+    const d = await t.call('DELETE', `/edges/${N.jsx}/${N.dataFetching}`);
+    expect(d.status).toBe(204);
+  });
+
+  it('node create gives every student on the tree an L1 state; delete cascades', async () => {
+    const t = makeApp();
+    const bundle = await t.call<TreeBundle>('GET', `/trees/${SEED_IDS.tree}`);
+    const created = await t.call('POST', `/trees/${SEED_IDS.tree}/nodes`, {
+      pillar_id: bundle.body.pillars[0].id, concept_name: 'Refs', mastery_criteria: 'x', required_blooms_level: 3, size: 'minor', icon: 'box',
+    });
+    expect(created.status).toBe(200);
+    const students = t.store.db.users.filter((u) => u.role === 'student').length;
+    expect(t.store.db.states.filter((s) => s.node_id === created.body.id)).toHaveLength(students);
+    const patched = await t.call('PATCH', `/nodes/${created.body.id}`, { concept_name: 'useRef', id: 'ignored', tree_id: 'ignored' });
+    expect(patched.body).toMatchObject({ concept_name: 'useRef', tree_id: SEED_IDS.tree, id: created.body.id });
+    expect((await t.call('DELETE', `/nodes/${created.body.id}`)).status).toBe(204);
+    expect(t.store.db.states.some((s) => s.node_id === created.body.id)).toBe(false);
+  });
+
+  it('renames a pillar', async () => {
+    const t = makeApp();
+    const r = await t.call('PATCH', `/pillars/${SEED_IDS.pillars.foundations}`, { name: 'Basics' });
+    expect(r.body.name).toBe('Basics');
+  });
+});
+
+describe('educator privacy', () => {
+  it('activity never contains prompts or replies', async () => {
+    const t = makeApp();
+    await intercept(t, DEMO_PROMPTS.question);
+    const r = await t.call('GET', `/trees/${SEED_IDS.tree}/activity`);
+    const json = JSON.stringify(r.body);
+    expect(json).not.toContain('infinite loop');
+    expect(json).not.toContain('raw_prompt');
+    expect(json).not.toContain('llm_response');
+  });
+});
+
+describe('demo reset', () => {
+  it('full reset restores quota, states and drops logs; emits tree_updated', async () => {
+    const t = makeApp();
+    await t.call('POST', '/bypass', { student_id: S, node_id: N.context });
+    await intercept(t, DEMO_PROMPTS.question);
+    t.events.length = 0;
+    const r = await t.call('POST', '/demo/reset', { full: true });
+    expect(r.body).toEqual({ ok: true });
+    expect(t.store.db.logs).toHaveLength(0);
+    expect(t.store.db.users.find((u) => u.id === S)!.bypass_quota).toBe(3);
+    expect(t.events.some((e) => e.type === 'tree_updated')).toBe(true);
+  });
+
+  it('per-student reset only touches that student', async () => {
+    const t = makeApp();
+    await intercept(t, DEMO_PROMPTS.question);
+    await intercept(t, DEMO_PROMPTS.correctAnswer);
+    expect(level(t, N.useEffect)).toBe(4);
+    await t.call('POST', '/demo/reset', { student_id: S });
+    expect(level(t, N.useEffect)).toBe(1);
+    expect(t.store.db.logs).toHaveLength(0);
+  });
+
+  it('404 demo_only when DEMO_MODE is off', async () => {
+    const t = makeApp({ config: { demo: false } });
+    const r = await t.call('POST', '/demo/reset', { full: true });
+    expect(r.status).toBe(404);
+    expect(r.body.error.code).toBe('demo_only');
+  });
+});
+
+describe('parse', () => {
+  it('demo cache hit returns the seed tree and resets it', async () => {
+    const t = makeApp({ demoMatches: true });
+    await intercept(t, DEMO_PROMPTS.question);
+    await intercept(t, DEMO_PROMPTS.correctAnswer);
+    const r = await t.call('POST', '/trees/parse', { kind: 'text', text: 'anything' });
+    expect(r.body).toEqual({ tree_id: SEED_IDS.tree, cached: true });
+    expect(level(t, N.useEffect)).toBe(1);
+  });
+
+  it('live path builds a validated tree, drops cyclic/dangling edges, and moves the demo student', async () => {
+    const parsed: ParsedTree = {
+      title: 'Algebra',
+      pillars: ['Basics', 'Advanced'],
+      nodes: [
+        { key: 'a', pillar: 'Basics', concept_name: 'Variables', mastery_criteria: 'm', required_blooms_level: 2, size: 'major', icon: 'not-an-icon', keywords: ['Variable'], depends_on: [] },
+        { key: 'b', pillar: 'Advanced', concept_name: 'Equations', mastery_criteria: 'm', required_blooms_level: 3, size: 'minor', icon: 'function', keywords: ['equation'], depends_on: ['a', 'nope', 'b'] },
+        { key: 'a', pillar: 'Basics', concept_name: 'Duplicate key', mastery_criteria: 'm', required_blooms_level: 1, size: 'minor', icon: 'code', keywords: [], depends_on: [] },
+        { key: 'c', pillar: 'Brand New Pillar', concept_name: 'Systems', mastery_criteria: 'm', required_blooms_level: 4, size: 'minor', icon: 'grid', keywords: [], depends_on: ['b'] },
+      ],
+    };
+    // make 'a' depend on 'c' to create a cycle a→b→c→a that must be dropped
+    parsed.nodes[0].depends_on = ['c'];
+    const t = makeApp({ demoMatches: false, intel: { ...fakeIntelligence, parseSyllabus: async () => parsed } });
+    const r = await t.call('POST', '/trees/parse', { kind: 'text', text: 'my own syllabus', title: 'My Algebra' });
+    expect(r.status).toBe(200);
+    expect(r.body.cached).toBe(false);
+    const bundle = await t.call<TreeBundle>('GET', `/trees/${r.body.tree_id}`);
+    expect(bundle.body.tree.title).toBe('My Algebra');
+    expect(bundle.body.nodes.map((n) => n.concept_name).sort()).toEqual(['Equations', 'Systems', 'Variables']);
+    expect(bundle.body.pillars.map((p) => p.name)).toEqual(['Basics', 'Advanced', 'Brand New Pillar']);
+    expect(bundle.body.nodes.find((n) => n.concept_name === 'Variables')!.icon).toBe('circle');
+    expect(bundle.body.edges).toHaveLength(2); // a→b, b→c; c→a (cycle) dropped
+    const student = await t.call('GET', `/students/${S}`);
+    expect(student.body.tree_id).toBe(r.body.tree_id);
+    expect(student.body.states).toHaveLength(3);
+    expect(student.body.states.every((s: any) => s.current_blooms_level === 1)).toBe(true);
+  });
+
+  it('LLM failure → 502 llm_error, timeout → 504 llm_timeout', async () => {
+    const failing = makeApp({ demoMatches: false, intel: { ...fakeIntelligence, parseSyllabus: async () => { throw new Error('nope'); } } });
+    const a = await failing.call('POST', '/trees/parse', { kind: 'text', text: 'x' });
+    expect([a.status, a.body.error.code]).toEqual([502, 'llm_error']);
+    const slow = makeApp({
+      demoMatches: false,
+      config: { parseTimeoutMs: 30 },
+      intel: { ...fakeIntelligence, parseSyllabus: () => new Promise(() => {}) },
+    });
+    const b = await slow.call('POST', '/trees/parse', { kind: 'text', text: 'x' });
+    expect([b.status, b.body.error.code]).toEqual([504, 'llm_timeout']);
+  });
+
+  it('400 on a bad parse request', async () => {
+    const t = makeApp();
+    expect((await t.call('POST', '/trees/parse', { kind: 'zip' })).status).toBe(400);
+    expect((await t.call('POST', '/trees/parse', { kind: 'text' })).status).toBe(400);
+  });
+});
+
+describe('chat (sandbox)', () => {
+  const chat = (t: ReturnType<typeof makeApp>, content: string, conversation_id = 'sb-1') =>
+    t.app.request('/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ student_id: S, conversation_id, messages: [{ role: 'user', content }] }),
+    });
+
+  it('streams text/plain with X-Friction-* headers and saves llm_response', async () => {
+    const t = makeApp();
+    const res = await chat(t, DEMO_PROMPTS.question);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/plain');
+    expect(res.headers.get('x-friction-node-id')).toBe(N.useEffect);
+    expect(res.headers.get('x-friction-level')).toBe('1');
+    const id = res.headers.get('x-friction-intercept-id')!;
+    const text = await res.text();
+    expect(text).toContain('Quick check');
+    await sleep(20);
+    expect(t.store.db.logs.find((l) => l.id === id)!.llm_response).toBe(text);
+  });
+
+  it('the saved reply is the quiz text when grading the next sandbox turn', async () => {
+    const seen: EvaluateInput[] = [];
+    const t = makeApp({ intel: { ...fakeIntelligence, evaluateExchange: async (i) => (seen.push(i), fakeEvaluate(i)) } });
+    const first = await (await chat(t, DEMO_PROMPTS.question)).text();
+    await sleep(20);
+    const res = await chat(t, DEMO_PROMPTS.correctAnswer);
+    await res.text();
+    expect(seen[0].quiz_text).toBe(first);
+    expect(res.headers.get('x-friction-level')).toBe('4');
+  });
+
+  it('passes the injected prompt (not the raw one) to the model, off-topic gets empty headers', async () => {
+    const received: string[] = [];
+    const intel: Intelligence = {
+      ...fakeIntelligence,
+      chat: async function* (messages) {
+        received.push(messages[messages.length - 1].content);
+        yield 'ok';
+      },
+    };
+    const t = makeApp({ intel });
+    await (await chat(t, DEMO_PROMPTS.question)).text();
+    expect(received[0]).toContain(FRICTION_OPEN);
+    const off = await chat(t, 'Write me a haiku about the ocean', 'sb-other'); // new conversation: no stickiness
+    expect(off.headers.get('x-friction-node-id')).toBe('');
+    expect(off.headers.get('x-friction-intercept-id')).toBe('');
+    await off.text();
+    expect(received[1]).toBe('Write me a haiku about the ocean');
+  });
+
+  it('model failing before the first token → 502 llm_error', async () => {
+    const t = makeApp({ intel: { ...fakeIntelligence, chat: () => (async function* () { throw new Error('down'); })() } });
+    const res = await chat(t, DEMO_PROMPTS.question);
+    expect(res.status).toBe(502);
+    expect((await res.json()).error.code).toBe('llm_error');
+  });
+
+  it('400 when the last message is not from the user', async () => {
+    const t = makeApp();
+    const r = await t.call('POST', '/chat', { student_id: S, conversation_id: 'x', messages: [{ role: 'assistant', content: 'hi' }] });
+    expect(r.status).toBe(400);
+  });
+});
+
+describe('error shape and validation', () => {
+  it('unknown route → 404 not_found in the standard body', async () => {
+    const t = makeApp();
+    const r = await t.call('GET', '/nope');
+    expect(r.status).toBe(404);
+    expect(r.body).toEqual({ error: { code: 'not_found', message: expect.any(String) } });
+  });
+
+  it('invalid JSON and missing fields → 400 bad_request', async () => {
+    const t = makeApp();
+    for (const [path, body] of [
+      ['/intercept', '{bad'],
+      ['/intercept', {}],
+      ['/bypass', {}],
+      ['/edges', {}],
+      ['/responses', {}],
+      ['/heartbeat', {}],
+    ] as const) {
+      const r = await t.call('POST', path, body);
+      expect([path, r.status, r.body.error.code]).toEqual([path, 400, 'bad_request']);
+    }
+    expect((await t.call('GET', '/events')).status).toBe(400);
+  });
+
+  it('bad ids → 404 not_found', async () => {
+    const t = makeApp();
+    const missing = '99999999-9999-4999-8999-999999999999';
+    for (const [method, path, body] of [
+      ['GET', `/trees/${missing}`, undefined],
+      ['GET', `/students/${missing}`, undefined],
+      ['PATCH', `/nodes/${missing}`, {}],
+      ['DELETE', `/nodes/${missing}`, undefined],
+      ['DELETE', `/edges/${missing}/${missing}`, undefined],
+      ['PATCH', `/pillars/${missing}`, { name: 'x' }],
+      ['POST', '/intercept', { student_id: missing, raw_prompt: 'hi' }],
+      ['POST', '/responses', { intercept_id: missing, llm_response: 'x' }],
+      ['POST', '/bypass', { student_id: missing, node_id: missing }],
+      ['POST', '/heartbeat', { student_id: missing }],
+      ['POST', '/edges', { parent_node_id: missing, child_node_id: N.jsx }],
+    ] as const) {
+      const r = await t.call(method, path, body);
+      expect([method, path, r.status, r.body.error.code]).toEqual([method, path, 404, 'not_found']);
+    }
+  });
+
+  it('an unexpected exception becomes 500 internal, not a crash', async () => {
+    const t = makeApp({ intel: { ...fakeIntelligence, buildFrictionPrompt: () => { throw new Error('kaboom'); } } });
+    const r = await intercept(t, DEMO_PROMPTS.question);
+    expect(r.status).toBe(500);
+    expect(r.body).toEqual({ error: { code: 'internal', message: 'kaboom' } });
+  });
+
+  it('CORS: `*` in DEMO_MODE, extension/dashboard origins otherwise, CHAT headers exposed', async () => {
+    const demo = makeApp();
+    const pre = await demo.app.request('/intercept', { method: 'OPTIONS', headers: { origin: 'chrome-extension://abc', 'access-control-request-method': 'POST' } });
+    expect(pre.status).toBe(204);
+    expect(pre.headers.get('access-control-allow-origin')).toBe('*');
+    const strict = makeApp({ config: { demo: false } });
+    const ext = await strict.app.request('/health', { headers: { origin: 'chrome-extension://abc' } });
+    expect(ext.headers.get('access-control-allow-origin')).toBe('chrome-extension://abc');
+    const dash = await strict.app.request('/health', { headers: { origin: 'http://localhost:5173' } });
+    expect(dash.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+    const evil = await strict.app.request('/health', { headers: { origin: 'https://evil.example' } });
+    expect(evil.headers.get('access-control-allow-origin')).toBeNull();
+    expect(ext.headers.get('access-control-expose-headers') ?? '').toContain('X-Friction-Level');
+  });
+});
+
+describe('heartbeat', () => {
+  it('updates last_seen_at and emits student_seen', async () => {
+    const t = makeApp();
+    const r = await t.call('POST', '/heartbeat', { student_id: S, extension_version: '1', enabled: true });
+    expect(r.status).toBe(204);
+    expect(t.store.db.users.find((u) => u.id === S)!.last_seen_at).not.toBeNull();
+    expect(t.events.map((e) => e.type)).toEqual(['student_seen']);
+  });
+});
+
+describe('JSON store', () => {
+  it('seeds on first run and survives a restart', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'friction-store-'));
+    try {
+      const path = join(dir, 'nested', 'db.json');
+      const first = makeApp({ store: createJsonStore(path) });
+      await first.call('POST', '/bypass', { student_id: S, node_id: N.context });
+      await intercept(first, DEMO_PROMPTS.question);
+      await first.store.flush();
+
+      const second = makeApp({ store: createJsonStore(path) });
+      expect(second.store.db.users.find((u) => u.id === S)!.bypass_quota).toBe(2);
+      expect(second.store.db.logs).toHaveLength(1);
+      expect(second.store.db.bypasses).toHaveLength(1);
+      expect(second.store.db.nodes.length).toBeGreaterThan(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('recovers from a corrupt file by reseeding', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'friction-store-'));
+    try {
+      const path = join(dir, 'db.json');
+      const { writeFileSync } = await import('node:fs');
+      writeFileSync(path, '{ not json');
+      const store = createJsonStore(path);
+      expect(store.db.trees).toHaveLength(1);
+      await store.flush();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
