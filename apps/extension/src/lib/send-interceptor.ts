@@ -38,6 +38,8 @@ export interface SendInterceptor {
   (): void; // uninstall
   /** Put `text` in the composer and send it without Friction. Resolves true when it went out. */
   sendUnmodified(text: string): Promise<boolean>;
+  /** Can `text` be re-sent right now without clobbering anything? (no send in flight, composer empty or already holding `text`) */
+  canSendUnmodified(text: string): 'ok' | 'busy' | 'draft' | 'no_composer';
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -52,7 +54,14 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 
 /** The user's prompt with any friction block and stray ⟦friction⟧ / ⟦/friction⟧ markers removed. */
 export function cleanPrompt(text: string): string {
-  return stripInjected(text).split(FRICTION_OPEN).join('').split(FRICTION_CLOSE).join('').trim();
+  // Repeat until stable, so nested fragments can't rebuild a marker (e.g. "⟦fric⟦friction⟧tion⟧").
+  let prev: string;
+  let cur = text;
+  do {
+    prev = cur;
+    cur = stripInjected(cur).split(FRICTION_OPEN).join('').split(FRICTION_CLOSE).join('');
+  } while (cur !== prev);
+  return cur.trim();
 }
 
 async function waitUntil(cond: () => boolean, maxMs: number, stepMs = 25): Promise<boolean> {
@@ -183,6 +192,14 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
     win.removeEventListener('click', onClick, true);
   };
   return Object.assign(uninstall, {
+    canSendUnmodified(text: string) {
+      const composer = site.findComposer(doc);
+      if (!composer) return 'no_composer' as const;
+      if (busy) return 'busy' as const;
+      const current = cleanPrompt(site.getComposerText(composer));
+      if (current && current !== text.trim()) return 'draft' as const; // never overwrite a new draft
+      return 'ok' as const;
+    },
     async sendUnmodified(text: string): Promise<boolean> {
       const composer = site.findComposer(doc);
       if (!composer || busy) return false;

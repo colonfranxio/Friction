@@ -38,9 +38,10 @@ function send<T>(msg: RuntimeRequest): Promise<T> {
 const badge = mountBadge(document, { onBypass: () => void bypassAndResend() });
 
 /** The last message in this tab that got friction: what a bypass re-sends. Cleared once bypassed (one bypass per prompt). */
-let lastFriction: { raw: string; node_id: string; concept: string | null } | null = null;
+let lastFriction: { raw: string; node_id: string; concept: string | null; path: string } | null = null;
 /** Text that must go out unmodified on the next send (a bypass whose automatic re-send didn't go through). */
-let bypassArmed: string | null = null;
+let bypassArmed: { text: string; until: number } | null = null;
+const ARMED_TTL_MS = 2 * 60 * 1000;
 let pendingRaw = '';
 
 const conversations = createConversationTracker({
@@ -56,7 +57,19 @@ const conversations = createConversationTracker({
   })(),
 });
 // claude.ai is a single-page app: watch for the new chat's URL to appear.
-setInterval(() => conversations.onPath(location.pathname), 500);
+// Navigating to another chat drops this tab's bypass target and armed text (they belong to the old chat).
+let lastPath = location.pathname;
+setInterval(() => {
+  conversations.onPath(location.pathname);
+  if (location.pathname !== lastPath) {
+    lastPath = location.pathname;
+    if (lastFriction && lastFriction.path !== lastPath) {
+      lastFriction = null;
+      badge.set({ kind: 'ready' });
+    }
+    bypassArmed = null;
+  }
+}, 500);
 
 function badgeFor(mode: SendMode, r: InterceptRuntimeResult | null): BadgeState {
   if (mode === 'bypassed') return { kind: 'bypassed', concept: null, remaining: null };
@@ -76,7 +89,8 @@ const interceptor = installSendInterceptor({
   site,
   timeoutMs: EXTENSION_TIMEOUT_MS,
   skipIntercept: (raw) => {
-    if (bypassArmed === null || raw !== bypassArmed.trim()) return false;
+    if (bypassArmed && Date.now() > bypassArmed.until) bypassArmed = null; // expired
+    if (bypassArmed === null || raw !== bypassArmed.text.trim()) return false;
     bypassArmed = null;
     return true;
   },
@@ -91,7 +105,7 @@ const interceptor = installSendInterceptor({
   ),
   onSent: (mode, r) => {
     if (mode === 'injected' && r && !r.outcome.passthrough && r.outcome.response.node_id && r.outcome.response.level !== 4) {
-      lastFriction = { raw: pendingRaw, node_id: r.outcome.response.node_id, concept: r.concept_name };
+      lastFriction = { raw: pendingRaw, node_id: r.outcome.response.node_id, concept: r.concept_name, path: location.pathname };
     } else if (mode !== 'not-sent' && mode !== 'bypassed') {
       lastFriction = null; // a newer message without friction: nothing to bypass
     }
@@ -109,6 +123,18 @@ async function bypassAndResend(): Promise<BypassResendResult> {
   const target = lastFriction;
   if (!target) return { ok: false, code: 'no_prompt', message: 'Nothing to bypass in this tab yet.' };
   if (bypassing) return { ok: false, code: 'busy', message: 'Bypass already in progress.' };
+  // Check everything BEFORE spending a bypass from the quota.
+  if (target.path !== location.pathname) {
+    lastFriction = null;
+    badge.set({ kind: 'ready' });
+    return { ok: false, code: 'stale', message: 'That message was in another chat.' };
+  }
+  const can = interceptor.canSendUnmodified(target.raw);
+  if (can === 'draft') {
+    badge.set({ kind: 'error', message: 'clear your draft to bypass' });
+    return { ok: false, code: 'draft', message: 'Send or clear your new draft first, then bypass.' };
+  }
+  if (can === 'busy') return { ok: false, code: 'busy', message: 'Wait for the current message to send, then bypass.' };
   bypassing = true;
   badge.setBusy(true);
   try {
@@ -126,7 +152,7 @@ async function bypassAndResend(): Promise<BypassResendResult> {
     }
     lastFriction = null;
     const resent = await interceptor.sendUnmodified(target.raw);
-    if (!resent) bypassArmed = target.raw; // left in the composer: the user's next Send goes out unmodified
+    if (!resent) bypassArmed = { text: target.raw, until: Date.now() + ARMED_TTL_MS }; // left in the composer: the next Send (within 2 min) goes out unmodified
     badge.set({ kind: 'bypassed', concept: target.concept, remaining: r.remaining_quota });
     return { ok: true, remaining_quota: r.remaining_quota, resent };
   } finally {

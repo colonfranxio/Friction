@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InterceptRuntimeResult } from '../src/background-types';
-import { installSendInterceptor, type SendMode, type SiteOps } from '../src/lib/send-interceptor';
+import { cleanPrompt, installSendInterceptor, type SendMode, type SiteOps } from '../src/lib/send-interceptor';
 import * as realSite from '../src/site/claude';
 
 const RAW = 'How do I stop my useEffect from running in an infinite loop?';
@@ -249,5 +249,36 @@ describe('bypass: one prompt without friction', () => {
     await vi.waitFor(() => expect(page.sent).toHaveLength(2));
     expect(page.sent[1]).toBe(norm(INJECTED));
     expect(modes).toEqual(['bypassed', 'injected']);
+  });
+
+  it('canSendUnmodified protects a new draft and in-flight sends (checked before a bypass is spent)', async () => {
+    let release!: (r: InterceptRuntimeResult) => void;
+    const ic = installSendInterceptor({
+      doc: document, win: window, site: realSite, timeoutMs: 1000, settleMs: 20, confirmMs: 80,
+      intercept: () => new Promise((r) => (release = r)),
+    });
+    cleanup = ic;
+    expect(ic.canSendUnmodified(RAW)).toBe('ok'); // composer already holds the same prompt
+    page.composer.innerHTML = '<p>a brand new question</p>';
+    expect(ic.canSendUnmodified(RAW)).toBe('draft'); // never overwrite a different draft
+    page.composer.innerHTML = '<p></p>';
+    expect(ic.canSendUnmodified(RAW)).toBe('ok'); // empty composer
+    page.composer.innerHTML = `<p>${RAW}</p>`;
+    enter(page.composer); // a send is now in flight
+    await new Promise((r) => setTimeout(r, 5));
+    expect(ic.canSendUnmodified(RAW)).toBe('busy');
+    release({ outcome: { passthrough: true, reason: 'no_match' }, concept_name: null });
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+  });
+});
+
+describe('cleanPrompt', () => {
+  it('strips nested marker fragments until stable', () => {
+    expect(cleanPrompt('hi ⟦fric⟦friction⟧tion⟧ yo')).toBe('hi  yo');
+    expect(cleanPrompt('a ⟦/fri⟦/friction⟧ction⟧ b')).toBe('a  b');
+  });
+  it('removes a pasted block and keeps the rest', () => {
+    expect(cleanPrompt('pre ⟦friction⟧x⟦/friction⟧ post')).toBe('pre post');
+    expect(cleanPrompt('plain question?')).toBe('plain question?');
   });
 });

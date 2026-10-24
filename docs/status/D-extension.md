@@ -8,7 +8,7 @@
 
 ## CP1 exit criteria
 - [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
-- [x] Unit tests pass (34 at CP1; 35 now incl. 9 in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
+- [x] Unit tests pass (34 at CP1; 55 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
 - [x] Background tests against the real mock (in-process HTTP) pass: status, L1 intercept, correct answer graded via `previous_assistant_text` → L4, passthrough, bypass + paused, concept kept after off-topic, consent off (zero fetches), offline fail-open.
 - [x] **Human live try → GO.** On real claude.ai with the mock (8789), the useEffect question got a Socratic L1 reply: no code, asked the student to explain, one hint about the dependency array, ended with a check question. So the composer rewrite + send work on the live page.
 - (moved to CP2) Full loop on claude.ai: answer → L4, new chat → full answer, badge text, block hidden in the user bubble.
@@ -17,7 +17,7 @@
 - [x] Popup: online status, consent toggle, concept + level chip, **Use a bypass (N left)** with the 409 message, settings (built in CP1; covered by the background tests for status/bypass/consent).
 - [x] Badge: active level / no friction / offline / paused, plus **"Friction updated · reload this tab"** when the extension was reloaded and the open tab's content script is orphaned (previously shown as "offline").
 - [x] Injected block hidden in rendered messages (`hide-injected.ts`, unit tested; never touches the composer).
-- [ ] **Works against the real API on 8787.** BLOCKED on Agent A (no `agent/platform` branch on origin yet). Ready as one command: `pnpm --filter @friction/extension test:api` (runs the 9 service-worker integration tests against `http://127.0.0.1:8787`, after a demo reset). Verified working against a live mock on 8789.
+- [x] **Works against the real API on 8787 (fake intelligence).** E ran `test:api` against A's merged API at CP2: 9/9. Real-Claude run still pending an API key (see CP2.md). Ready as one command: `pnpm --filter @friction/extension test:api` (runs the 9 service-worker integration tests against `http://127.0.0.1:8787`, after a demo reset). Verified working against a live mock on 8789.
 - [ ] Human, ~3 min: on claude.ai, answer the check question (→ L4), then ask again in a new chat (→ full answer); report the badge text and whether your sent message shows the `⟦friction⟧` block. This also confirms the assistant-message selector (used as quiz text for grading).
 
 ## CP2 verification (independent agent, Sonnet 5.5, fresh clone)
@@ -42,6 +42,7 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
 ## CP2 integration followups (from E's CP2 report) and session handover
 - [x] Contract **v3** confirmed: only adds the optional `X-Friction-Quiz-Attached` header on sandbox `/chat`; no extension impact.
 - [x] `handleBypass` refuses when consent is off (`{ok:false, code:'disabled'}`) with zero fetches, covering queued/programmatic messages too. Regression test added.
+- [x] Fixes from the CP2-followup verification (fresh clone, PASS): the bypass target is dropped when you switch chats (it could charge the wrong concept and send an old prompt into another chat); a bypass is refused **before** spending quota if you have a different draft in the box or a send is in flight; the "send unmodified once" fallback expires after 2 minutes and on navigation; `cleanPrompt` repeats until stable so nested fragments can't rebuild a marker. Tests added.
 - Handover: a second Agent D session briefly worked in this worktree (commits 6137ea1 per-prompt bypass + badge Bypass button, a1e5731 strip pasted friction blocks, f6c75db per-chat conversation ids). Those were reviewed and kept by the current Agent D session. Its edit to E-owned `packages/shared` (682c085, fake grader treats a re-asked question as `not_an_answer`, human-approved) was **moved to branch `proposal/e-fake-grader`** for E to review/cherry-pick, and reverted here so this branch only touches D-owned paths.
 
 ## Change requests (contract)
@@ -51,7 +52,7 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
    - Until the API changes, the concept also stays paused server-side (later prompts on it get L4). Sandbox (C) should switch its bypass button to the same per-prompt behavior.
 
 2. **Re-asking the question counts as a correct answer (found in live testing, 2026-10-24).** In the same chat, sending the original question again is graded as the answer to the check question. `fakeEvaluate` (packages/shared, E) marks any message containing one of the node's keywords as `correct`, and the question itself contains them ("useEffect", "infinite loop"), so in DEMO_MODE the student jumps L1 → L4. Repro: two `/intercept` calls with the same `raw_prompt` and a `previous_assistant_text` → 2nd returns `level: 4, graded.verdict: correct`.
-   - **⚠ E, please review and merge: I edited a file you own (approved by the human, 2026-10-24).** `packages/shared/src/fakes.ts`: `fakeEvaluate` now returns `not_an_answer` when the student's message is a new question (starts with how/what/why/when/where/which/who/can/could/should/would/do/does/will **and** ends with `?`). "Is it the dependency array?" still counts as an answer. New test: `packages/shared/test/fake-grader.test.ts`. No type or contract change; full `pnpm typecheck` + `pnpm test` pass (shared 22, intelligence 22, api 47, dashboard 3, extension 51). It's in its own commit on `agent/extension` ("E-owned: fake grader…") so you can cherry-pick or revert it on its own.
+   - **⚠ E, please review and merge: I edited a file you own (approved by the human, 2026-10-24).** `packages/shared/src/fakes.ts`: `fakeEvaluate` now returns `not_an_answer` when the student's message is a new question (starts with how/what/why/when/where/which/who/can/could/should/would/do/does/will **and** ends with `?`). "Is it the dependency array?" still counts as an answer. It comes with a new shared test. No type or contract change. **It lives on branch `proposal/e-fake-grader` (commit 682c085), not on `agent/extension`** (reverted there in c30565a so D's branch only touches D-owned paths): cherry-pick it if you accept it.
    - Ask (B): the real grader prompt treats a repeated or re-phrased question as `not_an_answer`, never `correct`; add it to the harness.
    - Not fixable in the extension: the server grades whenever a quiz is pending.
 
@@ -66,7 +67,7 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
 
 ## How to run and verify my part
 ```
-pnpm --filter @friction/extension test        # 35 tests
+pnpm --filter @friction/extension test        # 55 tests
 pnpm --filter @friction/extension test:api    # integration tests vs a running API (default :8787)
 pnpm --filter @friction/extension typecheck
 pnpm build:ext                                # → apps/extension/dist
