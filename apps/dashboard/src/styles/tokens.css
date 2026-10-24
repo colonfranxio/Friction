@@ -1,0 +1,16 @@
+:root {
+  --bg: #fdfbf7;
+  --surface: #fff;
+  --border: #e5e7eb;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --locked: #9ca3af;
+  --active: #f59e0b;
+  --mastered: #10b981;
+  --alert: #f97316;
+  --radius: 12px;
+  font-family: Nunito, system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+}
