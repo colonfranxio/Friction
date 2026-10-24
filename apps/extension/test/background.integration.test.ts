@@ -7,8 +7,10 @@ import { DEMO_PROMPTS, SEED_IDS } from '@friction/shared';
 import type { InterceptRuntimeResult } from '../src/background-types';
 import type { BypassResult, RuntimeRequest, StatusResponse } from '../src/lib/messages';
 
+// FRICTION_API_URL=<url> runs these against a real API (see test/run-against-api.mjs); default = in-process mock.
+const EXTERNAL = process.env.FRICTION_API_URL?.replace(/\/$/, '');
 const PORT = 18000 + Math.floor(Math.random() * 1000);
-const API = `http://127.0.0.1:${PORT}`;
+const API = EXTERNAL ?? `http://127.0.0.1:${PORT}`;
 let listener: (msg: unknown, sender: unknown, send: (r: unknown) => void) => boolean;
 const store: Record<string, unknown> = {};
 
@@ -30,21 +32,27 @@ beforeAll(async () => {
       getManifest: () => ({ version: 'test' }),
     },
   };
-  process.env.DEMO_MODE = '1';
-  process.argv.push('--port', String(PORT));
-  await import('../../../scripts/mock-api');
+  if (!EXTERNAL) {
+    process.env.DEMO_MODE = '1';
+    process.argv.push('--port', String(PORT));
+    await import('../../../scripts/mock-api');
+  }
   for (let i = 0; i < 50; i++) {
     try {
       if ((await fetch(`${API}/health`)).ok) break;
     } catch {}
     await new Promise((r) => setTimeout(r, 50));
   }
+  // Start from seed state (needs DEMO_MODE=1 on the server).
+  const reset = await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ full: true }) });
+  if (!reset.ok) throw new Error(`demo reset failed (${reset.status}): is DEMO_MODE=1 on ${API}?`);
   store.apiUrl = API;
   store.studentId = SEED_IDS.demoStudent;
   await import('../src/background');
 });
 
-afterAll(() => {
+afterAll(async () => {
+  await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ full: true }) }).catch(() => {});
   delete (globalThis as any).chrome;
 });
 

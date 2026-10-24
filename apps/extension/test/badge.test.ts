@@ -8,6 +8,10 @@ describe('badgeText', () => {
   it('treats L4 as no friction', () => {
     expect(badgeText({ kind: 'active', level: 4, concept: null }).text).toBe('Friction · no friction');
   });
+  it('tells the user to reload the tab after an extension update', () => {
+    expect(badgeText({ kind: 'reload' }).text).toBe('Friction updated · reload this tab');
+  });
+
   it('has offline and paused states', () => {
     expect(badgeText({ kind: 'offline' }).text).toBe('Friction offline');
     expect(badgeText({ kind: 'disabled' }).text).toBe('Friction paused');

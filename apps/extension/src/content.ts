@@ -11,14 +11,34 @@ import type { RuntimeRequest, StatusResponse } from './lib/messages';
 import { installSendInterceptor, type SendMode } from './lib/send-interceptor';
 import * as site from './site/claude';
 
+/** After the extension is reloaded, already-open tabs keep an orphaned content script whose chrome.* calls fail. */
+export function isContextInvalidated(err?: unknown): boolean {
+  try {
+    if (!chrome.runtime?.id) return true;
+  } catch {
+    return true;
+  }
+  return /context invalidated/i.test(String((err as Error)?.message ?? err ?? ''));
+}
+
+let lastError: unknown = null;
 function send<T>(msg: RuntimeRequest): Promise<T> {
-  return chrome.runtime.sendMessage(msg) as Promise<T>;
+  try {
+    return (chrome.runtime.sendMessage(msg) as Promise<T>).catch((e) => {
+      lastError = e;
+      throw e;
+    });
+  } catch (e) {
+    lastError = e;
+    return Promise.reject(e);
+  }
 }
 
 const badge = mountBadge(document);
 
 function badgeFor(mode: SendMode, r: InterceptRuntimeResult | null): BadgeState {
   if (mode === 'not-sent') return { kind: 'ready' }; // send was ignored (e.g. Claude still replying); original text restored
+  if ((mode === 'failed-open' || !r) && isContextInvalidated(lastError)) return { kind: 'reload' };
   if (mode === 'failed-open' || !r) return { kind: 'offline' };
   const o = r.outcome;
   if (!o.passthrough && o.response.level) return { kind: 'active', level: o.response.level, concept: r.concept_name };
@@ -49,4 +69,4 @@ send<StatusResponse>({ type: 'friction:status' })
     if (!s.enabled) badge.set({ kind: 'disabled' });
     else if (!s.online) badge.set({ kind: 'offline' });
   })
-  .catch(() => badge.set({ kind: 'offline' }));
+  .catch((e) => badge.set(isContextInvalidated(e) ? { kind: 'reload' } : { kind: 'offline' }));

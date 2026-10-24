@@ -6,7 +6,9 @@ export type BadgeState =
   | { kind: 'active'; level: BloomLevel; concept: string | null }
   | { kind: 'none' }
   | { kind: 'offline' }
-  | { kind: 'disabled' };
+  | { kind: 'disabled' }
+  /** The extension was reloaded/updated; this tab's content script is orphaned until the page reloads. */
+  | { kind: 'reload' };
 
 const DOT = { amber: '#F59E0B', green: '#10B981', grey: '#9CA3AF' };
 
@@ -23,6 +25,8 @@ export function badgeText(s: BadgeState): { text: string; dot: string } {
       return { text: 'Friction offline', dot: DOT.grey };
     case 'disabled':
       return { text: 'Friction paused', dot: DOT.grey };
+    case 'reload':
+      return { text: 'Friction updated · reload this tab', dot: DOT.amber };
     default:
       return { text: 'Friction · ready', dot: DOT.green };
   }
