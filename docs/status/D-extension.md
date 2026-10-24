@@ -2,7 +2,7 @@
 
 **Owned by Agent D. Only this agent edits this file.**
 
-- Contract version confirmed: 1 (plan v5)
+- Contract version confirmed: **2** (read docs/contracts-CHANGELOG.md: v2 only adds an optional grading AbortSignal between A and B; no impact on the extension). My CP2 work is already on main via E's CP1 merge.
 - Current checkpoint: **CP2** (CP1 closed: GO on live claude.ai)
 - Last updated: 2026-10-24
 
