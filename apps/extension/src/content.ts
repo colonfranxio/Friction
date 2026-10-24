@@ -115,8 +115,8 @@ const interceptor = installSendInterceptor({
 
 /**
  * Bypass = one use of the quota (teacher notified, via POST /bypass) + re-send the same prompt unmodified.
- * Applies to that one prompt only on the extension side; see the change request in docs/status/D-extension.md
- * (the current API also pauses the whole concept).
+ * Contract v4: requested with scope 'prompt' (quota + teacher notification only; mastery and pause untouched).
+ * A pre-v4 server ignores scope and pauses the concept; background reports that as scope_applied 'concept'.
  */
 let bypassing = false;
 async function bypassAndResend(): Promise<BypassResendResult> {

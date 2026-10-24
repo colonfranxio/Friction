@@ -36,13 +36,14 @@ export interface StatusResponse {
 
 /**
  * scope_applied: what the server actually did. 'concept' when a prompt-scoped request reached a pre-v4 server
- * (it ignores `scope` and pauses the whole concept), detected by reading the node's paused flag afterwards.
+ * (it ignores `scope` and pauses the whole concept), detected by the node's paused flag going false → true.
+ * 'unknown' when the flag couldn't be read; the UI then makes no claim either way.
  */
 export type BypassResult =
-  | { ok: true; remaining_quota: number; scope_applied: 'prompt' | 'concept' }
+  | { ok: true; remaining_quota: number; scope_applied: 'prompt' | 'concept' | 'unknown' }
   | { ok: false; code: string; message: string };
 
 /** Content script's answer to 'friction:bypass-resend'. resent=false: quota used, text left in the composer, next send goes out unmodified. */
 export type BypassResendResult =
-  | { ok: true; remaining_quota: number; resent: boolean; scope_applied: 'prompt' | 'concept' }
+  | { ok: true; remaining_quota: number; resent: boolean; scope_applied: 'prompt' | 'concept' | 'unknown' }
   | { ok: false; code: string; message: string };

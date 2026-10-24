@@ -116,17 +116,28 @@ async function handleBypass(m: Extract<RuntimeRequest, { type: 'friction:bypass'
   if (!nodeId) return { ok: false, code: 'no_concept', message: 'Ask Claude something first so Friction knows the concept.' };
   const scope = m.scope ?? 'prompt'; // v4: per-prompt by default; the extension resends to claude.ai itself (no token fields)
   const client = createFrictionClient(s.apiUrl);
+  /** The node's paused flag, or null if it can't be read within 1.5s. */
+  const pausedNow = async (): Promise<boolean | null> => {
+    try {
+      const st = await Promise.race([
+        client.getStudent(s.studentId),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), 1500)),
+      ]);
+      return !!st.states.find((x) => x.node_id === nodeId)?.paused;
+    } catch {
+      return null;
+    }
+  };
   try {
+    // A pre-v4 server ignores `scope` and pauses the concept. Read `paused` before and after so the UI only
+    // says "concept" when THIS bypass caused the pause (false → true), and makes no claim if it can't tell.
+    const before = scope === 'prompt' ? await pausedNow() : null;
     const r = await client.bypass({ student_id: s.studentId, node_id: nodeId, scope });
-    let applied: 'prompt' | 'concept' = scope;
+    let applied: 'prompt' | 'concept' | 'unknown' = scope;
     if (scope === 'prompt') {
-      // A pre-v4 server ignores `scope` and pauses the concept: detect it so the UI tells the truth.
-      try {
-        const st = await client.getStudent(s.studentId);
-        if (st.states.find((x) => x.node_id === nodeId)?.paused) applied = 'concept';
-      } catch {
-        /* can't tell: assume the requested scope */
-      }
+      const after = await pausedNow();
+      if (before === null || after === null) applied = 'unknown';
+      else if (!before && after) applied = 'concept';
     }
     return { ok: true, remaining_quota: r.remaining_quota, scope_applied: applied };
   } catch (err) {
