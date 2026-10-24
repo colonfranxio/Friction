@@ -50,6 +50,27 @@ async function init() {
   $<HTMLInputElement>('student').value = settings.studentId;
   $<HTMLInputElement>('api').value = settings.apiUrl;
   $<HTMLInputElement>('ready-sha').value = settings.promptBypassReadySha;
+  $<HTMLInputElement>('dash').value = settings.dashboardUrl;
+
+  // Learning map: chrome.sidePanel.open needs the click's user gesture, so resolve the window first
+  // and call open() synchronously from the handler (no await before it).
+  let windowId: number | undefined;
+  chrome.windows?.getCurrent?.().then((w) => (windowId = w.id)).catch(() => {});
+  $('open-map').addEventListener('click', () => {
+    $('map-msg').textContent = '';
+    if (!chrome.sidePanel?.open) {
+      $('map-msg').textContent = 'Your Chrome is too old for side panels (needs Chrome 116+).';
+      return;
+    }
+    if (windowId === undefined) {
+      $('map-msg').textContent = 'Couldn’t find this window. Close and reopen the popup, then try again.';
+      return;
+    }
+    chrome.sidePanel.open({ windowId }).then(
+      () => window.close(),
+      (e) => ($('map-msg').textContent = `Chrome didn’t open the side panel (${String(e?.message ?? e)}).`),
+    );
+  });
 
   $<HTMLInputElement>('enabled').addEventListener('change', async (e) => {
     await saveSettings({ enabled: (e.target as HTMLInputElement).checked });
@@ -84,6 +105,7 @@ async function init() {
       studentId: $<HTMLInputElement>('student').value.trim(),
       apiUrl: $<HTMLInputElement>('api').value.trim().replace(/\/$/, ''),
       promptBypassReadySha: $<HTMLInputElement>('ready-sha').value.trim(),
+      dashboardUrl: $<HTMLInputElement>('dash').value.trim().replace(/\/+$/, ''),
     });
     $('msg').textContent = 'Settings saved.';
     await render();

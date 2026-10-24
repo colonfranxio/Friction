@@ -8,7 +8,7 @@
 
 ## CP1 exit criteria
 - [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
-- [x] Unit tests pass (34 at CP1; 66 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
+- [x] Unit tests pass (34 at CP1; 79 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
 - [x] Background tests against the real mock (in-process HTTP) pass: status, L1 intercept, correct answer graded via `previous_assistant_text` → L4, passthrough, bypass + paused, concept kept after off-topic, consent off (zero fetches), offline fail-open.
 - [x] **Human live try → GO.** On real claude.ai with the mock (8789), the useEffect question got a Socratic L1 reply: no code, asked the student to explain, one hint about the dependency array, ended with a check question. So the composer rewrite + send work on the live page.
 - (moved to CP2) Full loop on claude.ai: answer → L4, new chat → full answer, badge text, block hidden in the user bubble.
@@ -45,6 +45,19 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
 - [x] Fixes from the CP2-followup verification (fresh clone, PASS): the bypass target is dropped when you switch chats (it could charge the wrong concept and send an old prompt into another chat); a bypass is refused **before** spending quota if you have a different draft in the box or a send is in flight; the "send unmodified once" fallback expires after 2 minutes and on navigation; `cleanPrompt` repeats until stable so nested fragments can't rebuild a marker. Tests added.
 - Handover: a second Agent D session briefly worked in this worktree (commits 6137ea1 per-prompt bypass + badge Bypass button, a1e5731 strip pasted friction blocks, f6c75db per-chat conversation ids). Those were reviewed and kept by the current Agent D session. Its edit to E-owned `packages/shared` (682c085, fake grader treats a re-asked question as `not_an_answer`, human-approved) was **moved to branch `proposal/e-fake-grader`** for E to review/cherry-pick, and reverted here so this branch only touches D-owned paths.
 
+## Learning map side panel (brief "Requested addition") — built 2026-10-24 at the human's direct request
+Started ahead of E's scheduling because the human (lead) asked for it directly; all changes stay in `apps/extension/**`. No contract change.
+- [x] Manifest: permissions `storage` + **`sidePanel`** only (host_permissions unchanged); `side_panel.default_path = sidepanel.html`; version 0.3.0.
+- [x] Popup: **Open learning map** button → `chrome.sidePanel.open({ windowId })` called directly in the click handler (user gesture kept; window resolved beforehand); clear messages for Chrome < 116, unknown window or a denied open. Toolbar popup action unchanged.
+- [x] Popup Settings: **Dashboard URL** (default `http://127.0.0.1:5173`), separate from API URL. The panel also tries the other loopback name automatically (127.0.0.1 ⇄ localhost), since Vite binds only one on some machines (the human hit this).
+- [x] Panel (`src/sidepanel.ts`, logic in `src/lib/learning-map.ts`): full-size iframe to `${dashboardUrl}/student/<encoded id>?embed=1` built with URL APIs; only localhost/127.0.0.1 (existing host access), with an explanation for other origins; no prompts/tokens/keys in the URL.
+- [x] Consent: off → "Friction is off", no iframe and no request. Revoked while open → iframe removed immediately (stops its dashboard/API/SSE work), pending checks aborted, stale callbacks ignored. Storage changes (student/URL/consent) reload the panel.
+- [x] Unreachable dashboard → short message + **Retry** (bounded no-cors readiness probe, 2.5s per address) instead of a broken frame. A live dashboard whose API is down shows C's own in-frame error/retry.
+- [x] Tests: `test/learning-map.test.ts` (13): URL building/encoding, invalid/unsupported URLs, consent-off no-load, storage-change reload, consent revoked while open, stale check after revoke, unreachable → retry, loopback fallback, timeout, dispose. Extension total **79/79**; typecheck/build OK.
+- [x] Visual check (simulated, headless at 400px with storage stubbed): the panel frames the live Student page from the running dashboard (iframe allowed by Vite; mastered/learning/locked render).
+- [ ] **Depends on C's EMBED READY** for the compact `?embed=1` view; until then the full Student page is shown (development scaffolding per the brief).
+- [ ] **Human check:** reload the extension, open the panel on claude.ai, answer a check question → the node turns green live in the panel. Also confirm the dashboard's `VITE_API_URL` and the extension's API URL point at the same API (8787), or mastery won't update in the panel.
+
 ## D READY (2026-10-24) — code commit `9fe390131e20d9ace2abd4a2cbb6c1ace0adfd2f`
 Responds to FINAL-INTEGRATION-CHECK "Required completion order" item 2.
 
@@ -65,7 +78,7 @@ Responds to FINAL-INTEGRATION-CHECK "Required completion order" item 2.
 
 **Pending live checks (not claimed):** v4 prompt-scoped bypass against A's merged real API (needs A's corrected API READY + E's approval, then set the SHA in the popup); the human claude.ai bypass check after that; Windows Chrome load check.
 
-**Backlog (accepted, not scheduled):** learning-map Chrome side panel (brief "Requested addition"). Not started, per its priority rule; waiting for E to schedule it and for C's EMBED READY.
+**Learning-map side panel:** built at the human's request (see section above); compact view waits on C's EMBED READY.
 
 ## v4 rollout (contract READY v4) — superseded by D READY above
 - [x] Merged main (v4); `packages/shared` and `scripts/` identical to main.
@@ -98,7 +111,7 @@ Responds to FINAL-INTEGRATION-CHECK "Required completion order" item 2.
 
 ## How to run and verify my part
 ```
-pnpm --filter @friction/extension test        # 66 tests
+pnpm --filter @friction/extension test        # 79 tests
 pnpm --filter @friction/extension test:api    # integration tests vs a running API (default :8787)
 pnpm --filter @friction/extension typecheck
 pnpm build:ext                                # → apps/extension/dist

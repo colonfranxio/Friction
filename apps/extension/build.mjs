@@ -11,12 +11,12 @@ const watch = process.argv.includes('--watch');
 if (!watch) rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 
-const entries = ['content', 'background', 'popup'];
+const entries = ['content', 'background', 'popup', 'sidepanel'];
 const missing = entries.filter((e) => !existsSync(join(here, 'src', `${e}.ts`)));
 if (missing.length) throw new Error(`missing entries: ${missing.join(', ')}`);
 
 const copyStatic = () => {
-  for (const f of ['manifest.json', 'popup.html']) copyFileSync(join(here, f), join(dist, f));
+  for (const f of ['manifest.json', 'popup.html', 'sidepanel.html']) copyFileSync(join(here, f), join(dist, f));
 };
 
 const opts = {
