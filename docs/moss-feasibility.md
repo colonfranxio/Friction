@@ -112,6 +112,11 @@ errors. Ordinary API startup stays unchanged, including when Moss credentials ex
 opt-in API hook should only be considered after a realistic larger-curriculum comparison
 demonstrates useful improvement. See [authenticated trial results](moss-live-results.md).
 
+Follow-up scope clarification (2026-10-24): the user authorized opt-in runtime integration for
+meaningful sponsor use even without demonstrated accuracy lift. Quality-driven default activation
+remains unsupported. See the [runtime implementation plan](moss-runtime-plan.md); its explicit
+enablement and reliability gates replace the earlier requirement to prove accuracy lift before wiring.
+
 ## Sources
 
 - [Quickstart](https://docs.moss.dev/docs/start/quickstart)
