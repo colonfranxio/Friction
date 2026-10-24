@@ -19,6 +19,8 @@ You are one of four agents building Friction in parallel. Your personal brief is
 
 For the C/D learning-map feature only, this section overrides the branch/merge destinations above and in the individual briefs:
 
+**Latest human reassignment:** B now owns the learning-map implementation end to end on **`feature/learning-map`**. This supersedes the C/D implementation split below. E first merges D's existing `agent/extension` shell/hardening into **`claude-skill-tree`**, then reviews/merges B's feature there. B must incorporate that D-ready base before final PANEL READY. C must not build the embed, D must make no further panel edits, and the previously created `agent/claude-skill-tree-*` branches are superseded for this feature. B's narrowly scoped cross-owner permissions are listed in B's brief. Main remains isolated until the human directs release integration.
+
 - E integrates and verifies on **`claude-skill-tree`**, based on main `d23cb63`. Do not merge this feature into `main` without the human's explicit instruction after review.
 - C implements the compact embedded student view on **`agent/claude-skill-tree-dashboard`**. D implements the Chrome side panel on **`agent/claude-skill-tree-extension`**. Both branches start from the instruction-bearing `claude-skill-tree` commit, not their older `agent/dashboard` or `agent/extension` tips.
 - C and D work in parallel in their existing separate checkouts, keeping their existing path ownership. Never switch a shared working directory another agent is using. No new worktrees are required.

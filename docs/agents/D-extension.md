@@ -104,7 +104,13 @@ This section updates the remaining-work assignment after CP2. Own only `apps/ext
 
 ## Requested addition: learning map beside claude.ai (human request, 2026-10-24)
 
+<<<<<<< HEAD
 **Branch instruction (supersedes your usual branch for this feature):** work on **`agent/claude-skill-tree-extension`**, based on the instruction-bearing **`claude-skill-tree`** branch. Preserve unfinished work before switching in your own isolated checkout. Do not develop this feature on `main` or `agent/extension`, or bulk-merge your old branch to import unreviewed hardening. Request any required dependency from E. Push **PANEL READY** to this new branch; E integrates it into `claude-skill-tree`, not main. Build the shell/settings/tests in parallel with C, then merge E's C-ready feature base before final iframe/live-update acceptance. Follow `AGENTS.md` feature isolation.
+=======
+> **REASSIGNED to B (human decision, 2026-10-24).** B now owns this whole feature on branch `feature/learning-map` (see B's brief, "Reassigned: learning-map panel"). D's side-panel shell already on `agent/extension` (`src/lib/learning-map.ts`, `src/sidepanel.ts`, `sidepanel.html`, popup button, Dashboard URL setting, `test/learning-map.test.ts`) is accepted as the base and ships with D's normal merge. **D: make no further panel changes.** Report any panel bugs to B through your status file; follow-up edits to those panel files come from B.
+
+This reassignment supersedes the branch instruction and C/D execution split below. E integrates the existing D shell/hardening into `claude-skill-tree` before B's `feature/learning-map`. D retains non-panel extension ownership; coordinate shared popup/storage edits with B. No feature merge to main is authorized by this reassignment.
+>>>>>>> origin/proposal/b-owns-learning-map
 
 **Why:** in a real test the human found that, on claude.ai, students can't see their skill tree, so they don't know which concept to steer the conversation toward next. The badge shows the level for one turn, not the map. Show the student's live map in Chrome's built-in side panel next to claude.ai. Don't draw anything inside claude.ai's page; that stays as fragile-free as today.
 
