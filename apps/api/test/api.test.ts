@@ -480,6 +480,49 @@ describe('chat (sandbox)', () => {
     }
   });
 
+  it('client cancels mid-reply while the model ends quietly on abort (like B): partial kept, quiz closed', async () => {
+    let sawAbort = false;
+    const intel: Intelligence = {
+      ...fakeIntelligence,
+      // Same contract as packages/intelligence chat(): when the signal aborts, return without throwing.
+      chat: async function* (_messages, opts) {
+        yield 'Partial reply';
+        await new Promise<void>((resolve) => {
+          if (opts?.signal?.aborted) return resolve();
+          opts?.signal?.addEventListener('abort', () => resolve(), { once: true });
+        });
+        sawAbort = !!opts?.signal?.aborted;
+      },
+    };
+    const t = makeApp({ intel });
+    const res = await chat(t, DEMO_PROMPTS.question);
+    expect(t.store.db.logs[0].quiz_pending).toBe(true); // quiz attached, reply still streaming
+    const reader = res.body!.getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe('Partial reply');
+    await reader.cancel();
+    for (let i = 0; i < 100 && t.store.db.logs[0].quiz_pending; i++) await sleep(10);
+    expect(sawAbort).toBe(true);
+    expect(t.store.db.logs[0].llm_response).toBe('Partial reply');
+    expect(t.store.db.logs[0].quiz_pending).toBe(false);
+  });
+
+  it('X-Friction-Quiz-Attached (contract v3): exact boolean string per turn, exposed via CORS', async () => {
+    const t = makeApp();
+    const q1 = await chat(t, DEMO_PROMPTS.question);
+    expect(q1.headers.get('x-friction-quiz-attached')).toBe('true');
+    expect(q1.headers.get('access-control-expose-headers')).toContain('X-Friction-Quiz-Attached');
+    await q1.text();
+    await sleep(20);
+    const answer = await chat(t, DEMO_PROMPTS.correctAnswer); // graded correct → L4, no new quiz
+    expect(answer.headers.get('x-friction-level')).toBe('4');
+    expect(answer.headers.get('x-friction-quiz-attached')).toBe('false');
+    await answer.text();
+    const off = await chat(t, 'Write me a haiku about the ocean', 'sb-other'); // no node
+    expect(off.headers.get('x-friction-node-id')).toBe('');
+    expect(off.headers.get('x-friction-quiz-attached')).toBe('false');
+    await off.text();
+  });
+
   it('400 when there is no user message', async () => {
     const t = makeApp();
     const r = await t.call('POST', '/chat', { student_id: S, conversation_id: 'x', messages: [{ role: 'assistant', content: 'hi' }] });
