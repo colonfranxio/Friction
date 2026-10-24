@@ -15,9 +15,10 @@ const config = loadConfig();
 if (config.useRealIntelligence && !process.env.ANTHROPIC_API_KEY) {
   console.warn('[api] USE_REAL_INTELLIGENCE=1 but ANTHROPIC_API_KEY is not set (add it to .env). Model calls will fail with llm_error.');
 }
-const intel = await loadIntelligence(config.useRealIntelligence);
 const dbPath = defaultDbPath();
 const store = createJsonStore(dbPath);
+const intelligence = await loadIntelligence(config.useRealIntelligence, { store });
+const intel = intelligence.intel;
 const ctx = createCtx({
   config,
   intel,
@@ -25,6 +26,7 @@ const ctx = createCtx({
   store,
 });
 const app = createApp(ctx);
+intelligence.start();
 
 // No hostname: binds dual-stack so http://127.0.0.1:<port> works on Windows too.
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
@@ -53,7 +55,11 @@ server.on('error', (err: NodeJS.ErrnoException) => {
 });
 
 async function shutdown() {
+  // close() stops Moss polling synchronously. Persistence is never cut short; only native
+  // disposal, which may hang and cannot be cancelled, is capped.
+  const closing = intelligence.close().catch(() => {});
   await store.flush();
+  await Promise.race([closing, new Promise((resolve) => setTimeout(resolve, 2000))]);
   process.exit(0);
 }
 process.on('SIGINT', shutdown);
