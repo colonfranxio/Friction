@@ -1,12 +1,12 @@
 # Agent C: Dashboard (educator + student + sandbox UI)
 
-You are **Agent C**, one of four Claude Code agents building **Friction** in parallel for a hackathon. You own everything judges see in the browser except claude.ai itself: the skill tree that builds itself from a syllabus, lights up live when a student learns, and lets an educator edit it. Make it feel delightful. Make it work first.
+You are **Agent C**, one of four Claude Code agents building **Friction** in parallel for a hackathon. You own everything judges see. **Your sandbox chat page is the main demo surface**, shown next to the skill tree that lights up live when the student learns. Make it feel delightful. Make it work first.
 
 ## 0. Read first (in this order)
 1. `AGENTS.md`: ownership and working rules (binding).
-2. `PLAN.md`: the whole plan; your row in §5 and §6.
+2. `PLAN.md`: the whole plan; your column in §5 (v5, simplified).
 3. **`docs/ui-layouts.md`**: every screen you build, wireframed, with tokens. This is your spec.
-4. `design.md`: visual language and the micro-animations (CP4).
+4. `design.md`: visual language and the micro-animations (CP3).
 5. `docs/contracts.md`: §3 (node status), §9 (SSE events), §10 (sandbox chat), §11 (privacy).
 6. `packages/shared/src/*`: `createFrictionClient`, the `ServerEvent` types, `computeNodeStatuses`, `computeDepths`, `SEED_IDS`, `LEVEL_LABELS`, `ICON_KEYWORDS`, `CHAT_HEADERS`.
 
@@ -38,7 +38,7 @@ apps/dashboard/src/
   pages/SandboxPage.tsx    chat + "Friction for this turn" panel
   tree/SkillTreeCanvas.tsx React Flow wrapper: nodes/edges from data, edit mode, handlers
   tree/SkillNode.tsx       custom node (circle, icon, lock, badge, label, class-count chip)
-  tree/ProgressBadge.tsx   pill "1/4" (ticker animation at CP4)
+  tree/ProgressBadge.tsx   pill "1/4" (ticker animation at CP3)
   tree/PillarHeader.tsx    column header (inline rename in edit mode)
   tree/layout.ts           pillar/depth layout (spec in ui-layouts §2)
   tree/edges.tsx           custom edge: rounded (8px) step path, colored by status
@@ -74,33 +74,29 @@ apps/dashboard/src/
 - **Privacy:** the educator UI shows verdicts, confidence and rationale, never raw prompts (the API doesn't send them anyway).
 - **Reset demo** button: only if `api.health()` returns `mode.demo === true`. It calls `api.demoReset({full: true})`.
 
-## 6. Tasks and exit criteria
+## 6. Tasks and exit criteria (PLAN.md v5: 3 checkpoints)
+**The sandbox chat is the main demo surface** (PLAN.md §2): split screen, sandbox chat on the left, the student tree updating live on the right. Build the six **must-haves** (PLAN.md §1) before anything else.
 
-### CP1 (target T+3h): tree renders live against the mock
-- [ ] App shell + router + TopBar with a working Live indicator
-- [ ] `/educator/<seed tree>` renders 3 pillars, 8 nodes, 8 edges in the pillar layout, with locked/active/mastered colors, lock icons and badges, matching ui-layouts §2/§2a
-- [ ] `/student/<demo student>` shows the same tree in that student's state
-- [ ] Live: running `pnpm smoke:mock` in a terminal visibly changes useEffect to mastered **without a page reload**
+### CP1 (T+3h): must-haves 1 and 3 against the mock
+- [ ] App shell + router + TopBar with a Live indicator
+- [ ] `/educator/<seed tree>` and `/student/<demo student>`: 3 pillars, 8 nodes, 8 edges, locked/active/mastered colors, lock icons, `level/required` badges (ui-layouts §2/§2a/§3)
+- [ ] Live: `pnpm smoke:mock` in a terminal turns useEffect green **without a reload**
+- [ ] **`/sandbox` chat** streams replies via `api.chat`, shows concept / level / quiz for each turn from the `X-Friction-*` headers, and has a **New chat** button (new `conversation_id`)
 
-### CP2 (target T+8h): educator features + sandbox
-- [ ] Edit mode: drag + persist, connect, delete edge (with cycle toast), add/delete node, inspector edits, required-level override, pillar rename
-- [ ] Upload dialog (PDF + text) with the parsing animation; navigates to the new tree
-- [ ] Right panel: Class tab (progress bars, bypasses left, last-seen), Activity tab, "Viewing as" selector, class-count chips
-- [ ] Bypass toast on the `bypass` event
-- [ ] `/sandbox` streams replies and shows concept, level and quiz for each turn
+### CP2 (T+9h): all six must-haves on the real API
+- [ ] Sandbox layout for the demo: chat + a **live mini student tree** side by side (works at ~1280px wide on one screen)
+- [ ] **Use bypass** button in the sandbox side panel → `api.bypass({student_id, node_id: current turn's node})`, showing the remaining quota and the 409 message
+- [ ] Bypass **toast** on the educator page (`bypass` SSE event)
+- [ ] Upload dialog (PDF + text) with the parsing animation → navigates to the tree
+- [ ] **Reset demo** button (only when `/health` reports demo)
+- [ ] Works with `pnpm dev:dash` against the real API on merged `main`
+- [ ] Then, if time: educator editing (drag + persist, connect with cycle toast, inspector, add/delete node, pillar rename)
 
-### CP3 (target T+14h): demo-grade polish
-- [ ] Student page right panel ("Now learning", bypass dots), designed for a side-by-side split with claude.ai at ~900px wide
-- [ ] Empty, loading and error states (API down → a friendly banner with a retry)
-- [ ] Works against the real API (`pnpm dev:dash`, which uses `VITE_API_URL=http://127.0.0.1:8787` from `.env`) on merged `main`
-
-### CP4 (target T+20h): design.md micro-animations, in this priority
-- [ ] Unlock: padlock dissolves with a spring; the node fill pulses; the new edge draws outward (stroke-dashoffset)
-- [ ] Hover: magnetic float/scale + the tooltip unfurls with the mastery criteria
-- [ ] Mastery burst: particles bounded to the node radius on reaching L4 / mastered
-- [ ] Badge ticker flip when the level changes
-- [ ] Edge energy pulse on active paths (React Flow `animated` or a CSS dash animation)
-- [ ] Parallax/breathing background (cut first if short on time)
+### CP3 (T+16h): polish, in this priority
+- [ ] Mastery moment: padlock dissolves, node pulse, particles, badge ticker (this is the demo's money shot)
+- [ ] Hover float + tooltip with the mastery criteria
+- [ ] Class panel + class-count chips; activity feed
+- [ ] Empty, loading and error states; edge energy pulse; parallax (cut first)
 
 ## 7. How to verify
 ```

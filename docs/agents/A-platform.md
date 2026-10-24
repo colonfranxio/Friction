@@ -4,7 +4,7 @@ You are **Agent A**, one of four Claude Code agents building **Friction** in par
 
 ## 0. Read first (in this order)
 1. `AGENTS.md`: ownership and working rules (binding).
-2. `PLAN.md`: the whole plan; your row in §5 and §6.
+2. `PLAN.md`: the whole plan; your column in §5 (v5, simplified).
 3. `docs/contracts.md`: **the behavior you implement.** §4 (`/intercept`) is the most important part of the whole product.
 4. `packages/shared/src/*`: types, `ENDPOINTS`, request/response shapes, rules, seed, fakes.
 5. `scripts/mock-api.ts`: a **working reference implementation** of every endpoint (in-memory). Port its logic; don't reinvent it.
@@ -74,31 +74,25 @@ apps/api/
   - Don't bind the server to `'localhost'`. Leave `hostname` unset (or `'::'`) so `http://127.0.0.1:8787` works.
   - Package scripts: no env-var prefixes or shell builtins.
 
-## 6. Tasks and exit criteria
+## 6. Tasks and exit criteria (PLAN.md v5: 3 checkpoints)
+Your API serves the **must-haves** in PLAN.md §1. The sandbox chat (`POST /chat`) is now the **main demo surface**, so treat `/chat` as critical. Heartbeat is cut (keep the route as a trivial 204 if convenient).
 
-### CP1 (target T+3h): every endpoint on fakes
-- [ ] Hono server boots on 8787; `GET /health` returns `{ok, contract_version, mode:{intelligence:'fake', demo, server:'api'}}`
+### CP1 (T+3h): every endpoint on fakes
+- [ ] Hono boots on 8787; `GET /health` → `{ok, contract_version, mode:{intelligence:'fake', demo, server:'api'}}`
 - [ ] JSON store seeds on first run and survives a restart
-- [ ] All endpoints in `ENDPOINTS` implemented with the fakes, matching the mock's behavior
-- [ ] SSE `/events` delivers `student_state`, `bypass`, `activity`, `tree_updated`
-- [ ] **`pnpm smoke` passes against :8787** (`pnpm dev:api` in one terminal, `pnpm smoke` in another)
-- [ ] Endpoint tests (`app.request`) cover: intercept happy path, pending-quiz precedence, stickiness, passthrough, bypass 409, edge cycle 409, demo reset, error shape
+- [ ] All endpoints in `ENDPOINTS` match the mock's behavior (with fakes), **including `/chat` streaming** and SSE `/events`
+- [ ] **`pnpm smoke` passes against :8787**
+- [ ] Endpoint tests (`app.request`): intercept happy path, pending-quiz precedence, stickiness, passthrough, bypass 409, edge cycle 409, demo reset, error shape
 
-### CP2 (target T+8h): real intelligence
-- [ ] `USE_REAL_INTELLIGENCE=1` uses `createIntelligence()` (once B is merged at CP1/CP2; until then it still returns fakes, which is fine)
-- [ ] `/trees/parse` live path + demo cache both work; a non-demo PDF creates a new tree and moves the demo student to it
-- [ ] `/chat` streams with headers and stores `llm_response`
-- [ ] `pnpm smoke` passes with `USE_REAL_INTELLIGENCE=1` and a real `ANTHROPIC_API_KEY`
+### CP2 (T+9h): full demo with real Claude
+- [ ] `USE_REAL_INTELLIGENCE=1` uses `createIntelligence()`
+- [ ] `/trees/parse`: demo cache + live path
+- [ ] `/chat` streams real Claude replies with the `X-Friction-*` headers and saves `llm_response` (that saved reply is the quiz text for grading the next sandbox turn)
+- [ ] `pnpm smoke` passes 3× in a row with real Claude
 
-### CP3 (target T+14h): robust demo loop
-- [ ] Late grade applied and pushed via SSE (test it with a slow fake: wrap `evaluateExchange` with a delay above the budget)
-- [ ] Per-student mutex prevents double grading (test: two concurrent intercepts)
-- [ ] Clear 400s for missing fields and 404s for bad IDs; no unhandled rejections crash the process
-- [ ] Smoke passes 3× in a row on merged `main`
-
-### CP4 (target T+20h): polish + freeze
-- [ ] `/heartbeat` updates `last_seen_at` and emits `student_seen`
-- [ ] Startup banner prints the URLs and mode; the README section in your status file explains how to run it
+### CP3 (T+16h): polish + freeze
+- [ ] Late grade applied and pushed via SSE (test with a slow fake); per-student mutex (test with two concurrent intercepts)
+- [ ] Clear 400/404s; no unhandled rejections; one log line per intercept (node, level, classify ms, grade ms, verdict)
 
 ## 7. How to verify
 ```
