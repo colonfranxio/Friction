@@ -3,6 +3,7 @@ import type { Config } from './env';
 import type { EventBus } from './events';
 import type { KeyedMutex } from './lib/mutex';
 import type { InterceptService } from './services/intercept';
+import type { PromptTokens } from './services/prompt-tokens';
 import type { DemoMatcher } from './services/demo-cache';
 import type { Store } from './store/store';
 
@@ -15,6 +16,8 @@ export interface Ctx {
   store: Store;
   bus: EventBus;
   mutex: KeyedMutex;
+  /** One-use tokens from prompt-scoped /bypass (contract v4). */
+  promptTokens: PromptTokens;
   demoMatcher: DemoMatcher;
   interceptService: InterceptService;
 }

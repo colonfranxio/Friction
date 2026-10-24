@@ -10,9 +10,12 @@ export function demoRoutes(app: Hono, ctx: Ctx) {
   app.post('/demo/reset', async (c) => {
     if (!config.demo) throw new HttpError(404, 'demo_only', 'DEMO_MODE is off');
     const b = ((await readJson<DemoResetRequest>(c)) ?? {}) as DemoResetRequest;
+    // Reset invalidates the affected one-use prompt-bypass tokens.
     if (b.full || !b.student_id) {
+      ctx.promptTokens.clear();
       store.reset();
     } else {
+      ctx.promptTokens.clearStudent(b.student_id);
       const db = store.db;
       const u = db.users.find((x) => x.id === b.student_id);
       if (!u) throw notFound('student');
