@@ -50,6 +50,8 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
    - Ask (B): the real grader prompt treats a repeated or re-phrased question as `not_an_answer`, never `correct`; add it to the harness.
    - Not fixable in the extension: the server grades whenever a quiz is pending.
 
+3. **FYI (fixed in the extension, no change needed):** a new claude.ai chat has no uuid until the first message, so the extension used to send `conversation_id: null`. Under §4.1 that grades against the latest open quiz from *any* chat (10-min window), so the same question in a second new chat counted as an answer → L4. The extension now gives each new chat its own id at its first send and aliases the uuid claude.ai assigns afterwards (`src/lib/conversation.ts`). Other clients that send null still hit §4.1.
+
 ## Dependency changes
 - `happy-dom` (dev, extension only).
 

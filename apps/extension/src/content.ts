@@ -6,6 +6,7 @@
 import { EXTENSION_TIMEOUT_MS } from '@friction/shared';
 import type { InterceptRuntimeResult } from './background-types';
 import { mountBadge, type BadgeState } from './lib/badge';
+import { createConversationTracker } from './lib/conversation';
 import { startHidingInjected } from './lib/hide-injected';
 import type { BypassResendResult, BypassResult, RuntimeRequest, StatusResponse, TabRequest } from './lib/messages';
 import { installSendInterceptor, type SendMode } from './lib/send-interceptor';
@@ -42,6 +43,21 @@ let lastFriction: { raw: string; node_id: string; concept: string | null } | nul
 let bypassArmed: string | null = null;
 let pendingRaw = '';
 
+const conversations = createConversationTracker({
+  idFromPath: site.conversationIdFromPath,
+  getPath: () => location.pathname,
+  newId: () => crypto.randomUUID(),
+  store: (() => {
+    try {
+      return window.sessionStorage;
+    } catch {
+      return null;
+    }
+  })(),
+});
+// claude.ai is a single-page app: watch for the new chat's URL to appear.
+setInterval(() => conversations.onPath(location.pathname), 500);
+
 function badgeFor(mode: SendMode, r: InterceptRuntimeResult | null): BadgeState {
   if (mode === 'bypassed') return { kind: 'bypassed', concept: null, remaining: null };
   if (mode === 'not-sent') return { kind: 'ready' }; // send was ignored (e.g. Claude still replying); original text restored
@@ -69,7 +85,7 @@ const interceptor = installSendInterceptor({
     send<InterceptRuntimeResult>({
       type: 'friction:intercept',
       raw_prompt: raw,
-      conversation_id: site.conversationIdFromPath(location.pathname),
+      conversation_id: conversations.idForSend(),
       previous_assistant_text: site.lastAssistantText(document),
     })
   ),
