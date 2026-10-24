@@ -8,18 +8,22 @@ import { createFrictionClient, DEMO_PROMPTS, SEED_IDS } from '@friction/shared';
 
 const dashboardUrl = process.env.DASHBOARD_TEST_URL ?? 'http://127.0.0.1:5173';
 const api = createFrictionClient(process.env.DASHBOARD_TEST_API ?? 'http://127.0.0.1:8788');
-const artifacts = fileURLToPath(new URL('./artifacts/', import.meta.url));
+const artifacts = process.env.DASHBOARD_EVIDENCE_DIR ?? fileURLToPath(new URL('./artifacts/v4-demo/', import.meta.url));
 const browser = await chromium.launch(process.env.BROWSER_PATH ? { executablePath: process.env.BROWSER_PATH } : { channel: 'chrome' });
 const errors: string[] = [];
 const useEffectSelector = `[data-concept="${SEED_IDS.nodes.useEffect}"]`;
+let acceptanceTimeout = 15000;
 async function waitFor(page: Page, check: () => Promise<boolean>, description: string) {
-  for (let n = 0; n < 150; n++) {
+  for (let n = 0; n < acceptanceTimeout / 100; n++) {
     if (await check()) return;
     await page.waitForTimeout(100);
   }
   throw new Error(`Timed out: ${description}`);
 }
 try {
+  const health = await api.health();
+  if (health.mode.intelligence === 'real') acceptanceTimeout = 120000;
+  assert.ok(health.mode.server === 'mock' || process.env.DASHBOARD_TEST_EXCLUSIVE === '1', 'An exclusive API window must be scheduled before destructive real-API browser checks.');
   await mkdir(artifacts, { recursive: true });
   await api.demoReset({ full: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 960 }, reducedMotion: 'reduce' });
@@ -52,10 +56,14 @@ try {
     await sandbox.getByRole('button', { name: 'Send message' }).click();
     await waitFor(sandbox, () => sandbox.getByRole('button', { name: 'Send message' }).isEnabled().then((value) => !value), 'stream started');
     await waitFor(sandbox, () => sandbox.getByRole('textbox', { name: 'Chat message' }).isEnabled(), 'reply completed');
+    assert.equal(await sandbox.locator('.chat-bubble.assistant').last().getAttribute('data-reply-status'), 'complete');
   };
   await send(DEMO_PROMPTS.question);
-  assert.match(await sandbox.locator('.chat-bubble.assistant').last().innerText(), /dependency array.*\?/s);
+  const firstReply = await sandbox.locator('.chat-bubble.assistant > div').last().innerText();
+  assert.ok(firstReply.trim().length > 20);
+  if (health.mode.intelligence === 'fake') assert.match(firstReply, /dependency array.*\?/s);
   assert.match(await sandbox.locator('.turn-context').innerText(), /L1 · Socratic/);
+  assert.equal(await sandbox.locator('[data-quiz-attached]').getAttribute('data-quiz-attached'), 'true');
   await sandbox.screenshot({ path: resolve(artifacts, 'v5-CP1-sandbox-L1.png'), fullPage: true });
   await send(DEMO_PROMPTS.correctAnswer);
   for (const page of [educator, student, sandbox]) {
@@ -68,13 +76,22 @@ try {
   await send(DEMO_PROMPTS.question);
   assert.notEqual(requests[0].conversation_id, requests[2].conversation_id);
   assert.equal(requests[2].messages.length, 1);
-  assert.match(await sandbox.locator('.chat-bubble.assistant').innerText(), /useEffect\(\(\)/);
+  if (health.mode.intelligence === 'fake') assert.match(await sandbox.locator('.chat-bubble.assistant').innerText(), /useEffect\(\(\)/);
+  else assert.ok((await sandbox.locator('.chat-bubble.assistant > div').innerText()).trim().length > 20);
   assert.match(await sandbox.locator('.turn-context').innerText(), /L4 · Normal/);
   await sandbox.getByRole('button', { name: 'New chat' }).click();
   await send(DEMO_PROMPTS.bypassQuestion);
   await sandbox.getByRole('button', { name: 'Use bypass (3 left)', exact: true }).click();
   await waitFor(sandbox, async () => (await sandbox.locator('.sandbox-bypass').innerText()).includes('2 left'), 'quota decrement');
   await educator.waitForSelector('.bypass-toast');
+  await waitFor(sandbox, () => sandbox.getByRole('textbox', { name: 'Chat message' }).isEnabled(), 'bypass completed');
+  const afterBypass = await api.getStudent(SEED_IDS.demoStudent);
+  const promptScope = (await sandbox.locator('.sandbox-bypass').innerText()).includes('this prompt only');
+  assert.equal(afterBypass.states.find((state) => state.node_id === SEED_IDS.nodes.context)?.paused, !promptScope);
+  if (promptScope) {
+    assert.match(await sandbox.locator('.turn-context').innerText(), /L4 · Normal/);
+    assert.equal(await sandbox.locator('[data-quiz-attached]').getAttribute('data-quiz-attached'), 'false');
+  }
   assert.match(await educator.locator('.bypass-toast').innerText(), /Alex Chen used a bypass.*Context API · 2 left/s);
   await educator.screenshot({ path: resolve(artifacts, 'v5-CP2-educator-bypass.png'), fullPage: true });
   await api.bypass({ student_id: SEED_IDS.demoStudent, node_id: SEED_IDS.nodes.jsx });
@@ -91,5 +108,5 @@ try {
   await sandbox.screenshot({ path: resolve(artifacts, 'v5-CP2-mobile.png'), fullPage: true });
   assert.equal(await sandbox.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'mobile horizontal overflow');
   assert.deepEqual(errors, [], 'browser runtime errors');
-  console.log('PASS: upload, L1 stream, answer → live L4 in all three views, new chat → full answer, bypass + toast, quota exhaustion, reset, mobile.');
+  console.log(`PASS (${health.mode.server}/${health.mode.intelligence}): upload, reply transport/metadata, live L4, new chat, bypass + toast, quota exhaustion, reset, mobile. Real-model semantic acceptance and human rehearsal remain separate.`);
 } finally { await browser.close(); }
