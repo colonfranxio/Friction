@@ -9,17 +9,17 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
-develop-eggs/
+/develop-eggs/
 dist/
-downloads/
-eggs/
+/downloads/
+/eggs/
 .eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
+/lib/
+/lib64/
+/parts/
+/sdist/
+/var/
+/wheels/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
@@ -37,7 +37,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
-htmlcov/
+/htmlcov/
 .tox/
 .nox/
 .coverage
@@ -50,7 +50,7 @@ coverage.xml
 *.lcov
 .hypothesis/
 .pytest_cache/
-cover/
+/cover/
 
 # Translations
 *.mo
@@ -63,7 +63,7 @@ db.sqlite3
 db.sqlite3-journal
 
 # Flask stuff:
-instance/
+/instance/
 .webassets-cache
 
 # Scrapy stuff:
@@ -74,13 +74,13 @@ docs/_build/
 
 # PyBuilder
 .pybuilder/
-target/
+/target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
 
 # IPython
-profile_default/
+/profile_default/
 ipython_config.py
 
 # pyenv
@@ -139,7 +139,7 @@ celerybeat.pid
 *.pid
 
 # RabbitMQ
-mnesia/
+/mnesia/
 rabbitmq/
 rabbitmq-data/
 
@@ -153,9 +153,9 @@ activemq-data/
 .env
 .envrc
 .venv
-env/
-venv/
-ENV/
+/env/
+/venv/
+/ENV/
 env.bak/
 venv.bak/
 
@@ -220,6 +220,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 # --- Node / Friction monorepo ---
+# NOTE: Python patterns above are anchored to the repo root (/lib/ etc.) so they never hide
+# source folders like apps/*/src/lib/.
 node_modules/
 .pnpm-store/
 *.tsbuildinfo
