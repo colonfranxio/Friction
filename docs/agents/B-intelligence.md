@@ -125,3 +125,27 @@ pnpm typecheck
 - **A** imports `createIntelligence()` and calls your functions inside a 4s budget. Be fast, throw on failure, never hang (always pass the signal or timeout).
 - The **dashboard (C)** and **extension (D)** never call you directly.
 - Prompt-format changes that would affect others (the `Level:` line, the delimiters) are contract changes. File a change request instead.
+
+## work left to do
+
+This section updates the remaining-work assignment after CP2. Own only `packages/intelligence/**` and your status file on `agent/intelligence`. Your pushed CP3 freeze/cleanup at `a6af828` still needs E's integration review; do not assume pushed work is on `main`.
+
+### Start now, in parallel
+
+- Merge current `main` into your branch, confirm v3 and rerun the actual-B-factory cancellation check. A's quiet-abort lifecycle fix is already merged; preserve B's quiet cancellation and required late grading.
+- Add repeated and rephrased original questions to grader unit tests and the live harness: they must not earn mastery merely by repeating concept keywords. Also retain genuine short answers, question-shaped answers, correct/partial/incorrect/lazy and unrelated-message cases. E independently owns the fake-grader correction; never edit `packages/shared` yourself.
+- Handle and test incomplete model outcomes, especially `max_tokens`, refusal and interrupted streams. Give A a precise failure-versus-cancellation behavior description. Do not silently return a truncated answer as a successful full response.
+- Make only targeted grading/error fixes to the frozen prompts. Rerun the full live harness after any prompt change, retain exact known-good demo prompts and re-freeze them. Reconfirm L1/L2/L4 compliance, demo grading against actual quizzes and L3 >=4/5; record latency as well as pass rates. Do not add unrelated tuning or features.
+
+### Dependencies and order
+
+1. Your grading and SDK tests can run alongside A's endpoint work, C's dashboard work, D's hardening and E's fake-grader/contract work. Do not wait for the bypass API, which you do not own.
+2. Send A/E the streaming failure semantics and any contract needs through your status file/human relay. If shared transport/types must change, wait for E's `CONTRACT READY` commit/version before adopting them. Keep existing interfaces compatible meanwhile.
+3. Push your completed branch and record `B READY` with source SHA, test/harness commands, fresh result provenance, model variable names and remaining limitations. E merges B → A → C → D; all builders then merge E's integrated `main` before final real-model validation.
+
+### Parallel safety and exit criteria
+
+- Use your own existing isolated environment/checkout; never switch branches or install dependencies in another agent's working directory. No new worktrees unless explicitly requested.
+- Use injected SDKs for parallel unit tests; they require no shared services or keys. Serialize harness and latency runs within your environment: they write the same results and concurrent load distorts latency. Never dump credentials or change other agents' bindings. Models come from `MODEL_*`.
+- Add dependencies only to your own package. E owns combined lockfile reconciliation, shared contracts and mock changes.
+- Deliver package tests/typecheck, current frozen-prompt harness results and exact demo prompts. E's real-Claude smoke x3 and browser/human rehearsals are separate gates; a harness pass alone does not close them. Refresh stale status statements about A's now-fixed cancellation defect.

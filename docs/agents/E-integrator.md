@@ -76,3 +76,37 @@ Some branches are developed on Windows. At each merge, reject (send back) change
 - Never weaken a check to make a merge pass. A red smoke test is information. Report it.
 - Never force-push `main`. Never rewrite builders' branches.
 - Never commit `.env`, keys, cookies or tokens.
+
+## work left to do
+
+This is the remaining-work coordination plan after the CP2 review. It supersedes stale assignments above where they conflict. `main` at `7d2beaf` includes A's independently verified cancellation/header fix; the last integrated suite passed 153 tests. Do not reopen that resolved defect. Own shared contracts, reference fakes/mock, verification tools, root configuration/docs, integration and acceptance; never edit builder code or builder status files.
+
+### Phase 1 — all agents start in parallel
+
+- All builders merge the instruction-bearing `main` into their own branches, confirm v3 and update their own status. Use separate existing isolated environments/checkouts; do not run multiple branches in one working directory or create worktrees without an explicit user request.
+- **A:** endpoint interruption tests/failure semantics and bypass test preparation. **B:** repeated/rephrased-question grading regressions, incomplete SDK outcomes and targeted prompt revalidation. **C:** exact v3 quiz-header UI now, plus interruption/recovery tests. **D:** existing consent/chat-isolation/draft-safety hardening and local robustness tests.
+- **E:** review `proposal/e-fake-grader` (`682c085`) rather than blindly cherry-picking its history. Repeating the original question currently produces `correct`/L4 in the fake grader. Fix only the lead-owned behavior, preserving legitimate short and question-shaped answers; add shared regressions and coordinate real-grader cases with B. Do not touch B's implementation.
+- Collect current B/D source tips (`a6af828` and `56a5183` were unmerged at review), ownership, dependencies, test evidence and change requests. Review B's freeze/cleanup and D's mixed hardening/bypass changes; do not merge a semantic mismatch merely because unit tests pass. No CP3 freeze yet.
+
+### Phase 2 — publish shared decisions before cross-agent wiring
+
+This is the required dependency handoff; prepare it promptly while local work continues. Schedule this as a pre-freeze contract checkpoint, not an unannounced change between checkpoints.
+
+1. Reconcile the requested one-prompt bypass with today's concept pause-until-reset behavior. Define quota accounting, pending-quiz cleanup, bypass notification, scope/defaults and client resend behavior. Prefer an additive explicit scope with the legacy concept default preserved for existing clients, rather than silently changing old clients' behavior. A owns API implementation; C/D own their UIs and sends.
+2. Agree with A/B/C how interrupted or truncated responses become observable to the client. Today a mid-stream model error can return a partial HTTP 200 body that C marks complete. Specify failure/cancellation/completion semantics and any opt-in/versioned transport needed; do not silently replace the existing `text/plain` response contract. B owns SDK stop-reason handling, A the HTTP lifecycle, C the visible interrupted/retry state.
+3. E alone updates shared types/client/constants, mock behavior, relevant smoke checks and contract/changelog/version if needed. Preserve existing signatures and required late-grade behavior. Test both compatibility and the new cases; never weaken assertions to get a merge through.
+4. Publish a `CONTRACT READY` commit/version plus a file-to-owner checklist in the checkpoint report and relay it through the human. Builders merge this `main` commit. A can wire the new API while C/D work against E's mock **in parallel**. A then publishes `API READY` with its branch SHA/tests; live C/D integration waits for that handoff. E never commits A's implementation itself.
+
+### Phase 3 — integration and real acceptance
+
+- Builders push `B READY`, `A READY`, `C READY`, `D READY` in their status/human handoffs, including exact SHA, contract confirmation, commands/results, environment/mode and remaining gaps. E collects these in the established checkpoint flow and merges **B → A → C → D**, checking ownership, frozen installation/typecheck and regressions after each merge. Keep failed merges isolated and preserve local/user work before any rollback; never force-push or rewrite builder history.
+- Fetch `agent/*` refs explicitly if the checkout has a main-only refspec. Verify source-tip preservation and resolve only the combined lockfile; send builder defects to their owners. Update stale plan/status expectations through owner handoffs rather than editing builders' status files.
+- At every checkpoint spawn an independent read-only verification agent: Sonnet 5.5 medium if available, otherwise the user-agreed `gpt-6.1-sol` medium substitute. The verifier must not switch branches, edit source/refs or reset shared services. Include newly merged regressions in its scope.
+- Run root tests/typecheck, both builds, `scripts/verify-chat-abort.ts`, updated API/mock smoke, extension API tests and browser checks on final merged code. Execute destructive browser/smoke suites sequentially per backend/store. Preserve generated evidence and restore only test-generated changes to tracked artifacts.
+- Use the credentialed demo machine for the final real gates, or apply the already-declared secure cloud bindings. Do not request duplicate secrets or paste values into chat/files. A's reported local smoke x3 is external evidence; rerun **three consecutive real-Claude smoke passes on the final merged revision**, plus all six real-model visual must-haves and a human rehearsal. Record where and against which SHA each check ran; fake/injected tests do not satisfy real-model gates. Ask for the Windows install/typecheck/mock-smoke run if Windows is supported.
+
+### Shared-resource rules and final freeze
+
+- In a shared host, reserve A API 8787, C mock 8788/dashboard 5173, D mock 8789, E private mock 8790/dashboard 5174. Ports alone do not isolate data: never launch two API processes against the same JSON store. E's full API integration/rehearsal needs an exclusive window, with A/C/D test writers paused or using their own isolated stores/environments. Never kill another agent's service or reset their data without coordination. Do not perform concurrent branch switches, installs or merges in one checkout.
+- Keep package dependency edits local to each builder package and let E reconcile lockfiles. Coordinate model-harness runs to avoid overwriting results or distorting latency. Credentials stay in secure bindings/ignored local config; model IDs stay in `MODEL_*`.
+- Finish CP3 with B's final harness/L3 evidence, regression validation of C's already-built polish, and D's human live GO/NO-GO if retaining the bonus. Complete **two rehearsals and the backup recording**, update the runbook/checkpoint reports and current instructions, then freeze contracts/prompts. Any later bug fix requires fresh affected validation and prompt harness reruns when applicable. Do not spend time on extra decoration, optional editing or new features while must-haves or acceptance gates remain red.
