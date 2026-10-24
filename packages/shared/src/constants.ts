@@ -2,7 +2,7 @@
  * Frozen constants shared by every workstream.
  * Changes only at checkpoints, additive only. See docs/contracts.md.
  */
-export const CONTRACT_VERSION = 1;
+export const CONTRACT_VERSION = 2;
 
 export const PORTS = { api: 8787, mock: 8788, dashboard: 5173 } as const;
 /** 127.0.0.1, not localhost: on Windows, Node's fetch may resolve localhost to ::1 first and get refused. */

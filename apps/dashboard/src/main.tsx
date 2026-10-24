@@ -1,5 +1,6 @@
-// OWNER: Agent C (Dashboard). See docs/agents/C-dashboard.md and docs/ui-layouts.md.
-// Placeholder. Replace with the router + pages.
+import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import './styles/index.css';
 
-createRoot(document.getElementById('root')!).render(<p>Friction dashboard placeholder (Agent C).</p>);
+createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

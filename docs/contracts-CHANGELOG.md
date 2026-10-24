@@ -2,6 +2,11 @@
 
 Additive changes only. Each entry: version, date, what changed, who asked.
 
+## v2 (CP1, 2026-10-24)
+- B requested optional `EvaluateInput.signal?: AbortSignal`; accepted as an additive interface change. B's implementation already forwards this field to its SDK request. A's current callers remain compatible without passing it. The mock/shared fake accepts the extended input without network work.
+- Cancellation means explicit operation cancellation, never automatic cancellation when the intercept response budget expires: late-grade behavior remains required. No HTTP shape, progression rule or prompt format changed.
+- C's requested exact quiz-attachment chat header is deferred to coordinated CP2 work in shared/mock (E), API (A) and dashboard (C). The current UI workaround remains supported; no unsupported header is advertised.
+
 ## v1 verification amendment (E, pre-CP1, 2026-10-24): no shape changes
 - Fixed the reference mock's parse path to emit the already-required `tree_updated` SSE event after restoring the seed tree (contracts §8–9).
 - Extended the smoke gate to observe parse, mastery and bypass SSE events, exercise the sandbox's three-turn chat flow, check chat metadata/CORS, and check educator HTTP/SSE privacy.
