@@ -13,7 +13,7 @@ describe('buildMapUrl', () => {
   it('rejects non-http(s), unsupported hosts, garbage and missing student', () => {
     expect(buildMapUrl('ftp://localhost:5173', STUDENT).ok).toBe(false);
     expect(buildMapUrl('javascript:alert(1)', STUDENT).ok).toBe(false);
-    const other = buildMapUrl('https://evil.example.com', STUDENT);
+    const other = buildMapUrl('http://evil.example.com', STUDENT);
     expect(other.ok).toBe(false);
     if (!other.ok) expect(other.reason).toMatch(/localhost or 127\.0\.0\.1/);
     expect(buildMapUrl('not a url', STUDENT).ok).toBe(false);
