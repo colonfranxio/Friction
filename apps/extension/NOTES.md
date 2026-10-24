@@ -8,11 +8,11 @@ All site-specific code is in `src/site/claude.ts`. Selectors are tried in order;
 
 | What | Selectors (in order) | Confirmed? |
 |---|---|---|
-| Composer | `div.ProseMirror[contenteditable="true"]`, `[contenteditable="true"][role="textbox"]`, `fieldset [contenteditable="true"]` | ❌ pending live test |
-| Send button | `button[aria-label*="Send" i]`, `fieldset button[type="submit"]` (fallback: synthetic Enter) | ❌ |
+| Composer | `div.ProseMirror[contenteditable="true"]`, `[contenteditable="true"][role="textbox"]`, `fieldset [contenteditable="true"]` | ✅ rewrite works (2026-10-24) |
+| Send button | `button[aria-label*="Send" i]`, `fieldset button[type="submit"]` (fallback: synthetic Enter) | ✅ send works (2026-10-24) |
 | Assistant messages | `[data-testid="assistant-message"]`, `.font-claude-response`, `.font-claude-message`, `[data-is-streaming]` | ❌ |
 | Conversation id | UUID in `location.pathname` (`/chat/<uuid>`); `null` on a new chat | ❌ |
-| Composer rewrite | synthetic paste → `execCommand('insertText')` → direct DOM write | ❌ |
+| Composer rewrite | synthetic paste → `execCommand('insertText')` → direct DOM write | ✅ one of them works (console shows which) |
 
 ## Live test (human, ~5 min)
 1. `pnpm dev:mock:ext` (mock API on 8789; leave it running).
