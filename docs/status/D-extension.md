@@ -39,6 +39,11 @@ Page-level fetch patch, postMessage bridge, SSE parser, network fixtures, `/resp
 ## Lead-level fix made along the way (on main, commit 688d316)
 The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/*/src/lib/` would never be committed. That hit A, C and me. The Python patterns are now anchored to the repo root. My earlier pushes were missing `src/lib/*`; this push includes them.
 
+## CP2 integration followups (from E's CP2 report) and session handover
+- [x] Contract **v3** confirmed: only adds the optional `X-Friction-Quiz-Attached` header on sandbox `/chat`; no extension impact.
+- [x] `handleBypass` refuses when consent is off (`{ok:false, code:'disabled'}`) with zero fetches, covering queued/programmatic messages too. Regression test added.
+- Handover: a second Agent D session briefly worked in this worktree (commits 6137ea1 per-prompt bypass + badge Bypass button, a1e5731 strip pasted friction blocks, f6c75db per-chat conversation ids). Those were reviewed and kept by the current Agent D session. Its edit to E-owned `packages/shared` (682c085, fake grader treats a re-asked question as `not_an_answer`, human-approved) was **moved to branch `proposal/e-fake-grader`** for E to review/cherry-pick, and reverted here so this branch only touches D-owned paths.
+
 ## Change requests (contract)
 1. **Per-prompt bypass (human/product decision, 2026-10-24).** A bypass should skip friction for **that one prompt only**, still use one quota and still notify the educator (with the concept). Today §7 sets `paused = true`, so every later intercept on the node returns L4 until `/demo/reset`.
    - Ask (A + E, additive): `POST /bypass` stops setting `paused` (or takes an optional `scope: 'prompt' | 'concept'`, default `'prompt'`). Keep: quota −1, 409 at 0, close the pending quiz, `BypassEvent`, `bypass` SSE event with `student_name` + `concept_name`.

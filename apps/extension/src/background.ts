@@ -110,6 +110,8 @@ async function handleStatus(): Promise<StatusResponse> {
 
 async function handleBypass(m: Extract<RuntimeRequest, { type: 'friction:bypass' }>): Promise<BypassResult> {
   const s = await getSettings();
+  // Consent off: contract §11, no API calls at all (guards queued/programmatic messages too, not only the buttons).
+  if (!s.enabled) return { ok: false, code: 'disabled', message: 'Friction is turned off.' };
   const nodeId = m.node_id ?? (await getLastIntercept())?.node_id;
   if (!nodeId) return { ok: false, code: 'no_concept', message: 'Ask Claude something first so Friction knows the concept.' };
   try {

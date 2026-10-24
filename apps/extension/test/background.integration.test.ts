@@ -147,6 +147,18 @@ describe('background ⇄ mock API', () => {
     store.enabled = true;
   });
 
+  it('bypass makes no API call when consent is off', async () => {
+    store.enabled = false;
+    const realFetch = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async (...a: Parameters<typeof fetch>) => { calls++; return realFetch(...a); }) as typeof fetch;
+    const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect });
+    globalThis.fetch = realFetch;
+    store.enabled = true;
+    expect(calls).toBe(0);
+    expect(b).toEqual({ ok: false, code: 'disabled', message: 'Friction is turned off.' });
+  });
+
   it('the consent toggle stops all API calls', async () => {
     store.enabled = false;
     const r = await call<InterceptRuntimeResult>({ type: 'friction:intercept', raw_prompt: DEMO_PROMPTS.question, conversation_id: null, previous_assistant_text: null });
