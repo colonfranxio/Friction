@@ -3,8 +3,8 @@
 **Owned by Agent A. Only this agent edits this file.**
 
 - Contract version confirmed: 1 (PLAN.md v5, merged from `origin/main` at 688d316 before starting)
-- Current checkpoint: CP1 done, pending verification and merge by E. Not started on CP2.
-- Last updated: 2026-10-24
+- Current checkpoint: CP1 done and pushed (E has it in CP1-preflight). CP2 is **blocked on B's real parse/chat and a local `.env` key**; everything on my side that can be done without them is done (see "CP2 progress").
+- Last updated: 2026-10-24 (merged `main` 999db80 into this branch; E's 16-step smoke passes 3x against :8787 on fakes)
 
 ## Exit criteria: CP1 (T+3h): every endpoint on fakes
 - [x] Hono boots on 8787; `GET /health` → `{ok, contract_version, mode:{intelligence:'fake', demo, server:'api'}}`. Verified with `curl.exe` against `pnpm dev:api`/`start`.
@@ -25,6 +25,15 @@
 - `/chat` now intercepts the last *user* message even if an assistant message trails it, like the mock (400 only when there's no user message).
 - Added tests: bypass closes a pending quiz, SSE stream.
 - Known gaps: the PDF demo-hash path is untested (no `fixtures/demo-syllabus.pdf` yet); SIGTERM on Windows doesn't flush the store (SIGINT does), and writes are already write-through so the window is tiny.
+
+## CP2 progress (T+9h): full demo with real Claude
+- [x] `USE_REAL_INTELLIGENCE=1` uses `createIntelligence()` (dynamic import in `src/intelligence.ts`; `/health` reports `intelligence:'real'`; boot warns if `ANTHROPIC_API_KEY` is missing). Only B's CP1 pieces (keyword classify, templates, real `evaluateExchange`) exist on `origin/agent/intelligence` (01cb60e); its `parseSyllabus` and `chat` are still the shared fakes there, so nothing real is wired through them yet.
+- [x] `/trees/parse`: demo cache + live path. Demo hash matcher now has direct tests (text with CRLF/LF/whitespace, PDF bytes, no fixtures, and the repo's real `fixtures/demo-syllabus.md`). Live path tests cover validation, cycle/dangling-edge dropping, demo student moved to L1, 502/504.
+- [x] `/chat`: streams with `X-Friction-*` headers and saves `llm_response`; a test shows the saved reply is the `quiz_text` used to grade the next sandbox turn (E asked for this: the smoke can't prove it).
+- [x] E's 16-step `pnpm smoke` (sandbox chat, live SSE, educator privacy) passes 3 times in a row against :8787 with fakes.
+- [ ] **`pnpm smoke` 3x with real Claude: not run.** Needs (1) `ANTHROPIC_API_KEY` + `MODEL_*` in a local `.env` (human), and (2) B's CP2 (real parse, LLM classify, streaming chat) merged by E. Until then `USE_REAL_INTELLIGENCE=1` would mix real grading with fake parse/chat.
+- [ ] Verification agent for CP2: deliberately not spawned yet; there's nothing new to verify until the two items above exist. I'll spawn it as soon as real smoke can run.
+- Note for E/B (from CP1-preflight item 1): I never abort `evaluateExchange` at the intercept deadline; late grades keep running and apply. If `EvaluateInput.signal` is adopted, I'll pass a signal that is only aborted on server shutdown.
 
 ## Not done yet
 - CP2: `USE_REAL_INTELLIGENCE=1` is wired (dynamic import of `@friction/intelligence`'s `createIntelligence()`), but B's real implementation isn't merged, so it still returns the fakes. Live-parse and `/chat` against real Claude are untested.
