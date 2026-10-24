@@ -7,7 +7,15 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const send = <T,>(m: RuntimeRequest) => chrome.runtime.sendMessage(m) as Promise<T>;
 
 async function render() {
-  const s = await send<StatusResponse>({ type: 'friction:status' });
+  let s: StatusResponse;
+  try {
+    s = await send<StatusResponse>({ type: 'friction:status' });
+  } catch {
+    $('status').textContent = 'Offline';
+    $('status-dot').style.background = '#9CA3AF';
+    $<HTMLButtonElement>('bypass').disabled = true;
+    return;
+  }
   $('status').textContent = !s.enabled ? 'Paused' : s.online ? 'Online' : 'Offline';
   $('status-dot').style.background = s.online ? '#10B981' : '#9CA3AF';
   $<HTMLInputElement>('enabled').checked = s.enabled;
@@ -43,9 +51,16 @@ async function init() {
   });
 
   $('bypass').addEventListener('click', async () => {
+    const btn = $<HTMLButtonElement>('bypass');
+    if (btn.disabled) return;
+    btn.disabled = true; // no double bypass on double-click
     $('msg').textContent = '';
-    const r = await send<BypassResult>({ type: 'friction:bypass' });
-    $('msg').textContent = r.ok ? `Bypass used. ${r.remaining_quota} left. Your teacher has been notified.` : r.message;
+    try {
+      const r = await send<BypassResult>({ type: 'friction:bypass' });
+      $('msg').textContent = r.ok ? `Bypass used. ${r.remaining_quota} left. Your teacher has been notified.` : r.message;
+    } catch {
+      $('msg').textContent = 'Friction is unavailable. Reload the extension.';
+    }
     await render();
   });
 

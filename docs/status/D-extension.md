@@ -8,7 +8,7 @@
 
 ## CP1 exit criteria
 - [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
-- [x] Unit tests pass (34): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
+- [x] Unit tests pass (34 at CP1; 35 now incl. 9 in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
 - [x] Background tests against the real mock (in-process HTTP) pass: status, L1 intercept, correct answer graded via `previous_assistant_text` → L4, passthrough, bypass + paused, concept kept after off-topic, consent off (zero fetches), offline fail-open.
 - [x] **Human live try → GO.** On real claude.ai with the mock (8789), the useEffect question got a Socratic L1 reply: no code, asked the student to explain, one hint about the dependency array, ended with a check question. So the composer rewrite + send work on the live page.
 - (moved to CP2) Full loop on claude.ai: answer → L4, new chat → full answer, badge text, block hidden in the user bubble.
@@ -19,6 +19,9 @@
 - [x] Injected block hidden in rendered messages (`hide-injected.ts`, unit tested; never touches the composer).
 - [ ] **Works against the real API on 8787.** BLOCKED on Agent A (no `agent/platform` branch on origin yet). Ready as one command: `pnpm --filter @friction/extension test:api` (runs the 9 service-worker integration tests against `http://127.0.0.1:8787`, after a demo reset). Verified working against a live mock on 8789.
 - [ ] Human, ~3 min: on claude.ai, answer the check question (→ L4), then ask again in a new chat (→ full answer); report the badge text and whether your sent message shows the `⟦friction⟧` block. This also confirms the assistant-message selector (used as quiz text for grading).
+
+## CP2 verification (independent agent, Sonnet 5.5, fresh clone)
+Verdict: **CP2 PASS for everything Agent D controls**; the remaining items are legitimately blocked (Agent A's API; the human check). `test:api` confirmed against a live mock, including the clear error when DEMO_MODE is off. Fixed from its findings: popup bypass button disabled while in flight (no double bypass); popup shows "Offline" instead of hanging when the service worker is unavailable; `test:api` says "is the API running?" when it can't connect.
 
 ## CP1 verification (independent agent, Sonnet 5.5, fresh clone of the pushed branch)
 Verdict: **CP1 code-complete PASS**. Ownership is clean, `src/lib` is tracked, typecheck/test/build pass in a fresh clone, no leftover network interception, consent-off makes zero API calls, Windows-safe. The live try is legitimately human-only.
@@ -43,7 +46,8 @@ None.
 - `happy-dom` (dev, extension only).
 
 ## Blockers / needs from the human
-1. Live try on claude.ai (≈5 min, NOTES.md). If it fails, run the console snippet in NOTES.md and paste the output.
+1. Agent A's API (`agent/platform`), then run `pnpm --filter @friction/extension test:api`.
+2. Human, ~3 min on claude.ai: answer the check question (→ L4), new chat same question (→ full answer); report the badge text and whether the sent message shows the block.
 
 ## How to run and verify my part
 ```

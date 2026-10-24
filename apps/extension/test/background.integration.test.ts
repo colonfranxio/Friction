@@ -44,7 +44,9 @@ beforeAll(async () => {
     await new Promise((r) => setTimeout(r, 50));
   }
   // Start from seed state (needs DEMO_MODE=1 on the server).
-  const reset = await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ full: true }) });
+  const reset = await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ full: true }) }).catch(() => {
+    throw new Error(`cannot reach ${API}: is the API running?`);
+  });
   if (!reset.ok) throw new Error(`demo reset failed (${reset.status}): is DEMO_MODE=1 on ${API}?`);
   store.apiUrl = API;
   store.studentId = SEED_IDS.demoStudent;
