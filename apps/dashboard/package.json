@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
     "test:browser": "tsx test/demo.browser.ts",
-    "test:browser:resilience": "tsx test/resilience.browser.ts"
+    "test:browser:resilience": "tsx test/resilience.browser.ts",
+    "test:browser:polish": "tsx test/polish.browser.ts"
   },
   "dependencies": {
     "@friction/shared": "workspace:^",

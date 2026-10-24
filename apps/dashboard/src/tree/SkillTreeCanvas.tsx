@@ -21,9 +21,9 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
   const presentation = useMemo(() => treePresentation(bundle, students, studentId), [bundle, students, studentId]);
   const initialNodes = useMemo<SkillFlowNode[]>(() => layoutTree(bundle).map((concept) => ({
     id: concept.id, type: 'skill', position: concept.position,
-    data: { concept, level: presentation.levels[concept.id] ?? 1, status: presentation.statuses[concept.id], count: presentation.focused[concept.id] ?? 0, editing,
+    data: { concept, level: presentation.levels[concept.id] ?? 1, status: presentation.statuses[concept.id], count: presentation.focused[concept.id] ?? 0, editing, viewKey: `${bundle.tree.id}:${studentId ?? 'class'}`,
       onRequired: (level: BloomLevel) => actions?.required(concept.id, level) },
-  })), [bundle, presentation, editing, actions]);
+  })), [bundle, presentation, editing, actions, studentId]);
   const [nodes, setNodes, onNodesChange] = useNodesState<SkillFlowNode>(initialNodes);
   const container = useRef<HTMLDivElement>(null);
   const [flow, setFlow] = useState<ReactFlowInstance<SkillFlowNode>>();
@@ -38,11 +38,17 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
     observer.observe(element);
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, [flow]);
-  useEffect(() => { setNodes(initialNodes); }, [initialNodes, setNodes]);
+  useEffect(() => {
+    // Keep measurements while SSE patches data; dropping them briefly unmounts edges.
+    setNodes((current) => initialNodes.map((next) => {
+      const existing = current.find((node) => node.id === next.id);
+      return existing ? { ...existing, ...next, measured: existing.measured } : next;
+    }));
+  }, [initialNodes, setNodes]);
   const edges: Edge[] = bundle.edges.map((edge) => {
     const status = presentation.statuses[edge.child_node_id];
     return { id: `${edge.parent_node_id}:${edge.child_node_id}`, source: edge.parent_node_id, target: edge.child_node_id,
-      type: 'skill', style: { stroke: `var(--${status === 'locked' ? 'border' : status})`, strokeWidth: 2.5 }, deletable: editing };
+      type: 'skill', data: { status, viewKey: `${bundle.tree.id}:${studentId ?? 'class'}` }, style: { stroke: `var(--${status === 'locked' ? 'border' : status})`, strokeWidth: 2.5 }, deletable: editing };
   });
   const select: NodeMouseHandler<SkillFlowNode> = (_event, node) => onSelect?.(node.id);
   return <div className="canvas-wrap" ref={container}>
