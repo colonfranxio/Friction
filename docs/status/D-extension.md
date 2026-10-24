@@ -8,7 +8,7 @@
 
 ## CP1 exit criteria
 - [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
-- [x] Unit tests pass (34 at CP1; 55 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
+- [x] Unit tests pass (34 at CP1; 57 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
 - [x] Background tests against the real mock (in-process HTTP) pass: status, L1 intercept, correct answer graded via `previous_assistant_text` → L4, passthrough, bypass + paused, concept kept after off-topic, consent off (zero fetches), offline fail-open.
 - [x] **Human live try → GO.** On real claude.ai with the mock (8789), the useEffect question got a Socratic L1 reply: no code, asked the student to explain, one hint about the dependency array, ended with a check question. So the composer rewrite + send work on the live page.
 - (moved to CP2) Full loop on claude.ai: answer → L4, new chat → full answer, badge text, block hidden in the user bubble.
@@ -45,8 +45,15 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
 - [x] Fixes from the CP2-followup verification (fresh clone, PASS): the bypass target is dropped when you switch chats (it could charge the wrong concept and send an old prompt into another chat); a bypass is refused **before** spending quota if you have a different draft in the box or a send is in flight; the "send unmodified once" fallback expires after 2 minutes and on navigation; `cleanPrompt` repeats until stable so nested fragments can't rebuild a marker. Tests added.
 - Handover: a second Agent D session briefly worked in this worktree (commits 6137ea1 per-prompt bypass + badge Bypass button, a1e5731 strip pasted friction blocks, f6c75db per-chat conversation ids). Those were reviewed and kept by the current Agent D session. Its edit to E-owned `packages/shared` (682c085, fake grader treats a re-asked question as `not_an_answer`, human-approved) was **moved to branch `proposal/e-fake-grader`** for E to review/cherry-pick, and reverted here so this branch only touches D-owned paths.
 
+## v4 rollout (contract READY v4)
+- [x] Merged main (v4); `packages/shared` and `scripts/` identical to main.
+- [x] Badge/popup bypass requests **`scope: 'prompt'`** (no binding fields), then the guarded direct resend to claude.ai (consent / current-chat / draft / busy guards and 2-min armed expiry unchanged). Future ordinary sends still get friction.
+- [x] **Old-server honesty:** a pre-v4 server ignores `scope` and pauses the concept. After a prompt-scoped bypass the service worker reads the node's `paused` flag and returns `scope_applied: 'prompt' | 'concept'`; the badge says "concept bypassed" and the popup adds "(This server paused the whole concept until reset.)". Verified for real: run against a still-running v2 mock, the prompt-scope tests saw `concept`; against the v4 mock they see `prompt`.
+- [x] Tests: 57 extension tests (incl. v4 prompt scope → no pause, concept scope → pause); `test:api` 13/13 against the v4 mock on 8789 (restarted to load v4).
+- [ ] Live use against the **real** API waits for A's **API READY** SHA (per E). Until then, a bypass against the real API degrades honestly to concept scope (see above).
+
 ## Change requests (contract)
-1. **Per-prompt bypass (human/product decision, 2026-10-24).** A bypass should skip friction for **that one prompt only**, still use one quota and still notify the educator (with the concept). Today §7 sets `paused = true`, so every later intercept on the node returns L4 until `/demo/reset`.
+1. **Per-prompt bypass: ACCEPTED in contract v4** (`scope:'prompt'`). Original request (2026-10-24): A bypass should skip friction for **that one prompt only**, still use one quota and still notify the educator (with the concept). Today §7 sets `paused = true`, so every later intercept on the node returns L4 until `/demo/reset`.
    - Ask (A + E, additive): `POST /bypass` stops setting `paused` (or takes an optional `scope: 'prompt' | 'concept'`, default `'prompt'`). Keep: quota −1, 409 at 0, close the pending quiz, `BypassEvent`, `bypass` SSE event with `student_name` + `concept_name`.
    - Extension side is done: the badge's **Bypass** button (and the popup's **Bypass this message**) calls `/bypass` for the node of the last friction-ed message, then re-sends that exact prompt unmodified (no `/intercept` call). If the page doesn't take the re-send, the text stays in the composer and the next Send goes out unmodified once.
    - Until the API changes, the concept also stays paused server-side (later prompts on it get L4). Sandbox (C) should switch its bypass button to the same per-prompt behavior.
@@ -67,7 +74,7 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
 
 ## How to run and verify my part
 ```
-pnpm --filter @friction/extension test        # 55 tests
+pnpm --filter @friction/extension test        # 57 tests
 pnpm --filter @friction/extension test:api    # integration tests vs a running API (default :8787)
 pnpm --filter @friction/extension typecheck
 pnpm build:ext                                # → apps/extension/dist

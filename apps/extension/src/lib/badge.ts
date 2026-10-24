@@ -8,7 +8,7 @@ export type BadgeState =
   | { kind: 'offline' }
   | { kind: 'disabled' }
   /** The last message was re-sent without friction (one bypass used). */
-  | { kind: 'bypassed'; concept: string | null; remaining: number | null }
+  | { kind: 'bypassed'; concept: string | null; remaining: number | null; conceptPaused?: boolean }
   /** Bypass failed; show why. */
   | { kind: 'error'; message: string }
   /** The extension was reloaded/updated; this tab's content script is orphaned until the page reloads. */
@@ -31,7 +31,8 @@ export function badgeText(s: BadgeState): { text: string; dot: string } {
       return { text: 'Friction paused', dot: DOT.grey };
     case 'bypassed': {
       const left = s.remaining === null ? '' : ` · ${s.remaining} left`;
-      return { text: `Friction · bypassed${s.concept ? ` · ${s.concept}` : ''}${left}`, dot: DOT.grey };
+      const what = s.conceptPaused ? 'concept bypassed' : 'bypassed';
+      return { text: `Friction · ${what}${s.concept ? ` · ${s.concept}` : ''}${left}`, dot: DOT.grey };
     }
     case 'error':
       return { text: `Friction · ${s.message}`, dot: DOT.amber };

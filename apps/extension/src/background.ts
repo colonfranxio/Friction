@@ -114,9 +114,21 @@ async function handleBypass(m: Extract<RuntimeRequest, { type: 'friction:bypass'
   if (!s.enabled) return { ok: false, code: 'disabled', message: 'Friction is turned off.' };
   const nodeId = m.node_id ?? (await getLastIntercept())?.node_id;
   if (!nodeId) return { ok: false, code: 'no_concept', message: 'Ask Claude something first so Friction knows the concept.' };
+  const scope = m.scope ?? 'prompt'; // v4: per-prompt by default; the extension resends to claude.ai itself (no token fields)
+  const client = createFrictionClient(s.apiUrl);
   try {
-    const r = await createFrictionClient(s.apiUrl).bypass({ student_id: s.studentId, node_id: nodeId });
-    return { ok: true, remaining_quota: r.remaining_quota };
+    const r = await client.bypass({ student_id: s.studentId, node_id: nodeId, scope });
+    let applied: 'prompt' | 'concept' = scope;
+    if (scope === 'prompt') {
+      // A pre-v4 server ignores `scope` and pauses the concept: detect it so the UI tells the truth.
+      try {
+        const st = await client.getStudent(s.studentId);
+        if (st.states.find((x) => x.node_id === nodeId)?.paused) applied = 'concept';
+      } catch {
+        /* can't tell: assume the requested scope */
+      }
+    }
+    return { ok: true, remaining_quota: r.remaining_quota, scope_applied: applied };
   } catch (err) {
     if (err instanceof ApiError) return { ok: false, code: err.code, message: err.code === 'quota_exhausted' ? 'No bypasses left.' : err.message };
     return { ok: false, code: 'offline', message: 'Friction server is unreachable.' };

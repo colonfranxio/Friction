@@ -140,7 +140,7 @@ async function bypassAndResend(): Promise<BypassResendResult> {
   try {
     let r: BypassResult;
     try {
-      r = await send<BypassResult>({ type: 'friction:bypass', node_id: target.node_id });
+      r = await send<BypassResult>({ type: 'friction:bypass', node_id: target.node_id, scope: 'prompt' });
     } catch (e) {
       const message = isContextInvalidated(e) ? 'reload this tab' : 'server unreachable';
       badge.set(isContextInvalidated(e) ? { kind: 'reload' } : { kind: 'error', message });
@@ -153,8 +153,8 @@ async function bypassAndResend(): Promise<BypassResendResult> {
     lastFriction = null;
     const resent = await interceptor.sendUnmodified(target.raw);
     if (!resent) bypassArmed = { text: target.raw, until: Date.now() + ARMED_TTL_MS }; // left in the composer: the next Send (within 2 min) goes out unmodified
-    badge.set({ kind: 'bypassed', concept: target.concept, remaining: r.remaining_quota });
-    return { ok: true, remaining_quota: r.remaining_quota, resent };
+    badge.set({ kind: 'bypassed', concept: target.concept, remaining: r.remaining_quota, conceptPaused: r.scope_applied === 'concept' });
+    return { ok: true, remaining_quota: r.remaining_quota, resent, scope_applied: r.scope_applied };
   } finally {
     bypassing = false;
     badge.setBusy(false);

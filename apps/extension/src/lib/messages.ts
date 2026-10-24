@@ -5,7 +5,7 @@ export type RuntimeRequest =
   | { type: 'friction:intercept'; raw_prompt: string; conversation_id: string | null; previous_assistant_text: string | null }
   | { type: 'friction:status' }
   /** node_id: the concept to bypass (the tab's last friction-ed message); falls back to the last intercept. */
-  | { type: 'friction:bypass'; node_id?: UUID | null };
+  | { type: 'friction:bypass'; node_id?: UUID | null; scope?: 'prompt' | 'concept' };
 
 /** Popup → content script of the active tab. */
 export type TabRequest = { type: 'friction:bypass-resend' };
@@ -34,7 +34,15 @@ export interface StatusResponse {
   paused: boolean;
 }
 
-export type BypassResult = { ok: true; remaining_quota: number } | { ok: false; code: string; message: string };
+/**
+ * scope_applied: what the server actually did. 'concept' when a prompt-scoped request reached a pre-v4 server
+ * (it ignores `scope` and pauses the whole concept), detected by reading the node's paused flag afterwards.
+ */
+export type BypassResult =
+  | { ok: true; remaining_quota: number; scope_applied: 'prompt' | 'concept' }
+  | { ok: false; code: string; message: string };
 
 /** Content script's answer to 'friction:bypass-resend'. resent=false: quota used, text left in the composer, next send goes out unmodified. */
-export type BypassResendResult = { ok: true; remaining_quota: number; resent: boolean } | { ok: false; code: string; message: string };
+export type BypassResendResult =
+  | { ok: true; remaining_quota: number; resent: boolean; scope_applied: 'prompt' | 'concept' }
+  | { ok: false; code: string; message: string };

@@ -115,16 +115,16 @@ describe('background ⇄ mock API', () => {
   it('bypass uses the last intercepted concept and reports the quota', async () => {
     await call({ type: 'friction:intercept', raw_prompt: DEMO_PROMPTS.bypassQuestion, conversation_id: 'conv-bg-4', previous_assistant_text: null });
     const b = await call<BypassResult>({ type: 'friction:bypass' });
-    expect(b).toEqual({ ok: true, remaining_quota: 2 });
+    expect(b).toEqual({ ok: true, remaining_quota: 2, scope_applied: 'prompt' }); // v4 default: per-prompt
     const s = await call<StatusResponse>({ type: 'friction:status' });
-    expect(s.paused).toBe(true);
+    expect(s.paused).toBe(false); // prompt scope never pauses the concept
     expect(s.bypass_quota).toBe(2);
   });
 
   it('bypass targets the node the content script names', async () => {
     const before = await call<StatusResponse>({ type: 'friction:status' });
     const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect });
-    expect(b).toEqual({ ok: true, remaining_quota: (before.bypass_quota ?? 0) - 1 });
+    expect(b).toEqual({ ok: true, remaining_quota: (before.bypass_quota ?? 0) - 1, scope_applied: 'prompt' });
   });
 
   it('off-topic prompts keep the last concept for the bypass button', async () => {
@@ -145,6 +145,26 @@ describe('background ⇄ mock API', () => {
     expect(calls).toBe(0);
     expect(s.enabled).toBe(false);
     store.enabled = true;
+  });
+
+  it('v4: a prompt-scoped bypass spends quota but does NOT pause the concept', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    const before = await call<StatusResponse>({ type: 'friction:status' });
+    const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
+    expect(b.ok).toBe(true);
+    if (!b.ok) return;
+    expect(b.scope_applied).toBe('prompt');
+    expect(b.remaining_quota).toBe((before.bypass_quota ?? 0) - 1);
+    const st = await (await fetch(`${API}/students/${SEED_IDS.demoStudent}`)).json();
+    expect(st.states.find((x: { node_id: string }) => x.node_id === SEED_IDS.nodes.useEffect).paused).toBe(false);
+  });
+
+  it('v4: a concept-scoped bypass pauses the concept and reports it', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.dataFetching, scope: 'concept' });
+    expect(b.ok && b.scope_applied).toBe('concept');
+    const st = await (await fetch(`${API}/students/${SEED_IDS.demoStudent}`)).json();
+    expect(st.states.find((x: { node_id: string }) => x.node_id === SEED_IDS.nodes.dataFetching).paused).toBe(true);
   });
 
   it('bypass makes no API call when consent is off', async () => {
