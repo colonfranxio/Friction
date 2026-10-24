@@ -1,6 +1,6 @@
 # Rules for every Friction agent
 
-You are one of four agents building Friction in parallel. Your personal brief is in `docs/agents/<you>.md`.
+You are one of four agents building Friction in parallel. Your personal brief is in `docs/agents/<you>.md`. The plan is **PLAN.md v5 (simplified)**: the sandbox chat is the main demo, the claude.ai extension is a bonus, there are 3 checkpoints, and **must-haves come before anything else**.
 
 ## Ownership (non-negotiable)
 | Agent | You may edit | Branch |
