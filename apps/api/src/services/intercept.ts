@@ -113,6 +113,13 @@ export function createInterceptService(ctx: Pick<Ctx, 'config' | 'intel' | 'stor
       grade ? race(grade.p, config.interceptBudgetMs) : Promise.resolve(null),
     ]);
 
+    // A demo reset while we were awaiting swaps the store's rows: our captured log/state would be orphans.
+    const stale = () =>
+      store.db !== db ||
+      (!!pending && !db.logs.includes(pending)) ||
+      (!!pendingState && !db.states.includes(pendingState));
+    if (stale()) return passthrough;
+
     let graded: EvaluationResult | null = null;
     if (gradeRes?.done && gradeRes.value) {
       graded = gradeRes.value;
@@ -125,7 +132,7 @@ export function createInterceptService(ctx: Pick<Ctx, 'config' | 'intel' | 'stor
         mutex.run(u.id, async () => {
           lateGrading.delete(logId);
           if (!r) return; // grade failed: quiz stays pending, level unchanged
-          if (store.db !== db) return; // demo reset replaced the store while we waited
+          if (stale()) return; // demo reset replaced the rows while we waited
           if (!pending!.quiz_pending || pendingState!.paused) return;
           applyGrade(pending!, pendingState!, treeId, r);
         }),

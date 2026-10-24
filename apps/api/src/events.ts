@@ -9,10 +9,12 @@ export class EventBus {
   subscribe(treeId: UUID, fn: Listener): () => void {
     let set = this.listeners.get(treeId);
     if (!set) this.listeners.set(treeId, (set = new Set()));
-    set.add(fn);
+    const mine = set;
+    mine.add(fn);
+    // Idempotent, and never drops a newer set that took over this tree id's map entry.
     return () => {
-      set!.delete(fn);
-      if (set!.size === 0) this.listeners.delete(treeId);
+      mine.delete(fn);
+      if (mine.size === 0 && this.listeners.get(treeId) === mine) this.listeners.delete(treeId);
     };
   }
 

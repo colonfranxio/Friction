@@ -11,13 +11,20 @@
 - [x] JSON store seeds on first run and survives a restart. `apps/api/data/db.json` is created at boot; test "seeds on first run and survives a restart" writes, re-opens a second store from the same file, and checks quota, logs and bypasses. Corrupt files are moved aside and reseeded.
 - [x] All endpoints in `ENDPOINTS` match the mock with fakes, including `/chat` streaming and SSE `/events`. Every route in `scripts/mock-api.ts` is implemented. `/chat` checked with `curl.exe -i` (text/plain, `X-Friction-*` headers, streamed body); SSE checked with `curl.exe -N` while a bypass fired (`student_state` then `bypass` events, plus `: connected` and `: ping` comments).
 - [x] `pnpm smoke` passes against :8787 (11/11, "SMOKE PASSED").
-- [x] Endpoint tests (`pnpm --filter @friction/api test`, 40 tests via `app.request`): intercept happy path, pending-quiz precedence, stickiness, passthrough, bypass 409, edge cycle 409, demo reset (full, per-student, `demo_only`), error shape (404/400/500), plus parse (cache, live, 502/504), chat, CORS, heartbeat, store.
+- [x] Endpoint tests (`pnpm --filter @friction/api test`, 47 tests via `app.request`): intercept happy path, pending-quiz precedence, stickiness, passthrough, bypass 409, edge cycle 409, demo reset (full, per-student, `demo_only`), error shape (404/400/500), plus parse (cache, live, 502/504), chat, CORS, heartbeat, store.
 - [x] `pnpm typecheck` clean across the workspace.
 
 ### Early CP3 items (cheap, already in)
 - [x] Late grade applies when it lands and is pushed over SSE (test uses a slow `evaluateExchange` above a 40ms budget).
 - [x] Per-student mutex (`src/lib/mutex.ts`); two concurrent intercepts call `evaluateExchange` once.
 - [x] One log line per intercept: `[intercept] student=… node="…" level=L1 classify=Xms grade=Yms verdict=… total=Zms`.
+
+### Verifier findings (independent Sonnet review of a18b874), all fixed
+- SSE: a client reconnecting within 15s lost its subscription (the old connection's late `unsubscribe()` deleted the new client's entry). `EventBus.subscribe` now returns an idempotent unsubscribe that only removes its own set. Tests: bus-level and a real `GET /events` stream.
+- A grade landing after a demo reset published stale `student_state`/`activity` events and wrote to orphaned rows. `/intercept` now bails out (passthrough) or skips the late apply when its captured log/state are no longer in the store. Four tests (in-budget and late, per-student and full reset).
+- `/chat` now intercepts the last *user* message even if an assistant message trails it, like the mock (400 only when there's no user message).
+- Added tests: bypass closes a pending quiz, SSE stream.
+- Known gaps: the PDF demo-hash path is untested (no `fixtures/demo-syllabus.pdf` yet); SIGTERM on Windows doesn't flush the store (SIGINT does), and writes are already write-through so the window is tiny.
 
 ## Not done yet
 - CP2: `USE_REAL_INTELLIGENCE=1` is wired (dynamic import of `@friction/intelligence`'s `createIntelligence()`), but B's real implementation isn't merged, so it still returns the fakes. Live-parse and `/chat` against real Claude are untested.
@@ -47,7 +54,7 @@ pnpm install
 pnpm dev:api                      # terminal 1: Friction API on http://127.0.0.1:8787, prints mode and store path
 pnpm smoke                        # terminal 2: must print SMOKE PASSED
 curl.exe -N "http://127.0.0.1:8787/events?tree_id=33333333-3333-4333-8333-333333333333"   # watch SSE while smoke runs
-pnpm --filter @friction/api test  # 40 tests, no network
+pnpm --filter @friction/api test  # 47 tests, no network
 pnpm typecheck
 ```
 Env (all optional): `API_PORT` (8787), `DEMO_MODE` (on), `USE_REAL_INTELLIGENCE` (off), `INTERCEPT_BUDGET_MS` (4000), `DEMO_PARSE_DELAY_MS` (3000).

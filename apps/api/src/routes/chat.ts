@@ -17,9 +17,11 @@ export function chatRoutes(app: Hono, ctx: Ctx) {
   app.post('/chat', async (c) => {
     const b = await readObject<ChatRequest>(c);
     const messages = Array.isArray(b.messages) ? (b.messages as ChatMessage[]) : [];
-    const last = messages[messages.length - 1];
-    if (!isNonEmptyString(b.student_id) || !last || last.role !== 'user' || typeof last.content !== 'string') {
-      throw badRequest('student_id and messages (last one must be role "user") required');
+    // Like the mock: the last *user* message is the one that gets intercepted and replaced.
+    const lastIdx = messages.map((m) => m?.role).lastIndexOf('user');
+    const last = messages[lastIdx];
+    if (!isNonEmptyString(b.student_id) || !last || typeof last.content !== 'string') {
+      throw badRequest('student_id and at least one user message required');
     }
 
     const ic = await ctx.interceptService({
@@ -28,7 +30,7 @@ export function chatRoutes(app: Hono, ctx: Ctx) {
       app_source: 'sandbox',
       conversation_id: b.conversation_id ?? null,
     });
-    const injected = messages.map((m, i) => (i === messages.length - 1 ? { ...m, content: ic.injected_prompt } : m));
+    const injected = messages.map((m, i) => (i === lastIdx ? { ...m, content: ic.injected_prompt } : m));
 
     // Pull the first chunk before sending headers so a failing model becomes a clean 502/504.
     const abort = new AbortController();

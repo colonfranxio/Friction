@@ -169,7 +169,73 @@ describe('late grade and per-student mutex (rule 4.6)', () => {
   });
 });
 
+describe('reset while a grade is in flight', () => {
+  const slowGrade: Intelligence = { ...fakeIntelligence, evaluateExchange: async (i) => (await sleep(150), fakeEvaluate(i)) };
+
+  it.each([
+    ['in-budget grade, per-student reset', 4000, { student_id: S }],
+    ['in-budget grade, full reset', 4000, { full: true }],
+    ['late grade, per-student reset', 40, { student_id: S }],
+    ['late grade, full reset', 40, { full: true }],
+  ])('%s: no stale events, level stays at the reset value', async (_name, budget, resetBody) => {
+    const t = makeApp({ intel: slowGrade, config: { interceptBudgetMs: budget } });
+    await intercept(t, DEMO_PROMPTS.question);
+    const inflight = intercept(t, DEMO_PROMPTS.correctAnswer);
+    await sleep(30);
+    await t.call('POST', '/demo/reset', resetBody);
+    t.events.length = 0;
+    await inflight;
+    await sleep(250);
+    expect(t.events.filter((e) => e.type === 'student_state')).toHaveLength(0);
+    expect(t.events.filter((e) => e.type === 'activity')).toHaveLength(0);
+    expect(level(t, N.useEffect)).toBe(1);
+  });
+});
+
+describe('SSE bus', () => {
+  it('a reconnect does not lose its subscription when the old one unsubscribes late', () => {
+    const t = makeApp();
+    const baseline = t.ctx.bus.size; // the helper's own event collector
+    const got: string[] = [];
+    const first = t.ctx.bus.subscribe('tree-x', () => got.push('old'));
+    first(); // old connection aborts...
+    const second = t.ctx.bus.subscribe('tree-x', () => got.push('new')); // ...client reconnects
+    first(); // ...and the old handler's cleanup runs again later
+    t.ctx.bus.publish('tree-x', { type: 'tree_updated', data: { tree_id: 'tree-x' } });
+    expect(got).toEqual(['new']);
+    second();
+    expect(t.ctx.bus.size).toBe(baseline);
+  });
+
+  it('GET /events streams named events and a connected comment', async () => {
+    const t = makeApp();
+    const baseline = t.ctx.bus.size;
+    const res = await t.app.request(`/events?tree_id=${SEED_IDS.tree}`);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    const reader = res.body!.getReader();
+    const dec = new TextDecoder();
+    let text = dec.decode((await reader.read()).value);
+    expect(text).toContain(': connected');
+    t.ctx.bus.publish(SEED_IDS.tree, { type: 'tree_updated', data: { tree_id: SEED_IDS.tree } });
+    text = dec.decode((await reader.read()).value);
+    expect(text).toContain('event: tree_updated');
+    expect(text).toContain(`"tree_id":"${SEED_IDS.tree}"`);
+    expect(t.ctx.bus.size).toBe(baseline + 1);
+    await reader.cancel();
+    await sleep(20);
+    expect(t.ctx.bus.size).toBe(baseline);
+  });
+});
+
 describe('bypass', () => {
+  it('closes a pending quiz on that node', async () => {
+    const t = makeApp();
+    await intercept(t, DEMO_PROMPTS.question);
+    expect(t.store.db.logs[0].quiz_pending).toBe(true);
+    await t.call('POST', '/bypass', { student_id: S, node_id: N.useEffect });
+    expect(t.store.db.logs[0].quiz_pending).toBe(false);
+  });
+
   it('decrements quota, pauses the node, emits events, and intercepts return L4', async () => {
     const t = makeApp();
     const r = await t.call('POST', '/bypass', { student_id: S, node_id: N.context });
@@ -399,7 +465,7 @@ describe('chat (sandbox)', () => {
     expect((await res.json()).error.code).toBe('llm_error');
   });
 
-  it('400 when the last message is not from the user', async () => {
+  it('400 when there is no user message', async () => {
     const t = makeApp();
     const r = await t.call('POST', '/chat', { student_id: S, conversation_id: 'x', messages: [{ role: 'assistant', content: 'hi' }] });
     expect(r.status).toBe(400);
