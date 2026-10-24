@@ -3,7 +3,7 @@
 **Owned by Agent A. Only this agent edits this file.**
 
 - Contract version confirmed: **2** (changelog v2 read: optional `EvaluateInput.signal`; no HTTP shape change; I never abort grading at the intercept budget, so late grades still apply). Merged `origin/main` 355fcac (CP1 integration) on top of CP1.
-- Current checkpoint: CP1 done and pushed (E has it in CP1-preflight). CP2 is **blocked on B's real parse/chat and a local `.env` key**; everything on my side that can be done without them is done (see "CP2 progress").
+- Current checkpoint: CP1 merged by E. **CP2 done on my side and verified** (needs E to merge B's `agent/intelligence` 00a5d4d first; only the quiz header from E's contract change is outstanding). See "CP2 progress".
 - Last updated: 2026-10-24 (merged `main` 999db80 into this branch; E's 16-step smoke passes 3x against :8787 on fakes)
 
 ## Exit criteria: CP1 (T+3h): every endpoint on fakes
@@ -31,13 +31,18 @@
 - [x] `/trees/parse`: demo cache + live path. Demo hash matcher now has direct tests (text with CRLF/LF/whitespace, PDF bytes, no fixtures, and the repo's real `fixtures/demo-syllabus.md`). Live path tests cover validation, cycle/dangling-edge dropping, demo student moved to L1, 502/504.
 - [x] `/chat`: streams with `X-Friction-*` headers and saves `llm_response`; a test shows the saved reply is the `quiz_text` used to grade the next sandbox turn (E asked for this: the smoke can't prove it).
 - [x] E's 16-step `pnpm smoke` (sandbox chat, live SSE, educator privacy) passes 3 times in a row against :8787 with fakes.
-- [~] Real-Claude check so far (merged main contains B's CP1; `.env` has a working key and `MODEL_*`): the 16-step smoke passes with `intelligence=real` (real grading; parse and `/chat` are still B's fakes). Grade latency seen: 2.5s, 3.0s, 3.98s (budget 4s), so a grade can land late; late-grade path is covered by tests. One run only, not the 3x gate.
-- [ ] **`pnpm smoke` 3x with real Claude (full): not run.** Needs (1) `ANTHROPIC_API_KEY` + `MODEL_*` in a local `.env` (human), and (2) B's CP2 (real parse, LLM classify, streaming chat) merged by E. Until then `USE_REAL_INTELLIGENCE=1` would mix real grading with fake parse/chat.
-- [ ] Verification agent for CP2: deliberately not spawned yet; there's nothing new to verify until the two items above exist. I'll spawn it as soon as real smoke can run.
+- [x] **`pnpm smoke` 3x in a row with real Claude, all 16 steps**, on a throwaway local merge of `origin/agent/intelligence` (00a5d4d: real parse, streaming chat, LLM classify) into this branch. Not pushed; E does the real merge. Real-model steps: grade 2.2-3.2s (budget 4s; none late), sandbox L1 chat 3-5s, sandbox L4 turns 11-15s (full answers streaming).
+- [x] Live parse of a non-demo syllabus: 200 `cached:false` in ~24s, valid pillars/nodes/edges (no cycles or dangling), valid icons, demo student moved to the new tree with L1 states. Garbage PDF/base64 → clean 502 `llm_error` in <0.3s, server stays up.
+- [x] `/chat` with real Claude: Socratic L1 reply, `X-Friction-*` headers, `llm_response` saved byte-equal to the streamed text, next answer graded against it (`verdict=correct`, L1→L4).
+- [x] Independent verification (Sonnet, medium) of the above on the throwaway merge: all four CP2 criteria PASS, no blockers. Its findings and what I did:
+  - Quiz left pending when `/chat` failed before streaming, was cut off, or returned an empty reply (the student never saw the check question) → **fixed**: `routes/chat.ts` closes that turn's quiz in those cases; test covers all three.
+  - Not changed, FYI: level-4/answer turns take 11-14s to first byte (model/B, under the 30s timeout); `/demo/reset {full:true}` drops parsed trees (intended: back to the seed); 502 `llm_error` messages include the upstream error text.
+  - Not verified live: a late grade (>4s) and the 504 timeouts (covered by unit tests with fakes), a valid PDF parse, client abort mid-stream.
+- [ ] Quiz-attachment header (`X-Friction-Quiz-Attached`): waiting for E to add it to shared/mock at CP2.
 - Note for E/B (from CP1-preflight item 1): I never abort `evaluateExchange` at the intercept deadline; late grades keep running and apply. If `EvaluateInput.signal` is adopted, I'll pass a signal that is only aborted on server shutdown.
 
 ### Waiting on others for CP2
-- B: real `parseSyllabus`, streaming `chat`, LLM classify fallback (still fakes on `origin/agent/intelligence` 01cb60e).
+- E: merge B (00a5d4d) then A. `agent/platform` alone still has the placeholder `createIntelligence()`, so CP2 criteria 2-4 only pass on the merged result.
 - E/C: the exact quiz-attachment chat header (`X-Friction-Quiz-Attached`) is queued for CP2 in shared/mock (E), then API (A) and dashboard (C). I'll add it to `/chat` and its test when the contract lands.
 
 ## Not done yet

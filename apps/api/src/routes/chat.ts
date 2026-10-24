@@ -32,6 +32,15 @@ export function chatRoutes(app: Hono, ctx: Ctx) {
     });
     const injected = messages.map((m, i) => (i === lastIdx ? { ...m, content: ic.injected_prompt } : m));
 
+    /** A quiz the student never saw (failed, aborted or empty reply) must not wait for an answer. */
+    const closeQuiz = () => {
+      const log = ic.intercept_id ? store.db.logs.find((l) => l.id === ic.intercept_id) : undefined;
+      if (log?.quiz_pending) {
+        log.quiz_pending = false;
+        store.save();
+      }
+    };
+
     // Pull the first chunk before sending headers so a failing model becomes a clean 502/504.
     const abort = new AbortController();
     const it = intel.chat(injected, { signal: abort.signal })[Symbol.asyncIterator]();
@@ -44,6 +53,7 @@ export function chatRoutes(app: Hono, ctx: Ctx) {
       }
       first = r.value;
     } catch (e) {
+      closeQuiz();
       if (e instanceof HttpError) throw e;
       console.error('[chat] model failed before streaming:', (e as Error)?.message ?? e);
       throw new HttpError(502, 'llm_error', `chat failed: ${(e as Error)?.message ?? 'unknown error'}`);
@@ -57,6 +67,7 @@ export function chatRoutes(app: Hono, ctx: Ctx) {
 
     return stream(c, async (s) => {
       let full = '';
+      let complete = false;
       s.onAbort(() => abort.abort());
       try {
         let step = first;
@@ -65,6 +76,7 @@ export function chatRoutes(app: Hono, ctx: Ctx) {
           await s.write(step.value);
           step = await it.next();
         }
+        complete = true;
       } catch (e) {
         if (!abort.signal.aborted) console.error('[chat] stream error:', (e as Error)?.message ?? e);
       } finally {
@@ -73,6 +85,8 @@ export function chatRoutes(app: Hono, ctx: Ctx) {
           log.llm_response = full;
           store.save();
         }
+        // Cut-off or empty reply: the check question may never have been shown.
+        if (!complete || !full) closeQuiz();
       }
     });
   });
