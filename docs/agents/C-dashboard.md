@@ -139,6 +139,8 @@ This section updates the remaining-work assignment after CP2. Own only `apps/das
 
 ## Requested addition: learning map beside claude.ai (human request, 2026-10-24)
 
+> **REASSIGNED to B (human decision, 2026-10-24).** B now owns this whole feature on branch `feature/learning-map` (see B's brief, "Reassigned: learning-map panel"). **C: do not build the embed view.** The text below remains the spec B follows. B adds only new files (`src/pages/EmbedPage.tsx`, `src/styles/embed.css`, one test) plus one route line in `src/App.tsx`, so C's other files stay untouched. If C changes `App.tsx` routing, keep the `?embed=1` branch working.
+
 **Why:** in a real test the human found that, on claude.ai, students can't see their skill tree, so they don't know which concept to steer the conversation toward next. The Sandbox solves this with its mini tree; claude.ai has only D's level badge. D will show the student's map in a Chrome side panel (see D's brief, same heading). C supplies the page it shows.
 
 **Priority:** nice-to-have, after must-haves and the open acceptance gates (PLAN.md rule). E schedules it. **No contract change:** it uses only the existing endpoints (`GET /students/:id`, `GET /trees/:id` bundle, students and SSE).

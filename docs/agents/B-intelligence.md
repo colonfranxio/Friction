@@ -151,3 +151,15 @@ This section updates the remaining-work assignment after CP2. Own only `packages
 - Use injected SDKs for parallel unit tests; they require no shared services or keys. Serialize harness and latency runs within your environment: they write the same results and concurrent load distorts latency. Never dump credentials or change other agents' bindings. Models come from `MODEL_*`.
 - Add dependencies only to your own package. E owns combined lockfile reconciliation, shared contracts and mock changes.
 - Deliver package tests/typecheck, current frozen-prompt harness results and exact demo prompts. E's real-Claude smoke x3 and browser/human rehearsals are separate gates; a harness pass alone does not close them. Refresh stale status statements about A's now-fixed cancellation defect.
+
+## Reassigned: learning-map panel (human decision, 2026-10-24)
+
+B owns the learning-map side panel end to end. The spec is the "Requested addition: learning map beside claude.ai" section in C's and D's briefs. It is a nice-to-have: B's existing READY work and the open acceptance gates keep priority.
+- **Branch:** `feature/learning-map`, off `main`, in B's own checkout. It is separate from `agent/intelligence`, so the frozen intelligence work is not mixed with UI changes.
+- **Paths B may edit, on that branch only:**
+  - dashboard: new `apps/dashboard/src/pages/EmbedPage.tsx`, new `apps/dashboard/src/styles/embed.css`, one new embed test under `apps/dashboard`, and the one route line in `apps/dashboard/src/App.tsx`;
+  - extension: the panel files (`src/sidepanel.ts`, `src/lib/learning-map.ts`, `sidepanel.html`, `test/learning-map.test.ts`) and only the panel lines in `src/popup.ts`, `popup.html` and `src/lib/storage.ts`;
+  - `docs/status/B-intelligence.md`.
+- **Base:** D's side-panel shell on `agent/extension` is kept, not rewritten. **Merge order:** E merges D's branch first, then `feature/learning-map`.
+- **No contract, shared, API or intelligence change.** It uses only the existing endpoints and SSE.
+- **Done means:** B records **PANEL READY** in its status file with the SHA, 360px/420px evidence, dashboard and extension tests/typecheck/build, and a checker pass. E then runs the integrated iframe/consent checks, and the human does the live claude.ai check: answer a check question, and the node turns green in the panel.
