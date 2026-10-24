@@ -104,6 +104,8 @@ This section updates the remaining-work assignment after CP2. Own only `apps/ext
 
 ## Requested addition: learning map beside claude.ai (human request, 2026-10-24)
 
+**Branch instruction (supersedes your usual branch for this feature):** work on **`agent/claude-skill-tree-extension`**, based on the instruction-bearing **`claude-skill-tree`** branch. Preserve unfinished work before switching in your own isolated checkout. Do not develop this feature on `main` or `agent/extension`, or bulk-merge your old branch to import unreviewed hardening. Request any required dependency from E. Push **PANEL READY** to this new branch; E integrates it into `claude-skill-tree`, not main. Build the shell/settings/tests in parallel with C, then merge E's C-ready feature base before final iframe/live-update acceptance. Follow `AGENTS.md` feature isolation.
+
 **Why:** in a real test the human found that, on claude.ai, students can't see their skill tree, so they don't know which concept to steer the conversation toward next. The badge shows the level for one turn, not the map. Show the student's live map in Chrome's built-in side panel next to claude.ai. Don't draw anything inside claude.ai's page; that stays as fragile-free as today.
 
 **Priority:** bonus feature, after must-haves, acceptance gates and your existing hardening (PLAN.md rule). E schedules it. **No contract change.** It depends on C's `/student/:id?embed=1` (see C's brief, same heading); until that lands, frame the full `/student/:id` page.

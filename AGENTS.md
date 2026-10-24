@@ -14,6 +14,19 @@ You are one of four agents building Friction in parallel. Your personal brief is
 **Read-only for builders A–D (owned by E, the integrator):** `packages/shared/**`, `scripts/**`, `fixtures/**`, `docs/**` (except your own status file), root config (`package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.env.example`, `.gitignore`), `PLAN.md`, `PRD.md`, `design.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`.
 
 ## Working rules
+
+### Claude skill tree feature isolation (human instruction, 2026-10-24)
+
+For the C/D learning-map feature only, this section overrides the branch/merge destinations above and in the individual briefs:
+
+- E integrates and verifies on **`claude-skill-tree`**, based on main `d23cb63`. Do not merge this feature into `main` without the human's explicit instruction after review.
+- C implements the compact embedded student view on **`agent/claude-skill-tree-dashboard`**. D implements the Chrome side panel on **`agent/claude-skill-tree-extension`**. Both branches start from the instruction-bearing `claude-skill-tree` commit, not their older `agent/dashboard` or `agent/extension` tips.
+- C and D work in parallel in their existing separate checkouts, keeping their existing path ownership. Never switch a shared working directory another agent is using. No new worktrees are required.
+- Preserve any unfinished work on its original branch before switching. Do not reset, discard or bulk-merge old branches into this feature. Ask E to review any required earlier fixes as explicit dependencies; A's held API and D's unmerged hardening do not become accepted through this feature.
+- C publishes **EMBED READY** on its new branch; E merges C into `claude-skill-tree` first. D then integrates that feature-base update, completes the real iframe checks and publishes **PANEL READY**; E merges D second. D can build its shell/settings/tests while C works.
+- A/B continue their existing assignments on their existing branches; this feature requires no new API/shared contract or intelligence work. Requests affecting their code go through E.
+- Keep the existing private-port/store, consent, verification and priority rules. Builders push only their own new feature branches. Main and the original builder branches remain separate from this feature.
+
 1. **Contracts are frozen** (`packages/shared`, `docs/contracts.md`). Import types, rules, the client, seed and fakes from `@friction/shared`. Never redefine them.
 2. If a contract is wrong or missing something: work around it inside your own folder (for example, extend a type locally), add a **Change request** to your status file, and keep going. Contracts change only at checkpoints, additive only.
 3. **Dependencies:** add them only to your own package (`pnpm add --filter @friction/<yours> <pkg>`). Never edit the root `package.json`. Lockfile conflicts are resolved at merge time.

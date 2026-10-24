@@ -139,6 +139,8 @@ This section updates the remaining-work assignment after CP2. Own only `apps/das
 
 ## Requested addition: learning map beside claude.ai (human request, 2026-10-24)
 
+**Branch instruction (supersedes your usual branch for this feature):** work on **`agent/claude-skill-tree-dashboard`**, based on the instruction-bearing **`claude-skill-tree`** branch. Preserve unfinished work before switching in your own isolated checkout. Do not develop this feature on `main` or `agent/dashboard`. Push **EMBED READY** to this new branch; E integrates it into `claude-skill-tree`, not main. Follow the feature-isolation section in `AGENTS.md`; D's shell can proceed in parallel, and your ready embed must integrate before D's final panel acceptance.
+
 **Why:** in a real test the human found that, on claude.ai, students can't see their skill tree, so they don't know which concept to steer the conversation toward next. The Sandbox solves this with its mini tree; claude.ai has only D's level badge. D will show the student's map in a Chrome side panel (see D's brief, same heading). C supplies the page it shows.
 
 **Priority:** nice-to-have, after must-haves and the open acceptance gates (PLAN.md rule). E schedules it. **No contract change:** it uses only the existing endpoints (`GET /students/:id`, `GET /trees/:id` bundle, students and SSE).
