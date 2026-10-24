@@ -104,6 +104,9 @@ This section updates the remaining-work assignment after CP2. Own only `apps/ext
 
 ## Requested addition: learning map beside claude.ai (human request, 2026-10-24)
 
+**Latest ownership handoff:** full learning-map development, including required integration/safety fixes, is B's job on `feature/learning-map`. Stop feature edits and send findings to B. This supersedes any older instruction below to implement the embed/panel or fix its delivery blockers yourself. Coordinate shared-file changes before editing B's feature paths. E retains combined review/integration on `claude-skill-tree`, D-source then B-feature, with main isolated.
+
+
 > **REASSIGNED to B (human decision, 2026-10-24).** B now owns this whole feature on branch `feature/learning-map` (see B's brief, "Reassigned: learning-map panel"). D's side-panel shell already on `agent/extension` (`src/lib/learning-map.ts`, `src/sidepanel.ts`, `sidepanel.html`, popup button, Dashboard URL setting, `test/learning-map.test.ts`) is accepted as the base and ships with D's normal merge. **D: make no further panel changes.** Report any panel bugs to B through your status file; follow-up edits to those panel files come from B.
 
 This reassignment supersedes the branch instruction and C/D execution split below. E integrates the existing D shell/hardening into `claude-skill-tree` before B's `feature/learning-map`. D retains non-panel extension ownership; coordinate shared popup/storage edits with B. No feature merge to main is authorized by this reassignment.

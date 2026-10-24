@@ -154,6 +154,11 @@ This section updates the remaining-work assignment after CP2. Own only `packages
 
 ## Reassigned: learning-map panel (human decision, 2026-10-24)
 
+**Latest human instruction: full extension learning-map development is B's responsibility.** This supersedes the narrow file list and requirement to wait for D's own corrections below. Own the embed, side panel and required integration/safety fixes on `feature/learning-map`. You may edit the feature-related dashboard/extension files and tests, including `src/content.ts`, `src/lib/send-interceptor.ts` and `src/lib/conversation.ts` to resolve all three blockers in [the review handoff](../checkpoints/LEARNING-MAP-B-HANDOFF.md). Do not edit API/shared contracts, unrelated C/D features or another agent's status file.
+
+Incorporate D's existing shell/base into your feature branch, preserve its work, fix the pending races/aliasing/first-turn target, then publish a fresh PANEL READY with deferred-response/navigation/draft/consent regressions. C and D stop feature changes. E reviews an unpublished D → B combined candidate and publishes only after safety gates pass; the unsafe D intermediate must not ship alone. Main stays isolated. This assignment is separate from B's intelligence/Moss work.
+
+
 B owns the learning-map side panel end to end. The spec is the "Requested addition: learning map beside claude.ai" section in C's and D's briefs. It is a nice-to-have: B's existing READY work and the open acceptance gates keep priority.
 - **Branch:** `feature/learning-map`, off `main`, in B's own checkout. It is separate from `agent/intelligence`, so the frozen intelligence work is not mixed with UI changes.
 - **Integration target:** `claude-skill-tree`, not main. If the feature branch already starts from main, merge E's D-ready `claude-skill-tree` base before final verification; preserve D's shell. This reassignment supersedes the old C/D feature split. Do not import unrelated Moss or held API work. Publish the branch remotely before requesting integration.

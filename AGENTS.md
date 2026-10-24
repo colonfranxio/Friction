@@ -17,17 +17,15 @@ You are one of four agents building Friction in parallel. Your personal brief is
 
 ### Claude skill tree feature isolation (human instruction, 2026-10-24)
 
-For the C/D learning-map feature only, this section overrides the branch/merge destinations above and in the individual briefs:
+For learning-map work, the human's latest reassignment supersedes the normal ownership table and the former C/D split:
 
-**Latest human reassignment:** B now owns the learning-map implementation end to end on **`feature/learning-map`**. This supersedes the C/D implementation split below. E first merges D's existing `agent/extension` shell/hardening into **`claude-skill-tree`**, then reviews/merges B's feature there. B must incorporate that D-ready base before final PANEL READY. C must not build the embed, D must make no further panel edits, and the previously created `agent/claude-skill-tree-*` branches are superseded for this feature. B's narrowly scoped cross-owner permissions are listed in B's brief. Main remains isolated until the human directs release integration.
-
-- E integrates and verifies on **`claude-skill-tree`**, based on main `d23cb63`. Do not merge this feature into `main` without the human's explicit instruction after review.
-- C implements the compact embedded student view on **`agent/claude-skill-tree-dashboard`**. D implements the Chrome side panel on **`agent/claude-skill-tree-extension`**. Both branches start from the instruction-bearing `claude-skill-tree` commit, not their older `agent/dashboard` or `agent/extension` tips.
-- C and D work in parallel in their existing separate checkouts, keeping their existing path ownership. Never switch a shared working directory another agent is using. No new worktrees are required.
-- Preserve any unfinished work on its original branch before switching. Do not reset, discard or bulk-merge old branches into this feature. Ask E to review any required earlier fixes as explicit dependencies; A's held API and D's unmerged hardening do not become accepted through this feature.
-- C publishes **EMBED READY** on its new branch; E merges C into `claude-skill-tree` first. D then integrates that feature-base update, completes the real iframe checks and publishes **PANEL READY**; E merges D second. D can build its shell/settings/tests while C works.
-- A/B continue their existing assignments on their existing branches; this feature requires no new API/shared contract or intelligence work. Requests affecting their code go through E.
-- Keep the existing private-port/store, consent, verification and priority rules. Builders push only their own new feature branches. Main and the original builder branches remain separate from this feature.
+- **B owns full development of the extension learning map end to end**, on `feature/learning-map`: compact dashboard embed, extension panel/settings/consent behavior, tests and integration fixes required to ship the feature safely.
+- B may modify feature-related dashboard/extension files, including the pending draft/chat/conversation safety blockers in `content.ts`, `lib/send-interceptor.ts`, `lib/conversation.ts` and related tests. This is scoped to learning-map delivery and its required safety dependencies; unrelated C/D work stays with its owner. API/shared/root contracts and other agents' status files remain read-only.
+- **C and D stop learning-map implementation and fixes.** Coordinate any shared-file work with B; do not race B on popup/storage/routing/content/conversation changes. Previous `agent/claude-skill-tree-*` branches are superseded for this feature.
+- E reviews/integrates on **`claude-skill-tree`**, preserving main and the separate Moss branches. The human's D → B history order remains: reuse D's `agent/extension` shell first, then B's `feature/learning-map`. B may merge the reviewed D source into its feature branch and fix the documented blockers there, rather than waiting for D to develop them.
+- E can assemble D → B on an unpublished review candidate, then publish the feature target only once the combined changes pass review and required checks. Never publish D's unsafe intermediate state alone. No main merge without the human's release instruction.
+- B publishes a fresh **PANEL READY** SHA with regressions for all documented blockers, narrow-screen/live-update evidence, tests/typecheck/build and remaining human checks. E independently verifies the combined candidate.
+- Preserve unfinished work and use existing separate checkouts. No shared-directory branch switches, data resets, new worktrees or unreviewed bulk merges. Existing port/store isolation, consent and acceptance rules continue to apply.
 
 1. **Contracts are frozen** (`packages/shared`, `docs/contracts.md`). Import types, rules, the client, seed and fakes from `@friction/shared`. Never redefine them.
 2. If a contract is wrong or missing something: work around it inside your own folder (for example, extend a type locally), add a **Change request** to your status file, and keep going. Contracts change only at checkpoints, additive only.

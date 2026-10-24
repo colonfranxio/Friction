@@ -1,5 +1,8 @@
 # B learning-map ownership and D-first integration review
 
+**Latest human reassignment:** B now owns full development, including required safety fixes. Older D-fixes-first owner assignments below are historical and superseded. B may incorporate D's existing base into `feature/learning-map`, resolve the documented blockers there and publish a new PANEL READY. E validates the complete unpublished D → B candidate before publishing either runtime merge to `claude-skill-tree`. The blocker conditions still apply; responsibility for completing them has transferred to B. Main remains unchanged.
+
+
 Proposal `proposal/b-owns-learning-map` at `d1e83f6` is accepted on **`claude-skill-tree`**, preserving the human's feature isolation. B owns the compact embed and panel follow-up within the paths specified in B's brief. C stops embed implementation; D stops panel edits after supplying the base. B's final implementation branch is **`feature/learning-map`**. Superseded C/D feature branches must not be developed in parallel with B on these same paths.
 
 ## Integration status
