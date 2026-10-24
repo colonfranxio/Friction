@@ -139,13 +139,9 @@ This section updates the remaining-work assignment after CP2. Own only `apps/das
 
 ## Requested addition: learning map beside claude.ai (human request, 2026-10-24)
 
-<<<<<<< HEAD
-**Branch instruction (supersedes your usual branch for this feature):** work on **`agent/claude-skill-tree-dashboard`**, based on the instruction-bearing **`claude-skill-tree`** branch. Preserve unfinished work before switching in your own isolated checkout. Do not develop this feature on `main` or `agent/dashboard`. Push **EMBED READY** to this new branch; E integrates it into `claude-skill-tree`, not main. Follow the feature-isolation section in `AGENTS.md`; D's shell can proceed in parallel, and your ready embed must integrate before D's final panel acceptance.
-=======
 > **REASSIGNED to B (human decision, 2026-10-24).** B now owns this whole feature on branch `feature/learning-map` (see B's brief, "Reassigned: learning-map panel"). **C: do not build the embed view.** The text below remains the spec B follows. B adds only new files (`src/pages/EmbedPage.tsx`, `src/styles/embed.css`, one test) plus one route line in `src/App.tsx`, so C's other files stay untouched. If C changes `App.tsx` routing, keep the `?embed=1` branch working.
 
 This reassignment supersedes the branch instruction and C/D execution split below. E's target is `claude-skill-tree`: D's existing shell first, then B's feature. C retains ownership of other dashboard work and coordinates any concurrent `App.tsx` edits with B.
->>>>>>> origin/proposal/b-owns-learning-map
 
 **Why:** in a real test the human found that, on claude.ai, students can't see their skill tree, so they don't know which concept to steer the conversation toward next. The Sandbox solves this with its mini tree; claude.ai has only D's level badge. D will show the student's map in a Chrome side panel (see D's brief, same heading). C supplies the page it shows.
 
