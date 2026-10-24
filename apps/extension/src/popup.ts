@@ -89,13 +89,22 @@ async function init() {
     if (btn.disabled) return;
     btn.disabled = true; // no double bypass on double-click
     $('msg').textContent = '';
+    const copy = $<HTMLButtonElement>('copy-question');
+    copy.hidden = true;
     try {
       // The claude.ai tab does the bypass itself: it knows the prompt to re-send.
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.id === undefined) throw new Error('no tab');
       const r = (await chrome.tabs.sendMessage(tab.id, { type: 'friction:bypass-resend' } satisfies TabRequest)) as BypassResendResult;
       const scopeNote = r.ok && r.scope_applied === 'concept' ? ' Friction stays off for this concept until reset.' : '';
-      $('msg').textContent = !r.ok
+      if (r.ok && r.not_sent_reason && r.prompt) {
+        // Quota spent, but the chat/draft/consent/send changed while waiting: nothing was sent. Offer the question.
+        const prompt = r.prompt;
+        $('msg').textContent = `Bypass used (${r.remaining_quota} left), not sent: ${r.not_sent_reason}. Your teacher was notified.`;
+        copy.hidden = false;
+        copy.textContent = 'Copy question';
+        copy.onclick = () => void navigator.clipboard.writeText(prompt).then(() => (copy.textContent = 'Copied'), () => (copy.textContent = 'Copy failed'));
+      } else $('msg').textContent = !r.ok
         ? r.message
         : (r.resent
             ? `Re-sent without friction. ${r.remaining_quota} left. Your teacher has been notified.`

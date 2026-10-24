@@ -9,6 +9,8 @@ export type BadgeState =
   | { kind: 'disabled' }
   /** The last message was re-sent without friction (one bypass used). */
   | { kind: 'bypassed'; concept: string | null; remaining: number | null; conceptPaused?: boolean }
+  /** A bypass was used but the re-send was cancelled (chat/draft/consent/send changed); offers the question to copy. */
+  | { kind: 'spent'; remaining: number; reason: string; prompt: string }
   /** Bypass failed; show why. */
   | { kind: 'error'; message: string }
   /** The extension was reloaded/updated; this tab's content script is orphaned until the page reloads. */
@@ -34,6 +36,8 @@ export function badgeText(s: BadgeState): { text: string; dot: string } {
       const what = s.conceptPaused ? 'concept bypassed' : 'bypassed';
       return { text: `Friction · ${what}${s.concept ? ` · ${s.concept}` : ''}${left}`, dot: DOT.grey };
     }
+    case 'spent':
+      return { text: `Friction · bypass used (${s.remaining} left), not sent: ${s.reason}`, dot: DOT.amber };
     case 'error':
       return { text: `Friction · ${s.message}`, dot: DOT.amber };
     case 'reload':
@@ -75,10 +79,21 @@ export function mountBadge(
       .bypass[hidden] { display: none; }
     </style>
     <div class="pill"><span class="dot"></span><span class="logo">◆</span><span class="text"></span>
-      <button class="bypass" type="button" title="Re-send this message without friction. On this server it also pauses friction on this concept until reset. Uses one bypass; your teacher is notified." hidden>Bypass</button></div>`;
+      <button class="bypass" type="button" title="Re-send this message without friction. On this server it also pauses friction on this concept until reset. Uses one bypass; your teacher is notified." hidden>Bypass</button>
+      <button class="bypass copy" type="button" title="Copy your original question" hidden>Copy question</button></div>`;
   const dot = root.querySelector('.dot') as HTMLElement;
   const text = root.querySelector('.text') as HTMLElement;
   const btn = root.querySelector('.bypass') as HTMLButtonElement;
+  const copy = root.querySelector('.copy') as HTMLButtonElement;
+  let copyText = '';
+  copy.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void navigator.clipboard?.writeText(copyText).then(
+      () => (copy.textContent = 'Copied'),
+      () => (copy.textContent = 'Copy failed'),
+    );
+  });
   btn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -89,6 +104,9 @@ export function mountBadge(
     text.textContent = t.text;
     dot.style.background = t.dot;
     btn.hidden = !opts.onBypass || !canBypass(state);
+    copyText = state.kind === 'spent' ? state.prompt : '';
+    copy.hidden = !copyText;
+    copy.textContent = 'Copy question';
   };
   const setBusy = (busy: boolean) => {
     btn.disabled = busy;

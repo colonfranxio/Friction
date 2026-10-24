@@ -60,8 +60,60 @@ describe('conversation ids', () => {
     const a = setup(store);
     const first = a.t.idForSend();
     a.go(`/chat/${U1}`);
+    a.t.endSend(true);
     const b = setup(store, `/chat/${U1}`);
     expect(b.t.idForSend()).toBe(first);
+  });
+
+  it('confirmed first send: uuid assigned BEFORE the send-completion callback keeps the id', () => {
+    const { t, go } = setup();
+    const first = t.idForSend();
+    go(`/chat/${U1}`);
+    t.endSend(true);
+    expect(t.currentId()).toBe(first);
+    expect(t.idForSend()).toBe(first);
+  });
+
+  it('confirmed first send: uuid assigned AFTER the send-completion callback keeps the id', () => {
+    const { t, go } = setup();
+    const first = t.idForSend();
+    t.endSend(true);
+    go(`/chat/${U1}`);
+    expect(t.currentId()).toBe(first);
+    expect(t.idForSend()).toBe(first);
+  });
+
+  it('failed/ignored first send, then opening an existing chat: that chat keeps its own id', () => {
+    const { t, go } = setup();
+    const first = t.idForSend();
+    t.endSend(false);
+    go(`/chat/${U2}`);
+    expect(t.idForSend()).toBe(U2);
+    expect(t.idForSend()).not.toBe(first);
+  });
+
+  it('URL moved while the send was in flight, but the send failed: no alias', () => {
+    const { t, go } = setup();
+    t.idForSend();
+    go(`/chat/${U2}`);
+    t.endSend(false);
+    expect(t.idForSend()).toBe(U2);
+  });
+
+  it('a confirmed send does not alias a chat opened long after it', () => {
+    let clock = 0;
+    let path = '/new';
+    const t = createConversationTracker({ idFromPath: conversationIdFromPath, getPath: () => path, newId: () => 'gen-1', store: memoryStore(), now: () => clock });
+    t.idForSend();
+    t.endSend(true);
+    clock += 60_000;
+    path = `/chat/${U2}`;
+    t.onPath(path);
+    expect(t.idForSend()).toBe(U2);
+  });
+
+  it('currentId is null on a new chat before anything is sent', () => {
+    expect(setup().t.currentId()).toBeNull();
   });
 
   it('works without storage', () => {
