@@ -1,0 +1,136 @@
+/**
+ * Drives the real background.ts message handlers against the real mock API (started in-process),
+ * with a minimal chrome.* stub. Proves the service worker ⇄ API path end to end, minus the browser.
+ */
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DEMO_PROMPTS, SEED_IDS } from '@friction/shared';
+import type { InterceptRuntimeResult } from '../src/background-types';
+import type { BypassResult, RuntimeRequest, StatusResponse } from '../src/lib/messages';
+
+const PORT = 18000 + Math.floor(Math.random() * 1000);
+const API = `http://127.0.0.1:${PORT}`;
+let listener: (msg: unknown, sender: unknown, send: (r: unknown) => void) => boolean;
+const store: Record<string, unknown> = {};
+
+function call<T>(msg: RuntimeRequest): Promise<T> {
+  return new Promise((resolve) => listener(msg, {}, (r) => resolve(r as T)));
+}
+
+beforeAll(async () => {
+  (globalThis as any).chrome = {
+    storage: {
+      local: {
+        get: async (keys: string | string[]) =>
+          Object.fromEntries((Array.isArray(keys) ? keys : [keys]).filter((k) => k in store).map((k) => [k, store[k]])),
+        set: async (patch: Record<string, unknown>) => Object.assign(store, patch),
+      },
+    },
+    runtime: {
+      onMessage: { addListener: (fn: typeof listener) => (listener = fn) },
+      getManifest: () => ({ version: 'test' }),
+    },
+  };
+  process.env.DEMO_MODE = '1';
+  process.argv.push('--port', String(PORT));
+  await import('../../../scripts/mock-api');
+  for (let i = 0; i < 50; i++) {
+    try {
+      if ((await fetch(`${API}/health`)).ok) break;
+    } catch {}
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  store.apiUrl = API;
+  store.studentId = SEED_IDS.demoStudent;
+  await import('../src/background');
+});
+
+afterAll(() => {
+  delete (globalThis as any).chrome;
+});
+
+describe('background ⇄ mock API', () => {
+  it('reports online status and bypass quota', async () => {
+    const s = await call<StatusResponse>({ type: 'friction:status' });
+    expect(s.online).toBe(true);
+    expect(s.bypass_quota).toBe(3);
+    expect(s.enabled).toBe(true);
+  });
+
+  it('intercepts a course question with L1 friction, then logs the reply', async () => {
+    const r = await call<InterceptRuntimeResult>({
+      type: 'friction:intercept',
+      raw_prompt: DEMO_PROMPTS.question,
+      conversation_id: 'conv-bg-1',
+      previous_assistant_text: null,
+    });
+    expect(r.outcome.passthrough).toBe(false);
+    if (r.outcome.passthrough) return;
+    expect(r.outcome.response.level).toBe(1);
+    expect(r.outcome.response.node_id).toBe(SEED_IDS.nodes.useEffect);
+    expect(r.outcome.response.injected_prompt.startsWith(DEMO_PROMPTS.question)).toBe(true);
+
+    const ok = await call<{ ok: boolean }>({
+      type: 'friction:responses',
+      intercept_id: r.outcome.response.intercept_id!,
+      llm_response: 'Quick check: what does the dependency array tell React?',
+    });
+    expect(ok.ok).toBe(true);
+
+    // Concept names load lazily; the status call fills them in.
+    const s = await call<StatusResponse>({ type: 'friction:status' });
+    expect(s.last?.concept_name).toBe('React useEffect');
+  });
+
+  it('a correct answer in the same conversation moves the student to L4', async () => {
+    const r = await call<InterceptRuntimeResult>({
+      type: 'friction:intercept',
+      raw_prompt: DEMO_PROMPTS.correctAnswer,
+      conversation_id: 'conv-bg-1',
+      previous_assistant_text: null,
+    });
+    expect(r.outcome.passthrough).toBe(false);
+    if (!r.outcome.passthrough) expect(r.outcome.response.graded?.verdict).toBe('correct');
+    const again = await call<InterceptRuntimeResult>({
+      type: 'friction:intercept',
+      raw_prompt: DEMO_PROMPTS.question,
+      conversation_id: 'conv-bg-2',
+      previous_assistant_text: null,
+    });
+    if (!again.outcome.passthrough) expect(again.outcome.response.level).toBe(4);
+  });
+
+  it('off-topic prompts pass through', async () => {
+    const r = await call<InterceptRuntimeResult>({
+      type: 'friction:intercept',
+      raw_prompt: 'write a haiku about the sea',
+      conversation_id: 'conv-bg-3',
+      previous_assistant_text: null,
+    });
+    expect(r.outcome).toEqual({ passthrough: true, reason: 'no_match' });
+  });
+
+  it('bypass uses the last intercepted concept and reports the quota', async () => {
+    await call({ type: 'friction:intercept', raw_prompt: DEMO_PROMPTS.bypassQuestion, conversation_id: 'conv-bg-4', previous_assistant_text: null });
+    const b = await call<BypassResult>({ type: 'friction:bypass' });
+    expect(b).toEqual({ ok: true, remaining_quota: 2 });
+    const s = await call<StatusResponse>({ type: 'friction:status' });
+    expect(s.paused).toBe(true);
+    expect(s.bypass_quota).toBe(2);
+  });
+
+  it('the consent toggle stops all API calls', async () => {
+    store.enabled = false;
+    const r = await call<InterceptRuntimeResult>({ type: 'friction:intercept', raw_prompt: DEMO_PROMPTS.question, conversation_id: null, previous_assistant_text: null });
+    expect(r.outcome).toEqual({ passthrough: true, reason: 'disabled' });
+    store.enabled = true;
+  });
+
+  it('fails open (offline) when the API is unreachable', async () => {
+    store.apiUrl = 'http://127.0.0.1:1';
+    const r = await call<InterceptRuntimeResult>({ type: 'friction:intercept', raw_prompt: DEMO_PROMPTS.question, conversation_id: null, previous_assistant_text: null });
+    expect(r.outcome).toEqual({ passthrough: true, reason: 'offline' });
+    const s = await call<StatusResponse>({ type: 'friction:status' });
+    expect(s.online).toBe(false);
+    store.apiUrl = API;
+  });
+});

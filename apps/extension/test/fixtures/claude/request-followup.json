@@ -1,0 +1,12 @@
+{
+  "url": "https://claude.ai/api/organizations/00000000-0000-4000-8000-0000000000aa/chat_conversations/9b2f6c1e-3d4a-4b5c-8d6e-7f8091a2b3c4/completion",
+  "method": "POST",
+  "body": {
+    "prompt": "How do I stop my useEffect from running in an infinite loop?",
+    "parent_message_uuid": "11111111-0000-4000-8000-000000000001",
+    "timezone": "America/Los_Angeles",
+    "attachments": [],
+    "files": [],
+    "rendering_mode": "messages"
+  }
+}

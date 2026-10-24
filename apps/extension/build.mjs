@@ -1,17 +1,34 @@
-// OWNER: Agent D (Extension). Placeholder build: bundles each entry into dist/.
-// Agent D extends this (copy manifest.json + popup.html into dist/, add entries).
+// OWNER: Agent D (Extension). Cross-platform build: bundles each entry and copies static files into dist/.
 import { build, context } from 'esbuild';
-import { existsSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const entries = ['main-world', 'content', 'background', 'popup'].filter((e) => existsSync(`src/${e}.ts`));
-mkdirSync('dist', { recursive: true });
+const here = dirname(fileURLToPath(import.meta.url));
+const dist = join(here, 'dist');
+const watch = process.argv.includes('--watch');
+
+if (!watch) rmSync(dist, { recursive: true, force: true });
+mkdirSync(dist, { recursive: true });
+
+const entries = ['main-world', 'content', 'background', 'popup'];
+const missing = entries.filter((e) => !existsSync(join(here, 'src', `${e}.ts`)));
+if (missing.length) throw new Error(`missing entries: ${missing.join(', ')}`);
+
+const copyStatic = () => {
+  for (const f of ['manifest.json', 'popup.html']) copyFileSync(join(here, f), join(dist, f));
+};
+
 const opts = {
-  entryPoints: entries.map((e) => `src/${e}.ts`),
-  outdir: 'dist',
+  entryPoints: entries.map((e) => join(here, 'src', `${e}.ts`)),
+  outdir: dist,
   bundle: true,
   format: 'iife',
   target: 'chrome120',
   logLevel: 'info',
+  legalComments: 'none',
+  plugins: [{ name: 'copy-static', setup(b) { b.onEnd(copyStatic); } }],
 };
-if (process.argv.includes('--watch')) await (await context(opts)).watch();
+
+if (watch) await (await context(opts)).watch();
 else await build(opts);
