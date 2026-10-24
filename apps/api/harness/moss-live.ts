@@ -96,6 +96,7 @@ async function main() {
     const result = await res.json() as { node_id?: string; injected_prompt?: string };
     const context = baselineStore.db.nodes.find((n) => n.concept_name === 'Context API')!;
     check(res.ok && result.node_id === context.id, 'baseline fallback');
+    check(!fallbackTraces.some((e) => e.state === 'retrieved'), 'no Moss hints during fallback');
     check(result.injected_prompt?.includes('Learning goal:'), 'policy after fallback');
     record({ status: 'live_fallback_pass', http: res.status, concept: context.concept_name,
       fault: 'intentionally injected Moss initialization failure; Claude is real' });

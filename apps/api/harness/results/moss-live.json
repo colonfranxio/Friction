@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-24T22:44:54.986Z",
+  "timestamp": "2026-10-24T22:47:31.151Z",
   "events": [
     {
       "provider": "moss",
@@ -14,7 +14,7 @@
       "provider": "moss",
       "state": "ready",
       "revision": "3fc20bf603a5",
-      "ms": 1515
+      "ms": 1551
     },
     {
       "provider": "moss",
@@ -29,9 +29,9 @@
       "concept": "Context API",
       "level": "2",
       "quizAttached": "true",
-      "replyCharacters": 1903,
+      "replyCharacters": 2314,
       "endsWithQuestion": true,
-      "replyExcerpt": "That's the classic **prop drilling** problem, and React's **Context API** solves it. Instead of handing `theme` down through every intermediate component, you put it in a shared \"channel\" that any descendant can read directly.\n\nHere's the shape of it. Fill in the blanks:\n\n### Step 1: Create the context (usually in its own file)\n```\nconst ThemeContext = ____(defaultValue)   // which React function ",
+      "replyExcerpt": "This is what the **Context API** is for. Instead of handing the theme down through every component, you put it in a shared \"channel\" near the top of the tree, and any descendant can read it directly, no matter how deep.\n\n## The three pieces\n\n**1. Create the context** (once, usually in its own file)\n\n```\nThemeContext = ____(defaultValue)     // which React function creates a context?\nexport ThemeCo",
       "masteryUnchanged": true
     },
     {
