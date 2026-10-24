@@ -38,6 +38,8 @@ Reply with the number of the single best concept, or null if the message is not 
 confidence is 0 to 1.`;
 
 export async function classifyTopic(cfg: Config, prompt: string, nodes: SkillNode[]): Promise<ClassifyResult> {
+  // Educator routes mutate canonical objects. A request uses one consistent revision.
+  nodes = nodes.map((node) => ({ ...node, keywords: [...node.keywords] }));
   const kw = keywordClassify(prompt, nodes);
   if (kw.node_id || !nodes.length) return kw;
 

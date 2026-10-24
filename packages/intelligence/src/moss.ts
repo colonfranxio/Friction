@@ -99,7 +99,7 @@ export class MossCurriculumRetriever implements CurriculumRetriever {
   }
 }
 
-/** Not called by normal API startup. Missing keys never import the optional native SDK. */
+/** Explicitly enabled backend runtime/harness only. Missing keys never import the native SDK. */
 export function mossFromEnv(env: NodeJS.ProcessEnv = process.env): MossCurriculumRetriever | null {
   const projectId = env.MOSS_PROJECT_ID;
   const projectKey = env.MOSS_PROJECT_KEY;

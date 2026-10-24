@@ -167,6 +167,22 @@ describe('isolated Moss adapter', () => {
 });
 
 describe('opt-in classification context', () => {
+  it('keeps one semantic snapshot when an educator edits during retrieval', async () => {
+    const c = client();
+    const mutable = structuredClone(nodes);
+    const previous = mutable[0].mastery_criteria;
+    let finish!: (ids: string[]) => void;
+    const intel = createIntelligence({ client: c.sdk, models: { classify: 'test-model' },
+      curriculumRetriever: { retrieve: () => new Promise((resolve) => { finish = resolve; }) } });
+    const result = intel.classifyTopic('a novel question', mutable);
+    await Promise.resolve();
+    mutable[0].mastery_criteria = 'Edited while the request was running';
+    finish([mutable[0].id]);
+    await result;
+    const params = (c.parse.mock.calls as unknown[][])[0][0] as { messages: { content: string }[] };
+    expect(params.messages[0].content).toContain(previous);
+    expect(params.messages[0].content).not.toContain('Edited while');
+  });
   it('preserves keyword routing without touching retrieval or Claude', async () => {
     const c = client();
     const retrieve = vi.fn(async () => [nodes[1].id]);
