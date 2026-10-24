@@ -4,7 +4,7 @@
 
 - Contract version confirmed: **3** (changelog v3 read: optional `X-Friction-Quiz-Attached` chat header; no existing field changed; v2 late-grade/cancel rules unchanged). Merged `origin/main` 457e0a7 (CP2 integration) into this branch. Previously confirmed v2 below.
 - Contract version (earlier note): **2** (changelog v2 read: optional `EvaluateInput.signal`; no HTTP shape change; I never abort grading at the intercept budget, so late grades still apply). Merged `origin/main` 355fcac (CP1 integration) on top of CP1.
-- Current checkpoint: CP1 merged by E. **CP2 done on my side and verified** (needs E to merge B's `agent/intelligence` 00a5d4d first; only the quiz header from E's contract change is outstanding). See "CP2 progress".
+- Current checkpoint: CP1 and my CP2 fix are on `main` (PR #1 merged). CP2 live acceptance belongs to E. I'm on the "work left to do" list; see that section.
 - Last updated: 2026-10-24 (merged `main` 999db80 into this branch; E's 16-step smoke passes 3x against :8787 on fakes)
 
 ## Exit criteria: CP1 (T+3h): every endpoint on fakes
@@ -52,9 +52,16 @@
 - E: merge B (00a5d4d) then A. `agent/platform` alone still has the placeholder `createIntelligence()`, so CP2 criteria 2-4 only pass on the merged result.
 - E/C: the exact quiz-attachment chat header (`X-Friction-Quiz-Attached`) is queued for CP2 in shared/mock (E), then API (A) and dashboard (C). I'll add it to `/chat` and its test when the contract lands.
 
-## Not done yet
-- CP2: `USE_REAL_INTELLIGENCE=1` is wired (dynamic import of `@friction/intelligence`'s `createIntelligence()`), but B's real implementation isn't merged, so it still returns the fakes. Live-parse and `/chat` against real Claude are untested.
-- CP3 polish items beyond the ones above.
+## Work left to do (brief §"work left to do", after the CP2 review)
+Merged `main` ff25700 (PR #1 `d757427` is on `main`); contract still **v3**, confirmed. API tests 57, typecheck clean.
+- [x] Quiet-abort regression, partial-reply persistence, exact quiz-header tests, per-student lock and late-grade tests all still pass.
+- [x] Mid-stream failure: endpoint regression added (`current behavior: a mid-stream model failure ...`). It pins what happens today: the model throws after some text, the response still ends as a normal `200 text/plain` with the partial text, the partial is saved as `llm_response`, the quiz is closed, and the error is only logged. A client can't tell this from a complete reply.
+- [x] Concept-bypass: added a test of today's semantics (the node stays paused for every later prompt; a repeat bypass on a paused node is accepted and costs another quota). Existing tests already cover quota exhaustion (409), pending-quiz cleanup and the educator activity/toast event.
+- [ ] **Waiting on E's `CONTRACT READY`** before changing anything on the wire: the stream-failure signal and explicit one-prompt bypass. Then: merge E's commit, implement and test the API side, publish `API READY` here.
+
+### Proposal to E: observable mid-stream failure (not implemented; nothing on the wire changed)
+Keep `text/plain` and the three required headers. When the model fails *after* streaming started, abort the HTTP response (end it with a connection error instead of a clean chunked terminator), so `fetch`'s body reader rejects. A client that reads to a clean end can then treat that as complete; a rejected read is "interrupted". It needs no new header or body format, and the partial text stays saved. Alternative if E wants it explicit: an opt-in trailer or header set only on failure. Client-side effect for C: an interrupted read must show the "interrupted" UI and not a finished reply. Needs E's go-ahead since the cancellation semantic is shared with the extension.
+Proposal for one-prompt bypass: a new optional request field (for example `scope: 'prompt'`) with the existing concept-level behavior as the default when absent, so existing clients keep working.
 
 ## Change requests (contract)
 None.
