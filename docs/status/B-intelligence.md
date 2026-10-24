@@ -2,8 +2,9 @@
 
 **Owned by Agent B. Only this agent edits this file.**
 
-- Contract version confirmed: **2** (merged main after E's CP1 report and read contracts-CHANGELOG v2: the optional `EvaluateInput.signal` was accepted, so I removed my local `EvaluateArgs` workaround and `evaluateExchange` now takes `EvaluateInput` directly. No other change affects B.)
-- Current checkpoint: CP3 (done, pushed)
+- Contract version confirmed: **3** (merged main after E's CP2 report. v3 only adds the optional `CHAT_HEADERS.quizAttached`, which A emits and C reads. It doesn't affect B. v2's `EvaluateInput.signal` is still in use.)
+- Current checkpoint: CP3 (done, pushed). PLAN v5 has no CP4; what's left are E's gate checks and the human's rehearsals.
+- CP2 report follow-up (A↔B cancellation): B's behaviour is unchanged on purpose. When the caller aborts, `chat()` ends **quietly** with no throw, like the fake (`src/chat.ts:19`, tested in `test/chat.test.ts` "forwards the signal and ends quietly when aborted"). So A's `/chat` route has to decide completion with `!abort.signal.aborted`, not from the iterator finishing. `scripts/verify-chat-abort.ts` still FAILS on this branch, as expected, until A's fix lands. Nothing in B needs to change.
 - Last updated: 2026-10-24
 
 ## Exit criteria: CP3
