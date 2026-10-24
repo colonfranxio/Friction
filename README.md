@@ -25,3 +25,14 @@ Works on **Windows, macOS and Linux** (Node ≥ 22.9). All commands are `pnpm` s
 | `apps/api` | Hono API :8787, JSON store, SSE | Agent A |
 | `apps/dashboard` | Vite + React dashboard :5173 | Agent C |
 | `apps/extension` | Chrome MV3 extension for claude.ai | Agent D |
+
+## Optional: Moss curriculum retrieval (sponsor integration)
+
+On branch `moss-integration`, the API can use [Moss](https://docs.moss.dev) to connect a student's everyday wording to the concepts in their course. When a prompt matches **no keywords**, Moss suggests up to 3 course concepts to the existing Claude classifier. Claude makes the final choice from the full concept list, and can choose none. The backend still sets the assistance level, and only quiz grading changes mastery.
+
+- **Off by default.** Enable with `USE_REAL_INTELLIGENCE=1`, `USE_MOSS_RETRIEVAL=1`, `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY` in `.env`, then restart. Credentials alone don't enable it. To roll back, set `USE_MOSS_RETRIEVAL=0` and restart.
+- **Behavior:** the API serves immediately and indexes up to two active courses in the background (about 1.5–2s each). Edits are detected within about 1s, and stale queries fall back immediately. Cold, stale, failed or slow (>200ms) retrieval uses the existing classifier. Keyword matches and pending quiz answers never call Moss.
+- **Indexed data:** concept name, mastery criteria and keywords only. No student histories, transcripts or grades.
+- **Logs:** `[moss] {"state":"ready"|"retrieved"|"fallback",...}` with candidate node IDs and timings. No prompts, student IDs or credentials.
+- **Live evidence (paid; private port, in-memory store):** `pnpm --filter @friction/api moss:live` → `apps/api/harness/results/<timestamp>-<sha>/moss-live.json`.
+- **Limits:** no accuracy gain shown on the 8-skill seed course ([docs/moss-live-results.md](docs/moss-live-results.md)). A permanently hung native call pauses Moss preparation (the API keeps serving). See [docs/moss-implementation-handoff.md](docs/moss-implementation-handoff.md) and [docs/checkpoints/MOSS-integration.md](docs/checkpoints/MOSS-integration.md).
