@@ -8,7 +8,7 @@ const send = <T,>(m: RuntimeRequest) => chrome.runtime.sendMessage(m) as Promise
 
 async function render() {
   const s = await send<StatusResponse>({ type: 'friction:status' });
-  $('status').textContent = s.online ? 'Online' : 'Offline';
+  $('status').textContent = !s.enabled ? 'Paused' : s.online ? 'Online' : 'Offline';
   $('status-dot').style.background = s.online ? '#10B981' : '#9CA3AF';
   $<HTMLInputElement>('enabled').checked = s.enabled;
 

@@ -28,5 +28,6 @@ if (!window.__frictionPatched) {
       bridgeRequest(target, 'responses', r, 15000).catch(() => {});
     },
     onError: (stage, err) => console.debug('[friction]', stage, err),
+    onUnmatched: (url) => console.warn('[friction] unmatched completion-like POST (adapter may be outdated):', url),
   });
 }

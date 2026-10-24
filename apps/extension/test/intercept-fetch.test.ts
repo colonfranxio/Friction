@@ -82,6 +82,26 @@ describe('patched fetch', () => {
     expect(calls[0].init).toBe(init);
   });
 
+  it('reports unmatched completion-like POSTs (adapter drift detector)', async () => {
+    const { patched, deps } = setup(injectOutcome);
+    const seen: string[] = [];
+    const p2 = createPatchedFetch({ ...deps, onUnmatched: (u) => seen.push(u) });
+    await p2('https://claude.ai/api/v2/some/new/completion', { method: 'POST', body: '{}' });
+    await patched('https://claude.ai/other', { method: 'POST', body: '{}' });
+    expect(seen).toEqual(['https://claude.ai/api/v2/some/new/completion']);
+  });
+
+  it('a hanging intercept is cut off by the bridge timeout and the original is sent', async () => {
+    const { deps, calls } = setup(injectOutcome);
+    const p2 = createPatchedFetch({
+      ...deps,
+      intercept: () => new Promise((_, rej) => setTimeout(() => rej(new Error('bridge timed out after 30ms')), 30)),
+    });
+    const init = { method: 'POST', body: JSON.stringify(req.body) };
+    await p2(req.url, init);
+    expect(calls[0].init).toBe(init);
+  });
+
   it('fails open on a non-JSON body', async () => {
     const { patched, calls, deps } = setup(injectOutcome);
     await patched(req.url, { method: 'POST', body: 'not json' });

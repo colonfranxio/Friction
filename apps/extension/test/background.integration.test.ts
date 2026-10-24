@@ -118,6 +118,26 @@ describe('background ⇄ mock API', () => {
     expect(s.bypass_quota).toBe(2);
   });
 
+  it('off-topic prompts keep the last concept for the bypass button', async () => {
+    const before = await call<StatusResponse>({ type: 'friction:status' });
+    await call({ type: 'friction:intercept', raw_prompt: 'tell me a joke', conversation_id: 'conv-bg-5', previous_assistant_text: null });
+    const after = await call<StatusResponse>({ type: 'friction:status' });
+    expect(after.last?.node_id).toBe(before.last?.node_id);
+    expect(after.last?.node_id).toBeTruthy();
+  });
+
+  it('status makes no API call when consent is off', async () => {
+    store.enabled = false;
+    const realFetch = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async (...a: Parameters<typeof fetch>) => { calls++; return realFetch(...a); }) as typeof fetch;
+    const s = await call<StatusResponse>({ type: 'friction:status' });
+    globalThis.fetch = realFetch;
+    expect(calls).toBe(0);
+    expect(s.enabled).toBe(false);
+    store.enabled = true;
+  });
+
   it('the consent toggle stops all API calls', async () => {
     store.enabled = false;
     const r = await call<InterceptRuntimeResult>({ type: 'friction:intercept', raw_prompt: DEMO_PROMPTS.question, conversation_id: null, previous_assistant_text: null });

@@ -33,6 +33,20 @@ describe('bridge', () => {
     await expect(bridgeRequest(w, 'intercept', { raw_prompt: 'p', conversation_id: null }, 50)).rejects.toBeInstanceOf(BridgeTimeout);
   });
 
+  it('ignores replies posted from another window', async () => {
+    const w = fakeWindow();
+    const other = {};
+    const realPost = w.postMessage;
+    w.addEventListener('message', (e) => {
+      if (isBridgeRequest(e.data)) {
+        const reply = bridgeReply(e.data.nonce, true, { ok: true });
+        setTimeout(() => w.listeners.forEach((l) => l({ data: reply, source: other } as unknown as MessageEvent)), 0);
+      }
+    });
+    void realPost;
+    await expect(bridgeRequest(w, 'intercept', { raw_prompt: 'p', conversation_id: null }, 50)).rejects.toBeInstanceOf(BridgeTimeout);
+  });
+
   it('rejects on an error reply', async () => {
     const w = fakeWindow();
     w.addEventListener('message', (e) => {

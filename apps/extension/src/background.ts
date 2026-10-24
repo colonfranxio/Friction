@@ -63,7 +63,7 @@ async function handleIntercept(m: Extract<RuntimeRequest, { type: 'friction:inte
       intercept_id: r.intercept_id,
       at: new Date().toISOString(),
     };
-    await setLastIntercept(last);
+    if (r.node_id) await setLastIntercept(last); // off-topic prompts keep the last concept (bypass target)
     if (!r.node_id) return { outcome: { passthrough: true, reason: 'no_match' }, concept_name: null };
     return { outcome: { passthrough: false, response: r }, concept_name: concept };
   } catch (err) {
@@ -85,6 +85,10 @@ async function handleResponses(m: Extract<RuntimeRequest, { type: 'friction:resp
 
 async function handleStatus(): Promise<StatusResponse> {
   const s = await getSettings();
+  if (!s.enabled) {
+    // Consent off: contract §11, no API calls at all.
+    return { online: false, enabled: false, studentId: s.studentId, apiUrl: s.apiUrl, bypass_quota: null, last: await getLastIntercept(), paused: false };
+  }
   const client = createFrictionClient(s.apiUrl);
   let last = await getLastIntercept();
   let online = false;

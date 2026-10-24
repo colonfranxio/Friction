@@ -4,6 +4,7 @@
  * - Adds the last assistant message text (fallback quiz source for grading).
  * - Shows the status badge and hides injected blocks in rendered messages.
  */
+import { EXTENSION_TIMEOUT_MS } from '@friction/shared';
 import { claudeAdapter } from './adapters/claude';
 import { bridgeReply } from './lib/bridge';
 import { mountBadge, type BadgeState } from './lib/badge';
@@ -43,6 +44,7 @@ window.addEventListener('message', async (e: MessageEvent) => {
   try {
     if (req.kind === 'intercept') {
       const ask = req.payload as InterceptAsk;
+      const startedAt = Date.now();
       const r = await send<InterceptRuntimeResult>({
         type: 'friction:intercept',
         raw_prompt: ask.raw_prompt,
@@ -51,6 +53,10 @@ window.addEventListener('message', async (e: MessageEvent) => {
       });
       window.postMessage(bridgeReply(req.nonce, true, r.outcome), '*');
       const o = r.outcome;
+      if (Date.now() - startedAt > EXTENSION_TIMEOUT_MS) {
+        setBadge({ kind: 'offline' }); // the page already sent the original prompt
+        return;
+      }
       if (!o.passthrough && o.response.level) setBadge({ kind: 'active', level: o.response.level, concept: r.concept_name });
       else if (o.passthrough && o.reason === 'offline') setBadge({ kind: 'offline' });
       else if (o.passthrough && o.reason === 'disabled') setBadge({ kind: 'disabled' });
