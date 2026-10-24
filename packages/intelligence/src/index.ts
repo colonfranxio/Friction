@@ -10,7 +10,6 @@ import { buildFrictionPrompt } from './templates';
 export { buildFrictionPrompt } from './templates';
 export { keywordClassify } from './classify';
 export { validateTree } from './validate';
-export type { EvaluateArgs } from './evaluate';
 export type { IntelligenceOptions } from './config';
 
 export function createIntelligence(opts: IntelligenceOptions = {}): Intelligence {

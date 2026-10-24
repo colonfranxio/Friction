@@ -2,6 +2,15 @@
 
 Additive changes only. Each entry: version, date, what changed, who asked.
 
+## v4 (pre-freeze CONTRACT READY checkpoint, 2026-10-24)
+- Accepted A/D's explicit optional `BypassRequest.scope:'prompt'|'concept'`; omission stays legacy concept pause. E's types/client passthrough/mock/regressions are ready. Optional prompt/conversation binding returns a one-use 120s `prompt_bypass_token` for C's sandbox `/chat`; D instead resends directly to claude.ai. No existing response/event fields were removed or renamed. A owns real endpoint/token rollout; C/D own guarded resend and must wait for API READY before using it against the real API.
+- Accepted A's body-read failure proposal for sandbox chat: keep text/plain and headers, error the body on mid-stream generation failure, retain partial text and close quiz. Native stream error was verified over real HTTP; Hono helper throw/abort alone gives clean EOF. E supplies a failing real-HTTP regression for A to turn green; no API implementation by E.
+- Corrected the deterministic shared fake so repeating/rephrasing a new question or echoing the quiz is not credited merely for keywords; preserved tested short and question-shaped genuine answers. B's real grader already passed new cases without a prompt change; its fresh harness remains builder evidence.
+- Merged B READY `d7d0f33` then A PR #2 `0c2ad04`. A's tests characterize the old wire behavior; they do not establish API READY for v4. No unrelated D branch changes or UI changes were merged.
+## v3 implementation followup (CP2, 2026-10-24)
+- Merged A's PR #1 (`d757427`): real `/chat` now emits the exact quiz-attachment header and exposes it through the existing CORS list. True/false/no-match and pending-quiz cases were verified. C's UI consumption remains pending; no new contract version or shape change.
+- A's aborted-stream completion fix and quiet-abort regression resolve E's standalone cancellation failure. Partial replies remain saved, unseen quizzes are closed, and late grading semantics are unchanged.
+
 ## v3 (CP2 integration, 2026-10-24)
 - Accepted C's additive optional `CHAT_HEADERS.quizAttached` / `X-Friction-Quiz-Attached`, with the exact `quiz_attached` boolean string for each chat turn. E implemented the shared constant, mock emission, CORS exposure and smoke checks. No existing HTTP fields or headers changed.
 - The mock must emit the header; the real API may omit it during rollout. Smoke validates the value and CORS exposure whenever present and requires it for the mock. A owns adding it to real `/chat` and endpoint tests; C owns consuming it with fallback when absent. E did not edit builder code.

@@ -7,7 +7,7 @@ Read with [PRD.md](PRD.md) (what & why), [design.md](design.md) (look), [docs/co
 - The **claude.ai extension is a bonus**. It works on the message box (no network reverse-engineering), so a human only needs to load it once.
 - **3 checkpoints instead of 4.**
 - A short **must-have list**. Everything else is optional and gets cut first.
-- The API contract is **unchanged** (v1), so all existing work still fits.
+- The original v5 plan kept v1; the current shared contract is **v4**, with additive compatible updates. See `docs/contracts-CHANGELOG.md` and `docs/checkpoints/CONTRACT-READY-v4.md` for the pre-freeze rollout and API READY dependencies. Existing omitted-scope bypass keeps its original behavior.
 
 ---
 

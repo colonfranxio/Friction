@@ -219,6 +219,20 @@ await run('educator HTTP + SSE privacy', async () => {
   }
 });
 
+if (isMockServer || process.argv.includes('--require-v4')) {
+  await run('v4 prompt bypass preserves future friction', async () => {
+    await api.demoReset({ student_id: student });
+    const input = { student_id: student, raw_prompt: DEMO_PROMPTS.question,
+      app_source: 'sandbox' as const, conversation_id: 'smoke-prompt-bypass' };
+    check((await api.intercept(input)).quiz_attached, 'first turn needs a quiz');
+    check((await api.bypass({ student_id: student, node_id: useEffectId, scope: 'prompt' })).remaining_quota === 2, 'prompt bypass costs one quota');
+    const state = (await api.getStudent(student)).states.find(s => s.node_id === useEffectId);
+    check(state && !state.paused && state.current_blooms_level === 1, 'prompt bypass must not pause or promote');
+    const next = await api.intercept(input);
+    check(next.level === 1 && next.quiz_attached && next.graded === null, 'future prompt still has friction and previous quiz was cleared');
+  });
+}
+
 await run('restore demo after sandbox verification', async () => {
   await api.demoReset({ student_id: student });
 });

@@ -1,6 +1,8 @@
 # Friction demo runbook
 
-Current state: CP2 code is integrated, but the CP2 gate is open. See [checkpoints/CP2.md](checkpoints/CP2.md) for the missing real-Claude validation and A-owned stream-cancellation fix. The steps below distinguish the validated fake-backed workflow from the real demo that still needs a rehearsal.
+For the pre-freeze v4 rollout, see [CONTRACT READY v4](checkpoints/CONTRACT-READY-v4.md). Its new stream-failure regression and prompt/token bypass gates must pass before v4 API READY. The v3 demo/evidence below does not certify those new behaviors; keep the legacy concept bypass until clients and API are coordinated.
+
+Current state: CP2 code and A's cancellation/header fix are integrated and independently verified. The CP2 live gate is still open here: see [checkpoints/CP2.md](checkpoints/CP2.md) for the missing cloud real-Claude validation and human rehearsal. A reports three successful real-Claude smoke runs on its credentialed local machine. The steps below distinguish the validated fake-backed workflow from the real demo that still needs independent live acceptance.
 
 ## Prepare
 
@@ -22,7 +24,7 @@ For the real demo, supply `ANTHROPIC_API_KEY` securely and configure `MODEL_PARS
 node --env-file-if-exists=.env -e "for (const k of ['ANTHROPIC_API_KEY','MODEL_PARSE','MODEL_GRADE','MODEL_CHAT','MODEL_CLASSIFY']) console.log(k, process.env[k] ? 'set' : 'missing')"
 ```
 
-A present key and a real-mode health response do not prove authentication or model behavior. The real smoke gate below must actually pass. CP2 currently also requires `pnpm exec tsx scripts/verify-chat-abort.ts` to pass after A fixes the cancellation bug; it uses an injected SDK and memory store, so it needs no key and touches no running server.
+A present key and a real-mode health response do not prove authentication or model behavior. The real smoke gate below must actually pass. Keep `pnpm exec tsx scripts/verify-chat-abort.ts` in the gate; it passes after A's merged PR #1 fix and uses an injected SDK and memory store, so it needs no key and touches no running server.
 
 ## Start the services
 
@@ -36,7 +38,7 @@ Credential-free fallback development: `pnpm dev:mock` on 8788 plus `pnpm dev:das
 
 ## CP2 gate and pre-stage checklist
 
-1. Apply A's cancellation fix and pass `pnpm exec tsx scripts/verify-chat-abort.ts` without weakening its pending-quiz assertion.
+1. Run `pnpm exec tsx scripts/verify-chat-abort.ts` and require its genuine pass without weakening the pending-quiz assertion. The fix is already merged.
 2. Verify API health says real intelligence and run `pnpm smoke` **three consecutive times** against that API, with all 16 steps passing each time. Do not substitute mock/fake runs, raise the intercept budget or disable assertions. Investigate a failed sequence before starting a new sequence.
 3. Verify all six must-haves in a browser using real Claude: seeded tree, upload, L1 Socratic reply, live mastery, same question in a new chat with full assistance, bypass/quota/toast. The existing browser script assumes the deterministic fake wording; for real replies assess the semantics and UI directly rather than claiming that fake-specific regex assertions are a real-model quality test.
 4. Rehearse the full three-minute sequence with the human, prepare the fallback recording, and reset before going on stage. CP3 still requires two rehearsals and the backup recording/freeze.
@@ -55,7 +57,7 @@ Use the sandbox as the main surface. Keep educator and student/sandbox views vis
 5. Start another new chat and ask: **How does React Context help me avoid prop drilling?** Use the bypass for this turn's concept; quota should fall from 3 to 2, the node becomes paused and the educator sees Alex's Context API bypass toast.
 6. Bonus only if D/human reconfirm GO: load `apps/extension/dist`, enable consent and point it at the intended API. Show the same useEffect flow on claude.ai. Validate the badge and hidden instruction block after reload. Stop the bonus beat if the live site fails; retain the sandbox as the main demo.
 
-The optional v3 quiz-attached header currently works in the mock. Until A emits it and C consumes it, the real dashboard uses its documented approximate hint. A low level alone does not prove that this turn attached a new quiz.
+The optional v3 quiz-attached header works in both the mock and real API. Until C consumes it, the dashboard uses its documented approximate hint. A low level alone does not prove that this turn attached a new quiz.
 
 ## Recovery
 

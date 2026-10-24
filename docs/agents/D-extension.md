@@ -74,3 +74,30 @@ pnpm build:ext            # human reloads the extension + the claude.ai tab afte
 pnpm dev:mock:ext         # your own mock on 8789 (C uses 8788)
 ```
 Windows works the same (load `apps\extension\dist`).
+
+## work left to do
+
+Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
+
+This section updates the remaining-work assignment after CP2. Own only `apps/extension/**` and your status file on `agent/extension`. Your newer hardening at `56a5183` is pushed but not integrated. Review and preserve completed fixes rather than rebuilding them. The extension remains a bonus surface; it must not block the main sandbox demo.
+
+### Start now, in parallel
+
+- Merge current `main`, confirm the v4 handoff and keep the consent guard/no-fetch regression, per-chat conversation IDs, pasted-marker cleaning, draft protection, correct-chat bypass targeting and expiry/navigation cleanup passing. A's cancellation fix and real quiz header are already merged.
+- Verify new chat before a site UUID exists, UUID aliasing, navigation, multiple tabs, sleeping/reloaded service worker, offline/timeout and ignored Send behavior. Consent off must prevent every API action, including queued/programmatic bypass messages. Never overwrite a new draft or spend quota when a bypass cannot safely target/send the intended prompt.
+- Keep your branch restricted to D-owned paths. The fake-grader proposal belongs on `proposal/e-fake-grader` for E's review; do not reintroduce shared-code edits or independently tune B's grader.
+- Document the one-prompt bypass work as awaiting API alignment. Current `/bypass` still pauses the concept until reset; your client-side one-shot resend does not change that server behavior. Do not claim one-prompt semantics end-to-end yet.
+
+### Dependencies and order
+
+1. Consent, chat isolation, composer safety and robustness tests proceed alongside A/B/C/E immediately. Use your private mock, not C's.
+2. **Wait for E's `CONTRACT READY` handoff** specifying bypass scope and compatibility. Do not assume the API default changed or invent shared request fields. Merge the published contract and adapt your owned client code/tests against E's updated mock.
+3. Wait for A's `API READY` handoff before asserting real endpoint compatibility. Run `test:api` in a coordinated window; it resets the target backend. Push `D READY` with SHA, tests and a clear list of pending live-site checks. E integrates B → A → C → D and independently verifies the checkpoint.
+4. With the human, reload the final extension/tab and run the full live claude.ai flow three times: L1, answer to L4, new chat, bypass, badge and hidden block, including multi-tab/offline recovery. If the site remains NO-GO, cut the bonus beat and keep the sandbox demo; do not silently mark it passed.
+
+### Parallel safety and exit criteria
+
+- Use your own existing isolated environment/checkout. Never switch branches or install dependencies in another agent's working directory; no new worktrees unless explicitly requested.
+- Your private mock is 8789 (`pnpm dev:mock:ext`); C owns mock 8788. Use injected/in-process tests where possible. Only use shared API 8787 after its owner grants a test window; never reset it during someone else's demo or stop another agent's process.
+- Add dependencies only in your package; E reconciles combined lockfiles. Do not publish `main`, shared files or another agent's status.
+- Deliver extension tests/typecheck/build, API integration against the intended mode and human GO/NO-GO evidence. Distinguish simulated tests, fake-backed API checks and actual claude.ai/real-model results. Refresh stale status blockers that A's merged implementation already resolved.

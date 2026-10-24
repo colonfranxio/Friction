@@ -17,7 +17,7 @@ describe('evaluateExchange', () => {
   it('sends a structured, low-effort request with the right model and context', async () => {
     const { client, parse } = fakeClient({ parsed_output: { verdict: 'correct', confidence: 0.9, rationale: 'Explains deps.' } });
     const signal = new AbortController().signal;
-    await intel(client).evaluateExchange({ ...base, signal } as typeof base);
+    await intel(client).evaluateExchange({ ...base, signal });
     const [params, opts] = parse.mock.calls[0];
     expect(params.model).toBe('test-grade-model');
     expect(params.output_config.effort).toBe('low');
@@ -50,6 +50,16 @@ describe('evaluateExchange', () => {
     const r = await intel(client).evaluateExchange({ ...base, quiz_text: null, demoMode: true });
     expect(r.confidence).toBeCloseTo(0.8);
     expect(parse.mock.calls[0][0].messages[0].content).toMatch(/not captured/);
+  });
+
+  it('a repeated or rephrased original question never earns a level, even in demo mode', async () => {
+    const { client, parse } = fakeClient({ parsed_output: { verdict: 'not_an_answer', confidence: 0.95, rationale: 'Asked again.' } });
+    for (const student_message of [DEMO_PROMPTS.question, 'Why does my useEffect keep re-running, and what goes in the dependency array?']) {
+      const r = await intel(client).evaluateExchange({ ...base, student_message, demoMode: true });
+      expect(r.new_level).toBe(1);
+    }
+    // The student's message is sent as its own labelled section, separate from the question it answers.
+    expect(parse.mock.calls[0][0].messages[0].content).toMatch(/Question asked: [^\n]+\n\nStudent's message:\nHow do I stop my useEffect/);
   });
 
   it('clamps confidence to 0..1', async () => {

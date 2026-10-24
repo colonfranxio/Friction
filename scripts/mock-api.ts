@@ -62,6 +62,7 @@ interface DB extends SeedData {
   logs: ChatLog[];
   bypasses: BypassEvent[];
 }
+const promptTokens = new Map<string, { student_id: string; node_id: string; raw_prompt: string; conversation_id: string; expires: number }>();
 let db: DB = fresh();
 function fresh(): DB {
   return { ...buildSeed(), logs: [], bypasses: [] };
@@ -246,6 +247,7 @@ route('POST', '/trees/parse', async ({ body }) => {
   // Mock behaves like DEMO_MODE cache hit for any input: reset demo state and return the seed tree.
   await new Promise((r) => setTimeout(r, DEMO_PARSE_DELAY_MS));
   db = fresh();
+  promptTokens.clear();
   emit(db.trees[0].id, { type: 'tree_updated', data: { tree_id: db.trees[0].id } });
   return { tree_id: db.trees[0].id, cached: true };
 });
@@ -375,6 +377,14 @@ route('POST', '/responses', async ({ body, res }) => {
 
 route('POST', '/bypass', async ({ body }) => {
   const b = body as BypassRequest;
+  if (b?.scope !== undefined && b.scope !== 'concept' && b.scope !== 'prompt') {
+    throw new HttpError(400, 'bad_request', 'scope must be concept or prompt');
+  }
+  const binding = b?.raw_prompt !== undefined || b?.conversation_id !== undefined;
+  if (binding && (b.scope !== 'prompt' || typeof b.raw_prompt !== 'string' || !b.raw_prompt.trim() ||
+      typeof b.conversation_id !== 'string' || !b.conversation_id.trim())) {
+    throw new HttpError(400, 'bad_request', 'sandbox prompt bypass requires prompt scope, raw_prompt and conversation_id');
+  }
   const u = user(b?.student_id);
   const n = nodeById(b?.node_id);
   if (!u || !n) throw notFound('student or node');
@@ -382,14 +392,19 @@ route('POST', '/bypass', async ({ body }) => {
   const s = stateOf(u.id, n.id);
   if (!s) throw notFound('student_state');
   u.bypass_quota -= 1;
-  s.paused = true;
+  if (b.scope !== 'prompt') s.paused = true;
   s.updated_at = now();
   db.logs.forEach((l) => { if (l.student_id === u.id && l.node_id === n.id) l.quiz_pending = false; });
   const ev: BypassEvent = { id: randomUUID(), student_id: u.id, node_id: n.id, remaining_quota: u.bypass_quota, created_at: now() };
   db.bypasses.push(ev);
   emit(n.tree_id, { type: 'student_state', data: s });
   emit(n.tree_id, { type: 'bypass', data: { ...ev, student_name: u.name, concept_name: n.concept_name } });
-  return { remaining_quota: u.bypass_quota };
+  let token: string | undefined;
+  if (binding) {
+    token = randomUUID();
+    promptTokens.set(token, { student_id: u.id, node_id: n.id, raw_prompt: b.raw_prompt!, conversation_id: b.conversation_id!, expires: Date.now() + 120_000 });
+  }
+  return { remaining_quota: u.bypass_quota, ...(token ? { prompt_bypass_token: token } : {}) };
 });
 
 route('POST', '/heartbeat', async ({ body }) => {
@@ -404,6 +419,9 @@ route('POST', '/heartbeat', async ({ body }) => {
 route('POST', '/demo/reset', async ({ body }) => {
   if (!DEMO) throw new HttpError(404, 'demo_only', 'DEMO_MODE is off');
   const b = (body ?? {}) as DemoResetRequest;
+  for (const [token, entry] of promptTokens) {
+    if (b.full || !b.student_id || entry.student_id === b.student_id) promptTokens.delete(token);
+  }
   if (b.full || !b.student_id) {
     db = fresh();
   } else {
@@ -435,7 +453,7 @@ function cors(res: ServerResponse) {
   res.setHeader('Access-Control-Expose-Headers', Object.values(CHAT_HEADERS).join(', '));
 }
 
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   cors(res);
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
   if (req.method === 'OPTIONS') return void res.writeHead(204).end();
@@ -458,8 +476,38 @@ createServer(async (req, res) => {
       const b = (await readBody(req)) as ChatRequest;
       const lastUser = [...(b?.messages ?? [])].reverse().find((m) => m.role === 'user');
       if (!b?.student_id || !lastUser) throw new HttpError(400, 'bad_request', 'student_id and a user message required');
-      const ic = await intercept({ student_id: b.student_id, raw_prompt: lastUser.content, app_source: 'sandbox', conversation_id: b.conversation_id ?? null });
+      let ic: InterceptResponse;
+      if (b.prompt_bypass_token !== undefined) {
+        const entry = promptTokens.get(b.prompt_bypass_token);
+        const node = entry && nodeById(entry.node_id);
+        if (!entry || entry.expires <= Date.now() || entry.student_id !== b.student_id ||
+            entry.raw_prompt !== lastUser.content || entry.conversation_id !== b.conversation_id ||
+            !node || user(b.student_id)?.active_tree_id !== node.tree_id) {
+          throw new HttpError(400, 'bad_request', 'invalid, expired or mismatched prompt bypass token');
+        }
+        promptTokens.delete(b.prompt_bypass_token); // Consume before any await/model call; no replay or automatic refund.
+        const log: ChatLog = { id: randomUUID(), student_id: b.student_id, node_id: node.id,
+          conversation_id: b.conversation_id, app_source: 'sandbox', level: 4, raw_prompt: lastUser.content,
+          injected_prompt: lastUser.content, quiz_pending: false, llm_response: null,
+          verdict: null, confidence: null, rationale: null, created_at: now() };
+        db.logs.push(log);
+        emit(node.tree_id, { type: 'activity', data: activityFromLog(log, 'intercept') });
+        ic = { intercept_id: log.id, node_id: node.id, level: 4, injected_prompt: lastUser.content, quiz_attached: false, graded: null };
+      } else {
+        ic = await intercept({ student_id: b.student_id, raw_prompt: lastUser.content, app_source: 'sandbox', conversation_id: b.conversation_id ?? null });
+      }
       const msgs = b.messages.map((m) => (m === lastUser ? { ...m, content: ic.injected_prompt } : m));
+      const abort = new AbortController();
+      res.on('close', () => { if (!res.writableFinished) abort.abort(); });
+      const iterator = intel.chat(msgs, { signal: abort.signal })[Symbol.asyncIterator]();
+      const closeQuiz = () => {
+        const log = db.logs.find(l => l.id === ic.intercept_id);
+        if (log) log.quiz_pending = false;
+      };
+      let first: IteratorResult<string>;
+      try { first = await iterator.next(); }
+      catch { closeQuiz(); throw new HttpError(502, 'llm_error', 'chat failed before streaming'); }
+      if (abort.signal.aborted) { closeQuiz(); await iterator.return?.(); return; }
       res.writeHead(200, {
         'content-type': 'text/plain; charset=utf-8',
         [CHAT_HEADERS.interceptId]: ic.intercept_id ?? '',
@@ -468,10 +516,21 @@ createServer(async (req, res) => {
         [CHAT_HEADERS.quizAttached]: String(ic.quiz_attached),
       });
       let full = '';
-      for await (const chunk of intel.chat(msgs)) { full += chunk; res.write(chunk); }
-      res.end();
-      const log = db.logs.find((l) => l.id === ic.intercept_id);
-      if (log) log.llm_response = full;
+      let complete = false;
+      try {
+        let step = first;
+        while (!step.done) { full += step.value; res.write(step.value); step = await iterator.next(); }
+        complete = !abort.signal.aborted;
+        if (complete) res.end();
+      } catch (error) {
+        res.destroy(error as Error); // A failed stream must reject the client's reader, never masquerade as EOF.
+      } finally {
+        const log = db.logs.find((l) => l.id === ic.intercept_id);
+        if (log) {
+          if (full) log.llm_response = full;
+          if (!complete || !full) log.quiz_pending = false;
+        }
+      }
       return;
     }
 
@@ -490,6 +549,9 @@ createServer(async (req, res) => {
     if (!res.headersSent) res.writeHead(err.status, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ error: { code: err.code, message: err.message } }));
   }
-}).listen(PORT, () => {
-  console.log(`[mock-api] contract v${CONTRACT_VERSION} on http://127.0.0.1:${PORT} (DEMO_MODE=${DEMO ? 1 : 0})`);
+});
+server.listen(PORT, () => {
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : PORT;
+  console.log(`[mock-api] contract v${CONTRACT_VERSION} on http://127.0.0.1:${port} (DEMO_MODE=${DEMO ? 1 : 0})`);
 });

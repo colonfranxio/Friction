@@ -3,9 +3,6 @@ import { computeNextLevel, LEVEL_LABELS, type EvaluateInput, type EvaluationResu
 import type { Config } from './config';
 import { GradeSchema } from './schemas';
 
-/** EvaluateInput plus an optional abort signal (see change request in docs/status/B-intelligence.md). */
-export type EvaluateArgs = EvaluateInput & { signal?: AbortSignal };
-
 const SYSTEM = `You grade a student's message as their answer to a tutor's check-for-understanding question.
 
 Judge whether the student understands the central mechanism behind the learning goal; the question is context. Students answer in a sentence or two, so an answer that explains that mechanism accurately is correct even if it doesn't apply it to every case or follow-up the question mentions. If the question has several parts, an accurate answer to the part closest to the learning goal is enough.
@@ -19,7 +16,7 @@ Verdicts:
 
 confidence is 0 to 1. rationale is one plain sentence an educator can read; do not quote the student verbatim.`;
 
-export async function evaluateExchange(cfg: Config, input: EvaluateArgs): Promise<EvaluationResult> {
+export async function evaluateExchange(cfg: Config, input: EvaluateInput): Promise<EvaluationResult> {
   const { node, level, quiz_text, student_message, demoMode, signal } = input;
   const prompt = [
     `Concept: ${node.concept_name}`,

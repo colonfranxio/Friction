@@ -70,10 +70,14 @@ export function fakeEvaluate(input: EvaluateInput): EvaluationResult {
   const msg = input.student_message.toLowerCase().trim();
   let verdict: EvaluationResult['verdict'];
   let confidence: number;
+  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  const echoedQuiz = !!input.quiz_text && normalize(input.quiz_text) === normalize(input.student_message);
+  const newQuestion = /^(?:(?:btw|also)[,:]?\s+)?(?:how|what|why|when|where|which|who|can|could|should|would|do|does|will)\b[\s\S]*\?$/.test(msg);
+  const tentativeAnswer = /^(?:could|would|can)\s+(?:it|this|that)\s+be\b/.test(msg);
   if (/\bjust (give|tell|write|show)\b|give me the (code|answer)/.test(msg)) {
     verdict = 'lazy';
     confidence = 0.8;
-  } else if (msg.length < 12) {
+  } else if (echoedQuiz || (newQuestion && !tentativeAnswer) || msg.length < 12) {
     verdict = 'not_an_answer';
     confidence = 0.7;
   } else if (input.node.keywords.some((k) => msg.includes(k)) || msg.includes('depend')) {

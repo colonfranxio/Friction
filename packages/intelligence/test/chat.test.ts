@@ -72,4 +72,31 @@ describe('chat', () => {
     } as unknown as Anthropic;
     await expect(collect(intel(client).chat([{ role: 'user', content: 'x' }]))).rejects.toThrow(/overloaded/);
   });
+
+  it('throws after streaming a truncated reply, so it is never reported as complete', async () => {
+    for (const reason of ['max_tokens', 'pause_turn', null]) {
+      const got: string[] = [];
+      const run = async () => {
+        for await (const t of intel(fakeStream([delta('half an ans')], reason as string).client).chat([{ role: 'user', content: 'x' }])) got.push(t);
+      };
+      await expect(run()).rejects.toThrow(/incomplete reply/);
+      expect(got).toEqual(['half an ans']); // text already sent stays sent; the throw marks it incomplete
+    }
+  });
+
+  it('upstream stream error without a caller abort is a failure, not a quiet end', async () => {
+    const ac = new AbortController();
+    const client = {
+      messages: {
+        stream: () => ({
+          async *[Symbol.asyncIterator]() {
+            yield delta('a');
+            throw new Error('socket hang up');
+          },
+          abort() {},
+        }),
+      },
+    } as unknown as Anthropic;
+    await expect(collect(intel(client).chat([{ role: 'user', content: 'x' }], { signal: ac.signal }))).rejects.toThrow(/hang up/);
+  });
 });

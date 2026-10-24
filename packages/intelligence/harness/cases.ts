@@ -8,7 +8,26 @@ export const CP2_LEVELS: BloomLevel[] = [1, 2, 4];
 /** A typical L1 check question, used as quiz_text for the grading cases. The levels section also grades the demo answer against each real L1 reply. */
 export const QUIZ = 'In your own words, what does the dependency array tell React?';
 
-export const GRADING_CASES: { name: string; level: BloomLevel; message: string; expect: Verdict }[] = [
+/** `expect` lists every acceptable verdict. Only `correct` raises a level, so the repeat cases just must not be `correct`. */
+export const GRADING_CASES: { name: string; level: BloomLevel; message: string; expect: Verdict | Verdict[] }[] = [
+  // Repeating or rephrasing the original question must not earn mastery, however many concept keywords it has.
+  { name: 'repeats original question', level: 1, message: DEMO_PROMPTS.question, expect: ['not_an_answer', 'lazy'] },
+  {
+    name: 'rephrases original question',
+    level: 1,
+    message: 'Why does my useEffect keep re-running forever, and what should I put in the dependency array to stop it?',
+    expect: ['not_an_answer', 'lazy'],
+  },
+  { name: 'echoes the check question', level: 1, message: QUIZ, expect: ['not_an_answer', 'lazy'] },
+  { name: 'keyword list', level: 1, message: 'useEffect dependency array React re-run effect values change', expect: ['not_an_answer', 'partial', 'lazy'] },
+  // Genuine answers that are short or phrased as a question still count.
+  { name: 'short genuine answer', level: 1, message: 'It re-runs the effect only when one of those values changes.', expect: 'correct' },
+  {
+    name: 'question-shaped answer',
+    level: 1,
+    message: "Isn't it the list of values the effect uses, so React only re-runs it when one of them changes?",
+    expect: 'correct',
+  },
   { name: 'demo correctAnswer', level: 1, message: DEMO_PROMPTS.correctAnswer, expect: 'correct' },
   { name: 'demo lazyAnswer at L3', level: 3, message: DEMO_PROMPTS.lazyAnswer, expect: 'lazy' },
   {

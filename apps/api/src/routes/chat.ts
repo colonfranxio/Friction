@@ -64,6 +64,8 @@ export function chatRoutes(app: Hono, ctx: Ctx) {
     c.header(CHAT_HEADERS.interceptId, ic.intercept_id ?? '');
     c.header(CHAT_HEADERS.nodeId, ic.node_id ?? '');
     c.header(CHAT_HEADERS.level, ic.level ? String(ic.level) : '');
+    // Contract v3 (optional): exact boolean string for THIS turn, so the UI needn't infer it from the level.
+    c.header(CHAT_HEADERS.quizAttached, String(ic.quiz_attached));
 
     return stream(c, async (s) => {
       let full = '';
@@ -76,7 +78,9 @@ export function chatRoutes(app: Hono, ctx: Ctx) {
           await s.write(step.value);
           step = await it.next();
         }
-        complete = true;
+        // B's chat() ends *quietly* when the signal aborts, so a normal loop exit is not proof the
+        // student saw the whole reply (and its check question).
+        complete = !abort.signal.aborted;
       } catch (e) {
         if (!abort.signal.aborted) console.error('[chat] stream error:', (e as Error)?.message ?? e);
       } finally {

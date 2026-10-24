@@ -121,8 +121,9 @@ if (runs('grading')) {
   );
   let ok = 0;
   for (const { c, r, time } of rows) {
-    if (r.verdict === c.expect) ok++;
-    out.push(`| ${c.name} | L${c.level} | ${c.expect} | ${r.verdict === c.expect ? '' : '❌ '}${r.verdict} | ${r.confidence.toFixed(2)} | L${r.new_level} | ${time} | ${r.rationale} |`);
+    const pass = ([] as string[]).concat(c.expect).includes(r.verdict);
+    if (pass) ok++;
+    out.push(`| ${c.name} | L${c.level} | ${([] as string[]).concat(c.expect).join(' / ')} | ${pass ? '' : '❌ '}${r.verdict} | ${r.confidence.toFixed(2)} | L${r.new_level} | ${time} | ${r.rationale} |`);
   }
   summary.push(`- Grading: **${ok}/${rows.length}** match`);
   out.push('');
