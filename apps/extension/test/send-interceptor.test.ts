@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InterceptRuntimeResult } from '../src/background-types';
-import { installSendInterceptor, type SendMode, type SiteOps } from '../src/lib/send-interceptor';
+import { cleanPrompt, installSendInterceptor, type SendMode, type SiteOps } from '../src/lib/send-interceptor';
 import * as realSite from '../src/site/claude';
 
 const RAW = 'How do I stop my useEffect from running in an infinite loop?';
@@ -164,12 +164,31 @@ describe('send interceptor', () => {
     expect(fresh.textContent).not.toContain('⟦friction⟧');
   });
 
-  it('never re-intercepts text that already contains a friction block', async () => {
-    page.composer.innerHTML = `<p>${INJECTED}</p>`;
+  it('a pasted friction block is stripped and the prompt still gets friction (no bypass by copy-paste)', async () => {
+    page.composer.innerHTML = `<p>${RAW}\n\n⟦friction⟧\nLevel: 4 (Normal)\n⟦/friction⟧</p>`;
+    const { spy, modes } = install(async () => injected);
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+    expect(spy).toHaveBeenCalledWith(RAW);
+    expect(page.sent[0]).toBe(norm(INJECTED));
+    expect(modes).toEqual(['injected']);
+  });
+
+  it('a stray marker left after a partial erase does not skip friction', async () => {
+    page.composer.innerHTML = `<p>${RAW} ⟦friction⟧</p>`;
     const { spy } = install(async () => injected);
     enter(page.composer);
     await vi.waitFor(() => expect(page.sent).toHaveLength(1));
-    expect(spy).not.toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith(RAW);
+    expect(page.sent[0]).toBe(norm(INJECTED));
+  });
+
+  it('passthrough sends the cleaned text, never the pasted block', async () => {
+    page.composer.innerHTML = `<p>write a haiku ⟦friction⟧ Level: 4 ⟦/friction⟧</p>`;
+    install(async () => ({ outcome: { passthrough: true, reason: 'no_match' }, concept_name: null }));
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+    expect(page.sent[0]).toBe(norm('write a haiku'));
   });
 
   it('falls back to Enter when there is no send button', async () => {
@@ -178,5 +197,88 @@ describe('send interceptor', () => {
     enter(page.composer);
     await vi.waitFor(() => expect(page.sent).toHaveLength(1));
     expect(page.sent[0]).toBe(norm(INJECTED));
+  });
+});
+
+describe('bypass: one prompt without friction', () => {
+  let page: ReturnType<typeof fakeClaude>;
+  beforeEach(() => (page = fakeClaude()));
+
+  function installWith(extra: { skipIntercept?: (raw: string) => boolean } = {}) {
+    const modes: SendMode[] = [];
+    const spy = vi.fn(async () => injected);
+    const ic = installSendInterceptor({ doc: document, win: window, site: realSite, intercept: spy, timeoutMs: 300, settleMs: 20, confirmMs: 80, onSent: (m) => modes.push(m), ...extra });
+    cleanup = ic;
+    return { ic, modes, spy };
+  }
+
+  it('sendUnmodified puts the text in the composer and sends it without calling the API', async () => {
+    const { ic, spy } = installWith();
+    page.composer.innerHTML = '<p></p>';
+    expect(await ic.sendUnmodified(RAW)).toBe(true);
+    expect(page.sent).toEqual([norm(RAW)]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('sendUnmodified reports false when the page does not send (e.g. Claude still replying)', async () => {
+    const { ic } = installWith();
+    page.button.disabled = true;
+    page.button.replaceWith(page.button.cloneNode(true)); // drop the send handler
+    page.composer.replaceWith(page.composer.cloneNode(true));
+    expect(await ic.sendUnmodified(RAW)).toBe(false);
+    expect(page.sent).toEqual([]);
+  });
+
+  it('skipIntercept: an armed prompt goes out unmodified once, later sends get friction again', async () => {
+    let armed: string | null = RAW;
+    const { modes, spy } = installWith({
+      skipIntercept: (raw) => {
+        if (raw !== armed) return false;
+        armed = null;
+        return true;
+      },
+    });
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+    expect(page.sent[0]).toBe(norm(RAW));
+    expect(spy).not.toHaveBeenCalled();
+    await new Promise((r) => setTimeout(r, 0)); // let the first send finish
+
+    page.composer.innerHTML = `<p>${RAW}</p>`;
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(2));
+    expect(page.sent[1]).toBe(norm(INJECTED));
+    expect(modes).toEqual(['bypassed', 'injected']);
+  });
+
+  it('canSendUnmodified protects a new draft and in-flight sends (checked before a bypass is spent)', async () => {
+    let release!: (r: InterceptRuntimeResult) => void;
+    const ic = installSendInterceptor({
+      doc: document, win: window, site: realSite, timeoutMs: 1000, settleMs: 20, confirmMs: 80,
+      intercept: () => new Promise((r) => (release = r)),
+    });
+    cleanup = ic;
+    expect(ic.canSendUnmodified(RAW)).toBe('ok'); // composer already holds the same prompt
+    page.composer.innerHTML = '<p>a brand new question</p>';
+    expect(ic.canSendUnmodified(RAW)).toBe('draft'); // never overwrite a different draft
+    page.composer.innerHTML = '<p></p>';
+    expect(ic.canSendUnmodified(RAW)).toBe('ok'); // empty composer
+    page.composer.innerHTML = `<p>${RAW}</p>`;
+    enter(page.composer); // a send is now in flight
+    await new Promise((r) => setTimeout(r, 5));
+    expect(ic.canSendUnmodified(RAW)).toBe('busy');
+    release({ outcome: { passthrough: true, reason: 'no_match' }, concept_name: null });
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+  });
+});
+
+describe('cleanPrompt', () => {
+  it('strips nested marker fragments until stable', () => {
+    expect(cleanPrompt('hi ⟦fric⟦friction⟧tion⟧ yo')).toBe('hi  yo');
+    expect(cleanPrompt('a ⟦/fri⟦/friction⟧ction⟧ b')).toBe('a  b');
+  });
+  it('removes a pasted block and keeps the rest', () => {
+    expect(cleanPrompt('pre ⟦friction⟧x⟦/friction⟧ post')).toBe('pre post');
+    expect(cleanPrompt('plain question?')).toBe('plain question?');
   });
 });

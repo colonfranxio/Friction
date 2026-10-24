@@ -20,6 +20,7 @@
       .muted { color: var(--muted); font-size: 12px; }
       button { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--active); background: var(--surface); color: #92400E; font: 700 14px Nunito, system-ui, sans-serif; cursor: pointer; }
       button:disabled { opacity: .5; cursor: default; }
+      button.secondary { border-color: #10B981; color: #065F46; }
       .switch { position: relative; width: 38px; height: 22px; } .switch input { opacity: 0; width: 0; height: 0; }
       .slider { position: absolute; inset: 0; background: #D1D5DB; border-radius: 999px; transition: .2s; cursor: pointer; }
       .slider::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
@@ -52,15 +53,21 @@
         <div id="no-current" class="muted">Ask Claude about something from your course to see your level here.</div>
       </section>
       <section>
-        <button id="bypass" disabled>Use a bypass</button>
-        <p class="muted">A bypass skips friction for this concept and notifies your teacher.</p>
+        <button id="bypass" disabled>Bypass</button>
+        <p class="muted" id="bypass-note">Re-sends your last message without friction. Depending on the server, it may also pause friction on this concept until reset. Uses one bypass and notifies your teacher.</p>
         <div id="msg"></div>
+      </section>
+      <section>
+        <button id="open-map" class="secondary">Open learning map</button>
+        <div id="map-msg" class="muted"></div>
       </section>
       <details>
         <summary>Settings</summary>
         <form id="settings-form">
           <label class="muted">Student ID <input type="text" id="student" /></label>
           <label class="muted">API URL <input type="text" id="api" /></label>
+          <label class="muted">Dashboard URL (learning map) <input type="text" id="dash" placeholder="http://127.0.0.1:5173" /></label>
+          <label class="muted">API READY SHA (optional) <input type="text" id="ready-sha" placeholder="only after E approves A's API READY" spellcheck="false" /></label>
           <button class="save" type="submit">Save</button>
         </form>
       </details>

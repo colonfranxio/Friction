@@ -2,8 +2,9 @@
  * MV3 service worker. The ONLY context that calls our API (host_permissions bypass page CSP).
  * Keeps no state in memory that matters: settings + last intercept live in chrome.storage.
  */
-import { ApiError, EXTENSION_TIMEOUT_MS, createFrictionClient, type FrictionClient, type UUID } from '@friction/shared';
+import { ApiError, EXTENSION_TIMEOUT_MS, createFrictionClient, type FrictionClient, type HealthResponse, type UUID } from '@friction/shared';
 import type { InterceptRuntimeResult } from './background-types';
+import { promptBypassEnabled } from './lib/bypass-gate';
 import type { BypassResult, LastIntercept, RuntimeRequest, StatusResponse } from './lib/messages';
 import { getLastIntercept, getSettings, setLastIntercept } from './lib/storage';
 
@@ -37,6 +38,18 @@ function conceptName(client: FrictionClient, studentId: string, nodeId: UUID | n
   const key = `${client.baseUrl}|${studentId}`;
   if (conceptsFor !== key || !concepts.has(nodeId)) void refreshConcepts(client, studentId);
   return conceptsFor === key ? concepts.get(nodeId) ?? null : null;
+}
+
+/** GET /health, or null if it fails or takes longer than `ms`. */
+async function healthWithin(client: FrictionClient, ms: number): Promise<HealthResponse | null> {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([client.health(), new Promise<never>((_, rej) => (t = setTimeout(() => rej(new Error('timeout')), ms)))]);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 // ---- handlers ----
@@ -81,13 +94,14 @@ async function handleStatus(): Promise<StatusResponse> {
   const s = await getSettings();
   if (!s.enabled) {
     // Consent off: contract §11, no API calls at all.
-    return { online: false, enabled: false, studentId: s.studentId, apiUrl: s.apiUrl, bypass_quota: null, last: await getLastIntercept(), paused: false };
+    return { online: false, enabled: false, studentId: s.studentId, apiUrl: s.apiUrl, bypass_quota: null, last: await getLastIntercept(), paused: false, prompt_bypass: false };
   }
   const client = createFrictionClient(s.apiUrl);
   let last = await getLastIntercept();
   let online = false;
   let quota: number | null = null;
   let paused = false;
+  const healthP = healthWithin(client, 2000);
   try {
     const student = await Promise.race([
       client.getStudent(s.studentId),
@@ -105,16 +119,25 @@ async function handleStatus(): Promise<StatusResponse> {
   } catch {
     online = false;
   }
-  return { online, enabled: s.enabled, studentId: s.studentId, apiUrl: s.apiUrl, bypass_quota: quota, last, paused };
+  const prompt_bypass = online && promptBypassEnabled(await healthP, s.promptBypassReadySha);
+  return { online, enabled: s.enabled, studentId: s.studentId, apiUrl: s.apiUrl, bypass_quota: quota, last, paused, prompt_bypass };
 }
 
-async function handleBypass(): Promise<BypassResult> {
+async function handleBypass(m: Extract<RuntimeRequest, { type: 'friction:bypass' }>): Promise<BypassResult> {
   const s = await getSettings();
-  const last = await getLastIntercept();
-  if (!last?.node_id) return { ok: false, code: 'no_concept', message: 'Ask Claude something first so Friction knows the concept.' };
+  // Consent off: contract §11, no API calls at all (guards queued/programmatic messages too, not only the buttons).
+  if (!s.enabled) return { ok: false, code: 'disabled', message: 'Friction is turned off.' };
+  const nodeId = m.node_id ?? (await getLastIntercept())?.node_id;
+  if (!nodeId) return { ok: false, code: 'no_concept', message: 'Ask Claude something first so Friction knows the concept.' };
+  const client = createFrictionClient(s.apiUrl);
+  // Prompt scope only behind the same gate as C's sandbox; otherwise send the legacy payload (no scope field).
+  const wantPrompt = (m.scope ?? 'prompt') === 'prompt';
+  const usePrompt = wantPrompt && promptBypassEnabled(await healthWithin(client, 1500), s.promptBypassReadySha);
   try {
-    const r = await createFrictionClient(s.apiUrl).bypass({ student_id: s.studentId, node_id: last.node_id });
-    return { ok: true, remaining_quota: r.remaining_quota };
+    const r = await client.bypass(
+      usePrompt ? { student_id: s.studentId, node_id: nodeId, scope: 'prompt' } : { student_id: s.studentId, node_id: nodeId },
+    );
+    return { ok: true, remaining_quota: r.remaining_quota, scope_applied: usePrompt ? 'prompt' : 'concept' };
   } catch (err) {
     if (err instanceof ApiError) return { ok: false, code: err.code, message: err.code === 'quota_exhausted' ? 'No bypasses left.' : err.message };
     return { ok: false, code: 'offline', message: 'Friction server is unreachable.' };
@@ -129,7 +152,7 @@ chrome.runtime.onMessage.addListener((msg: RuntimeRequest, _sender, sendResponse
       case 'friction:status':
         return handleStatus();
       case 'friction:bypass':
-        return handleBypass();
+        return handleBypass(msg);
       default:
         return Promise.resolve(undefined);
     }
