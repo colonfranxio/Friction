@@ -115,12 +115,19 @@ This section updates the remaining-work assignment after CP2. Own only `apps/ext
 - **Opening:** add an **Open learning map** button in the popup that calls `chrome.sidePanel.open({ windowId })`. It needs the click as a user gesture. Keep the popup as the toolbar action.
 - **Panel content:** a full-size iframe to `${dashboardUrl}/student/${studentId}?embed=1`.
   - `studentId` comes from existing storage.
-  - Add a **Dashboard URL** setting next to API URL in popup Settings. Its default is `http://localhost:5173`, because Vite dev listens on `localhost`, and `127.0.0.1:5173` was refused in the human's Windows run.
+  - Add a **Dashboard URL** setting next to API URL in popup Settings. Default to `http://127.0.0.1:5173` per the repository's cross-platform rule. Keep it editable: the human reported that `http://localhost:5173` worked where 127.0.0.1 was refused, so document that override and use the address the dashboard actually binds to; do not assume Vite binds identically on every machine. Keep the API URL separate.
   - React to storage changes (student or URL) by reloading the iframe.
+  - Confirm the dashboard's independently configured `VITE_API_URL` points to the same intended API/store as the extension's API URL. The panel's Dashboard URL does not configure the dashboard's backend; mismatched 8788/8789 servers will not share live mastery. Arrange a private integration window with C/E before any resetting checks.
 - **Consent:** if `Settings.enabled` (the consent toggle) is false, the panel shows "Friction is off" and loads nothing, with no request to the dashboard.
-- **Unreachable dashboard:** show a short message with a Retry button rather than a broken frame.
+- Revoking consent while the panel is open must remove the iframe and stop its ongoing dashboard/API/SSE work. Cancel pending readiness checks and ignore stale storage/load callbacks so they cannot reload it. Do not prefetch the dashboard while disabled.
+- Validate the configured Dashboard URL as HTTP(S), and construct the route with URL APIs and an encoded student ID. Keep existing host access; do not add broad host permissions for configurable URLs. Explain an unsupported origin rather than silently requesting extra access. Do not put prompts, tokens or API keys in the iframe URL.
+- **Unreachable dashboard:** show a short message with a Retry button rather than a broken frame. Use bounded readiness diagnostics; cross-origin iframe `onerror`/`onload` alone cannot reliably distinguish an unreachable page or a live page with its API down. Agree any UI-only readiness/error signal with C and validate message origin/source. Keep C's in-frame API error/retry state usable. Do not loosen unrelated site security headers.
+- Preserve Chrome's user gesture when opening: resolve/cache the target window before the click where needed, then call `chrome.sidePanel.open` directly from the button handler. Handle unsupported Chrome versions or denied opens with a visible explanation; do not replace the toolbar popup action.
 - **Verify:**
   - unit tests for the URL built from storage, the consent-off no-load path and the storage-change reload;
+  - consent revoked while open, invalid URL, stale load/ready callbacks, unreachable dashboard, API-down frame and open failure;
   - the manifest keeps its current permissions plus `sidePanel` only;
   - extension build and typecheck pass;
   - **human check:** open the panel on claude.ai, answer a check question, and the node turns green live in the panel.
+
+**Execution order and parallel safety (E review):** accepted backlog scope; existing hardening and acceptance gates retain priority. Once E schedules it, build D's shell/settings/tests in parallel with C's embed page in separate existing checkouts, using D's private mock 8789 and the separately configured C dashboard. Until C publishes **EMBED READY** with SHA and iframe/error behavior, a full Student view is development scaffolding, not final compact-panel acceptance. Merge C's ready implementation through E before final D integration; keep all D changes within `apps/extension/**` and D's status file. E verifies the combined feature, then the human checks live Chrome. No new A/B endpoint or shared contract is required.

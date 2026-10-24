@@ -153,7 +153,12 @@ This section updates the remaining-work assignment after CP2. Own only `apps/das
 - Stays live via SSE exactly like the Student page. Mastery animations stay; reduced motion is respected.
 - **Must render inside an iframe from a `chrome-extension://` page:** no frame-busting, and no `X-Frame-Options`/`frame-ancestors` that blocks it in dev or preview.
 - Unknown student or API down: show the existing error/retry state in compact form, with no blank panel.
+- Keep this surface read-only: no educator controls, upload/reset actions or raw chat content. "Try asking" is a visible suggestion, not an automatic send to claude.ai. Use shared status/depth rules with a stable tie-break for Next up; handle no active nodes without inventing a recommendation.
+- Coordinate iframe readiness/error diagnostics with D. An iframe `load` event alone does not prove the dashboard or its API loaded successfully. If using `postMessage`, agree a small UI-only message shape and validate sender origin/source on both sides; no backend/shared contract change is needed.
+- For integrated live updates, the dashboard's `VITE_API_URL` and D's stored API URL must target the **same intended backend/store**. The iframe inherits the dashboard's API configuration, not D's setting. Coordinate an isolated test window instead of resetting C's 8788 data from D's 8789 tests; changing Dashboard URL alone does not select its API.
 - **Verify:**
   - browser check at 360px and 420px: no horizontal overflow, Next up lists only active nodes, and a correct answer graded elsewhere turns the node green live in the embed;
   - the full-width Student page is unchanged;
   - typecheck, build and existing browser suites still pass.
+
+**Execution order and parallel safety (E review):** this request is accepted for the backlog; it does not close the open acceptance gates or authorize bypassing their priority. Once E schedules it, C's embed page and D's side-panel shell/settings/tests can proceed in parallel in their existing isolated checkouts and owned paths. C publishes **EMBED READY** with SHA, route, narrow-screen/error/live-update evidence and any agreed iframe signal. D's final panel integration depends on that handoff; the full Student-page fallback is temporary development scaffolding. Use C's reserved mock/dashboard ports, not D's backend. E merges C before D for this feature, then runs integrated iframe/consent checks and requests the human live-panel check. Preserve the existing API READY dependencies for bypass work; this read-only panel needs no new A/B API work.
