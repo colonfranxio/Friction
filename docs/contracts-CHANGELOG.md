@@ -2,6 +2,10 @@
 
 Additive changes only. Each entry: version, date, what changed, who asked.
 
+## v3 implementation followup (CP2, 2026-10-24)
+- Merged A's PR #1 (`d757427`): real `/chat` now emits the exact quiz-attachment header and exposes it through the existing CORS list. True/false/no-match and pending-quiz cases were verified. C's UI consumption remains pending; no new contract version or shape change.
+- A's aborted-stream completion fix and quiet-abort regression resolve E's standalone cancellation failure. Partial replies remain saved, unseen quizzes are closed, and late grading semantics are unchanged.
+
 ## v3 (CP2 integration, 2026-10-24)
 - Accepted C's additive optional `CHAT_HEADERS.quizAttached` / `X-Friction-Quiz-Attached`, with the exact `quiz_attached` boolean string for each chat turn. E implemented the shared constant, mock emission, CORS exposure and smoke checks. No existing HTTP fields or headers changed.
 - The mock must emit the header; the real API may omit it during rollout. Smoke validates the value and CORS exposure whenever present and requires it for the mock. A owns adding it to real `/chat` and endpoint tests; C owns consuming it with fallback when absent. E did not edit builder code.

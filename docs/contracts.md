@@ -113,7 +113,7 @@ Each message is `event: <type>` plus `data: <JSON>`. Comment pings (`: ping`) ar
 
 Runs the §4 intercept on the last user message (`app_source:'sandbox'`, the request's `conversation_id`). Replaces that message with `injected_prompt`, streams `Intelligence.chat()` as `text/plain`, and saves the full text as the log's `llm_response`. Headers: `X-Friction-Intercept-Id`, `X-Friction-Node-Id`, `X-Friction-Level` (empty when no node). They're exposed via CORS.
 
-From v3, optional `CHAT_HEADERS.quizAttached` (`X-Friction-Quiz-Attached`) reports the exact `InterceptResponse.quiz_attached` for that turn as `"true"` or `"false"`. When emitted, it must be exposed via CORS. It is false for unmatched prompts and L4 turns. Do not infer it from `level < 4`: a lower-level turn with an already-pending quiz may attach none. The mock emits it; A and C own the real endpoint and UI rollout. While it is absent, clients retain the existing fallback hint and must not claim exact attachment from the level alone. The original three headers remain required.
+From v3, optional `CHAT_HEADERS.quizAttached` (`X-Friction-Quiz-Attached`) reports the exact `InterceptResponse.quiz_attached` for that turn as `"true"` or `"false"`. When emitted, it must be exposed via CORS. It is false for unmatched prompts and L4 turns. Do not infer it from `level < 4`: a lower-level turn with an already-pending quiz may attach none. Both the mock and real API emit it; C owns the remaining UI rollout. Clients retain the existing fallback hint if connecting to an older server without it and must not claim exact attachment from the level alone. The original three headers remain required.
 
 ## 11. Privacy
 
