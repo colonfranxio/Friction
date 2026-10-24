@@ -8,7 +8,7 @@ Every screen in the MVP, who owns it, and what's on it. Visual language comes fr
 | Student view | dashboard `/student/:studentId` | C |
 | Sandbox chat | dashboard `/sandbox` | C |
 | Upload dialog, inspector, class panel, activity, toasts | dashboard overlays/panels | C |
-| Extension popup | `chrome-extension://…/popup.html` | D |
+| Extension popup (bonus) | `chrome-extension://…/popup.html` | D |
 | On-page badge on claude.ai | injected shadow-DOM pill | D |
 
 Default route `/` redirects to `/educator/33333333-3333-4333-8333-333333333333` (`SEED_IDS.tree`).
@@ -164,7 +164,7 @@ While parsing: the dialog shows empty pillar columns filling with grey ghost cir
 - Live via SSE. When a node becomes mastered: the padlock dissolves on the children, the node pulses, particles burst inside the node radius, the badge ticks 1/4 → 4/4, and newly unlocked edges draw outward.
 - **This is the screen shown side by side with claude.ai in the demo.**
 
-## 4. Sandbox: `/sandbox` (fallback demo and judge explainer)
+## 4. Sandbox: `/sandbox` (MAIN DEMO SURFACE)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────┐
@@ -182,13 +182,17 @@ While parsing: the dialog shows empty pillar columns filling with grey ghost cir
 │                                                      │ │ Level: 1 (Socratic) │ │
 │                                                      │ │ …                   │ │
 │                                                      │ └─────────────────────┘ │
-│  [ Ask anything…                         ] [Send]    │  mini tree (student)    │
+│                                                      │ [ Use bypass (3 left) ] │
+│  [ Ask anything…                         ] [Send]    │  mini tree (student),   │
+│                                                      │  updates live           │
 └──────────────────────────────────────────────────────┴─────────────────────────┘
 ```
 - Streams `POST /chat`. Reads `X-Friction-*` headers for the right panel. "Show hidden prompt" displays what was injected (rebuilt client-side is fine: show the level and node; the exact text is optional).
 - "New chat" generates a new `conversation_id` (uuid).
+- **Use bypass** → `POST /bypass` for the current turn's node; shows the remaining quota, or "No bypasses left" on 409.
+- The mini tree is the student view (same live SSE data), so the demo works on one screen: ask → push back → answer → node turns green.
 
-## 5. Extension popup (D), 360 × ~460px
+## 5. Extension popup (D, bonus), 360 × ~460px
 
 ```
 ┌──────────────────────────────────┐
