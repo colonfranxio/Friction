@@ -101,3 +101,26 @@ This section updates the remaining-work assignment after CP2. Own only `apps/ext
 - Your private mock is 8789 (`pnpm dev:mock:ext`); C owns mock 8788. Use injected/in-process tests where possible. Only use shared API 8787 after its owner grants a test window; never reset it during someone else's demo or stop another agent's process.
 - Add dependencies only in your package; E reconciles combined lockfiles. Do not publish `main`, shared files or another agent's status.
 - Deliver extension tests/typecheck/build, API integration against the intended mode and human GO/NO-GO evidence. Distinguish simulated tests, fake-backed API checks and actual claude.ai/real-model results. Refresh stale status blockers that A's merged implementation already resolved.
+
+## Requested addition: learning map beside claude.ai (human request, 2026-10-24)
+
+**Why:** in a real test the human found that, on claude.ai, students can't see their skill tree, so they don't know which concept to steer the conversation toward next. The badge shows the level for one turn, not the map. Show the student's live map in Chrome's built-in side panel next to claude.ai. Don't draw anything inside claude.ai's page; that stays as fragile-free as today.
+
+**Priority:** bonus feature, after must-haves, acceptance gates and your existing hardening (PLAN.md rule). E schedules it. **No contract change.** It depends on C's `/student/:id?embed=1` (see C's brief, same heading); until that lands, frame the full `/student/:id` page.
+
+**D's task: Chrome side panel**
+- **Manifest:**
+  - add the `"sidePanel"` permission and `"side_panel": { "default_path": "sidepanel.html" }`;
+  - `build.mjs` copies/builds `sidepanel.html` (plus a small `src/sidepanel.ts` if needed).
+- **Opening:** add an **Open learning map** button in the popup that calls `chrome.sidePanel.open({ windowId })`. It needs the click as a user gesture. Keep the popup as the toolbar action.
+- **Panel content:** a full-size iframe to `${dashboardUrl}/student/${studentId}?embed=1`.
+  - `studentId` comes from existing storage.
+  - Add a **Dashboard URL** setting next to API URL in popup Settings. Its default is `http://localhost:5173`, because Vite dev listens on `localhost`, and `127.0.0.1:5173` was refused in the human's Windows run.
+  - React to storage changes (student or URL) by reloading the iframe.
+- **Consent:** if `Settings.enabled` (the consent toggle) is false, the panel shows "Friction is off" and loads nothing, with no request to the dashboard.
+- **Unreachable dashboard:** show a short message with a Retry button rather than a broken frame.
+- **Verify:**
+  - unit tests for the URL built from storage, the consent-off no-load path and the storage-change reload;
+  - the manifest keeps its current permissions plus `sidePanel` only;
+  - extension build and typecheck pass;
+  - **human check:** open the panel on claude.ai, answer a check question, and the node turns green live in the panel.
