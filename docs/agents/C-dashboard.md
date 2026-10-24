@@ -110,3 +110,27 @@ Also check it in a real browser (Claude in Chrome, if you have it) and attach sc
 ## 8. Interfaces with the other agents
 - You depend only on the HTTP API (A) via `@friction/shared`'s client. The mock is byte-compatible with what A builds.
 - If the UI needs data the API doesn't return, compute it client-side if you can. Otherwise file a change request (additive) in your status file.
+
+## work left to do
+
+This section updates the remaining-work assignment after CP2. Own only `apps/dashboard/**` and your status file on `agent/dashboard`. Your tree, upload, sandbox, bypass/toast and existing polish are already integrated. Finish correctness and acceptance before adding more decoration.
+
+### Start now, in parallel
+
+- Merge current `main` and confirm v3. Read `CHAT_HEADERS.quizAttached` per response, store it on that turn and display the exact value. Retain an explicitly approximate fallback only when the header is absent; never infer a new quiz solely from `level < 4`. Test true, false at L1 with an already-pending quiz, L4, no-match and old-server fallback. A and E's mock already emit the header; this task does not need a new contract.
+- Add UI coverage for interrupted/partial replies and clear recovery behavior. The current API can finish a partial HTTP 200 response after a model error. Coordinate with A/E before relying on any new completion/error signal; do not label an interrupted reply complete or resend an unseen quiz answer automatically.
+- Preserve New chat cancellation, per-turn bypass targeting, live mastery in all views, quota/toast, reset and mobile behavior. Expand the real-model acceptance checks without hardcoding the fake reply wording. Existing animations/class/activity code needs regression validation, not a rebuild.
+
+### Dependencies and order
+
+1. Exact v3 quiz display, UI tests and error-state preparation start immediately in parallel with A/B/D/E. Use the reference mock while A works.
+2. **Wait for E's `CONTRACT READY` handoff** before implementing changed bypass scope or a new stream-failure protocol. E owns shared/client/mock changes; request missing behavior instead of editing those files or redefining contracts locally.
+3. Merge that contract commit and wire the sandbox to the agreed bypass behavior against E's updated mock. Preserve existing-client fallback as specified. A's `API READY` handoff is required before claiming the new behavior works against the real endpoint.
+4. Push `C READY` with SHA, tests and browser evidence. After E's B → A → C → D merge, rerun against the final API with real Claude and the human; mock screenshots alone do not satisfy CP2.
+
+### Parallel safety and exit criteria
+
+- Use your own existing isolated environment/checkout. Do not switch branches or install dependencies in a working directory another agent is using. No new worktrees unless explicitly requested.
+- Your mock is 8788 and dashboard 5173. D uses 8789; E uses private mock 8790 and dashboard 5174 if sharing a host. Check the configured API URL, not just the dashboard port: two UIs can still mutate the same backend.
+- Browser scripts and smoke reset demo data and overwrite screenshots. Serialize them per backend/store, use your own fixtures/session, and never reset another agent's rehearsal. E schedules the exclusive final API/browser test window. Keep generated evidence attributable to the run and preserve existing user files.
+- Deliver dashboard tests, typecheck/build and browser regressions; validate exact quiz display, interruption/retry, upload, live progression, new chat, bypass/toast, quota/reset, responsive/reduced-motion behavior. If retaining optional educator editing, verify the complete edit/persist/cycle-error flow; otherwise defer it. Update stale status text claiming A/B are placeholders.

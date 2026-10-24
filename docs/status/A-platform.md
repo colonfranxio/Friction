@@ -2,7 +2,8 @@
 
 **Owned by Agent A. Only this agent edits this file.**
 
-- Contract version confirmed: **2** (changelog v2 read: optional `EvaluateInput.signal`; no HTTP shape change; I never abort grading at the intercept budget, so late grades still apply). Merged `origin/main` 355fcac (CP1 integration) on top of CP1.
+- Contract version confirmed: **3** (changelog v3 read: optional `X-Friction-Quiz-Attached` chat header; no existing field changed; v2 late-grade/cancel rules unchanged). Merged `origin/main` 457e0a7 (CP2 integration) into this branch. Previously confirmed v2 below.
+- Contract version (earlier note): **2** (changelog v2 read: optional `EvaluateInput.signal`; no HTTP shape change; I never abort grading at the intercept budget, so late grades still apply). Merged `origin/main` 355fcac (CP1 integration) on top of CP1.
 - Current checkpoint: CP1 merged by E. **CP2 done on my side and verified** (needs E to merge B's `agent/intelligence` 00a5d4d first; only the quiz header from E's contract change is outstanding). See "CP2 progress".
 - Last updated: 2026-10-24 (merged `main` 999db80 into this branch; E's 16-step smoke passes 3x against :8787 on fakes)
 
@@ -38,8 +39,14 @@
   - Quiz left pending when `/chat` failed before streaming, was cut off, or returned an empty reply (the student never saw the check question) → **fixed**: `routes/chat.ts` closes that turn's quiz in those cases; test covers all three.
   - Not changed, FYI: level-4/answer turns take 11-14s to first byte (model/B, under the 30s timeout); `/demo/reset {full:true}` drops parsed trees (intended: back to the seed); 502 `llm_error` messages include the upstream error text.
   - Not verified live: a late grade (>4s) and the 504 timeouts (covered by unit tests with fakes), a valid PDF parse, client abort mid-stream.
-- [ ] Quiz-attachment header (`X-Friction-Quiz-Attached`): waiting for E to add it to shared/mock at CP2.
+- [x] Quiz-attachment header (`X-Friction-Quiz-Attached`): emitted by real `/chat` (see re-submission above).
 - Note for E/B (from CP1-preflight item 1): I never abort `evaluateExchange` at the intercept deadline; late grades keep running and apply. If `EvaluateInput.signal` is adopted, I'll pass a signal that is only aborted on server shutdown.
+
+### CP2 re-submission: E's blocking findings (docs/checkpoints/CP2.md), both done
+- [x] **Cancellation defect fixed** (`apps/api/src/routes/chat.ts`): B's `chat()` ends quietly when its signal aborts, so a normal loop exit wasn't proof the reply was fully delivered; completion is now `!abort.signal.aborted`. An interrupted reply keeps its partial text and closes the unseen quiz. `pnpm exec tsx scripts/verify-chat-abort.ts` (E's repro, in-memory app + B's real factory with an injected SDK stream) now prints PASS. New endpoint regression uses B's quiet-abort behavior (generator returns without throwing when the signal aborts, client cancels the reader); I checked it **fails with the old `complete = true` and passes with the fix**.
+- [x] **Quiz header (contract v3)**: real `/chat` now sends `X-Friction-Quiz-Attached: true|false` from `ic.quiz_attached` (exact boolean string; `false` for L4 and no-match turns). It's covered by the existing CORS expose list (`Object.values(CHAT_HEADERS)`). Test: question → `true`, graded-correct L4 turn → `false`, off-topic → `false`, header exposed.
+- [x] Checks after the fix, on merged `main` + this branch: `pnpm typecheck` clean; `pnpm test` all green (shared 18, intelligence 39, extension 35, dashboard 3, API 55, scripts 3); **real-Claude `pnpm smoke` 3 runs in a row, 16/16 each** (`intelligence=real`, `.env` configured on this machine, no late grades or errors in the server log).
+- [ ] Not independently re-verified by a separate agent this round (small, test-backed change); E's rerun of the abort repro is the gate.
 
 ### Waiting on others for CP2
 - E: merge B (00a5d4d) then A. `agent/platform` alone still has the placeholder `createIntelligence()`, so CP2 criteria 2-4 only pass on the merged result.

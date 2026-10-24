@@ -110,3 +110,27 @@ pnpm typecheck
 
 ## 9. When blocked
 If an issue is outside your folder (shared types, scripts), write it in your status file under Blockers, work around it locally, and continue. Never edit files you don't own.
+
+## work left to do
+
+This section is the current remaining-work assignment after the CP2 review; it supersedes stale unfinished items above. Your cancellation/header fix `d757427` is already on `main`. Do not rebuild it. Own only `apps/api/**` and your status file on `agent/platform`.
+
+### Start now, in parallel
+
+- Merge current `main` into your branch and confirm contract v3. Keep the quiet-abort regression, partial-reply persistence, exact quiz-header tests, per-student lock and late-grade behavior passing.
+- Harden mid-stream failures with B and C. Today the API can log a model error and end a partial HTTP 200 reply normally, which C treats as complete. Add an endpoint regression and propose observable failure/completion semantics to E. Do not silently change the existing `text/plain` contract or invent shared types.
+- Test the current concept-bypass behavior and prepare endpoint tests for explicit one-prompt bypass. Preserve quota exhaustion, pending-quiz cleanup and educator notification. Implement changed semantics only after E's contract handoff below.
+
+### Dependencies and order
+
+1. **Parallel preparation:** B works on repeated-question grading/truncation, C on exact quiz-header consumption and interrupted UI, D on extension hardening, E on shared grading and contract coordination. Your local tests/error investigation need not wait.
+2. **Wait for E's `CONTRACT READY` handoff** (commit/version in the checkpoint report) before wiring new bypass fields or stream-failure protocol. The bypass proposal must be consistent across API, mock, sandbox and extension; existing clients must keep their documented behavior unless explicitly opting in.
+3. Merge E's contract commit into your branch. Implement and test the API side, then publish `API READY` with your commit, commands and endpoint behavior in your status file. C/D can develop against E's mock beforehand; live integration waits for this handoff.
+4. E merges finished builder work B → A → C → D, then runs the final gates. Do not merge other builders' branches or push `main` yourself.
+
+### Parallel safety and exit criteria
+
+- Use your own existing isolated environment/checkout. Never switch branches or install dependencies in a working directory another agent is using. No new worktrees unless the user explicitly requests them.
+- API 8787 is A's development service. C uses mock 8788, D mock 8789. In a shared machine, E gets an exclusive integration window for the real API/store; do not run two API processes against the same JSON file. Never reset someone else's demo store or stop their service. Prefer in-memory endpoint tests while others work.
+- Edit dependencies only in your package; leave shared files, root configuration and other status files to their owners. E resolves combined lockfiles.
+- Finish with API tests, typecheck, cancellation verification and the updated smoke behavior passing. Report fake/injected checks separately from live Claude. Help E verify interrupted streams, late grades, noncached text/PDF parse and error recovery on the final merged revision. Update stale status claims; CP2 live acceptance and CP3 freeze belong to E's final gates.
