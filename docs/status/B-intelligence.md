@@ -2,11 +2,27 @@
 
 **Owned by Agent B. Only this agent edits this file.**
 
-- Contract version confirmed: 1 (re-read after PLAN v5 and E's CP1 preflight / v1 verification amendment, 2026-10-24: no shape changes; merged main into this branch)
-- Current checkpoint: CP2 (done, pushed). Next: CP3 (L3 ≥4/5 is already 5/5; freeze prompts, list known-good demo prompts)
+- Contract version confirmed: **2** (merged main after E's CP1 report and read contracts-CHANGELOG v2: the optional `EvaluateInput.signal` was accepted, so I removed my local `EvaluateArgs` workaround and `evaluateExchange` now takes `EvaluateInput` directly. No other change affects B.)
+- Current checkpoint: CP3 (done, pushed)
 - Last updated: 2026-10-24
 
-## Exit criteria: CP2
+## Exit criteria: CP3
+- [x] L3 "find the bug" ≥4/5: **5/5** (it was 5/5 at CP2 and is 5/5 again after the CP1 merge). Each reply explains the causes, gives a full example with one planted loop bug (for example, an object built inside the component body and listed as a dependency), says there's exactly one bug to find without saying where, and ends with the check question.
+- [x] **Prompts frozen** as of this commit: `src/templates.ts` (friction block and all 4 levels, feedback lines, quiz line), `src/evaluate.ts` (grader system prompt and level line), `src/classify.ts` (fallback prompt), `src/parse.ts` (parse instruction), `src/chat.ts` (system prompt). From now on I change them only to fix a bug found in rehearsal, and I re-run the full harness after any change.
+- [x] Final full harness run on the frozen prompts (after merging main): **L1 5/5 · L2 5/5 · L3 5/5 · L4 5/5 · demo answer vs real L1 quizzes 5/5 · grading 5/5 · classify 3/3 · parse text + PDF pass · 3-turn pass** (`harness/results/latest.md`).
+
+### Demo prompts known to work (exact text, all in `DEMO_PROMPTS`)
+| Step | Type exactly | Expected (verified live) |
+|---|---|---|
+| 2: ask at L1 | `How do I stop my useEffect from running in an infinite loop?` | Keyword-routes to **React useEffect**. L1: no code, one hint, ends with one single-sentence question like "In your own words, what does the dependency array tell React?" (5/5) |
+| 3: answer | `The dependency array lists the values the effect depends on, so React only re-runs the effect when one of those values changes. An empty array means run once after mount.` | Graded **correct** against the real L1 quiz in 5/5 runs (10/10 earlier), so with `DEMO_MODE=1` the student goes to L4 and the reply confirms "right, and why" |
+| 4: new chat, same question | `How do I stop my useEffect from running in an infinite loop?` | L4: no friction block, full code answer (5/5) |
+| 5: bypass topic | `How does React Context help me avoid prop drilling?` | Keyword-routes to **Context API** (unit-tested) |
+| Optional: lazy at L3 | `just give me the code` | Graded **lazy**, L3 → L2 |
+
+Tips for rehearsal: type them exactly (or paste). Answer the quiz in the **same** chat. Expect L3 replies to take 7–11s before the first token. An unrelated prompt such as "write a haiku about the sea" is not intercepted (classify returns null).
+
+## Exit criteria: CP2 (done)
 - [x] Streaming `chat()` (`src/chat.ts`): `MODEL_CHAT`, system "You are a helpful programming assistant.", yields `text_delta`s only, passes messages through untouched (never strips/reveals the block), forwards the AbortSignal and ends quietly on abort (like the fake), aborts the request if the consumer stops early, throws on refusal/API errors. *Verified: `test/chat.test.ts` + live harness.*
 - [x] Real `parseSyllabus` (`src/parse.ts` + `src/validate.ts`), text and PDF, streaming + `finalMessage()`, effort high, structured output; then validation (unique keys, unknown/self deps dropped, cycle-closing edges dropped via `wouldCreateCycle`, levels clamped 1–4, icons forced into `ICON_KEYWORDS` (fallback `circle`), keywords lowercased/deduped, unknown pillar → case-insensitive match else first pillar, max 15 nodes). *Verified live on `fixtures/demo-syllabus.md`: text and PDF both give 3 pillars, 8 nodes, "React useEffect" present, and the demo question keyword-routes to it (~10s each). The PDF is generated from the fixture at runtime by `harness/pdf.ts` (no dependency).*
 - [x] LLM classify fallback + cache (`src/classify.ts`): only when keywords miss; `MODEL_CLASSIFY`, effort low, structured `{concept index|null, confidence}`; null unless confidence ≥0.5; LRU 500 keyed by sha1(prompt + sorted node ids); 3s timeout, no retries; a failure/timeout returns no match and is not cached (contracts §4). Compiled keyword regexes are now cached (CP1 checker note). *Verified: `test/classify.test.ts` + live 3/3 (Context API, Performance, haiku → null).*
@@ -34,7 +50,7 @@ L1: no code fence, last line ends with "?". L2: every fence has a `____`-style b
 - [x] Templates for all 4 levels with feedback and quiz variants; keyword classifier; real `evaluateExchange`; `createIntelligence()` wired; `pnpm typecheck` passes. CP1 grade latency: p50 2335ms, p95 3700ms.
 
 ## Change requests (contract)
-1. **Abort signal for `evaluateExchange`.** *What:* add optional `signal?: AbortSignal` to `EvaluateInput`. *Why:* the brief asks B to accept an AbortSignal so A can cancel; the frozen interface has no slot. *Local workaround in place:* `evaluateExchange` already reads `input.signal` if present (exported type `EvaluateArgs`). Without a signal, calls still time out at 20s (SDK timeout, 1 retry). *On E's cancellation question:* B never aborts on its own; the signal is only for A, e.g. on shutdown. A should **not** abort a grade at the 4s intercept deadline, because late grades must still apply (contracts §4.6).
+None open. (1. The abort signal for `evaluateExchange` was **accepted in v2**, and the local workaround is removed. Without a signal, calls still time out at 20s: SDK timeout, 1 retry.)
 
 ## Dependency changes
 None.

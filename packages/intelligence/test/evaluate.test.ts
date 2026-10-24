@@ -17,7 +17,7 @@ describe('evaluateExchange', () => {
   it('sends a structured, low-effort request with the right model and context', async () => {
     const { client, parse } = fakeClient({ parsed_output: { verdict: 'correct', confidence: 0.9, rationale: 'Explains deps.' } });
     const signal = new AbortController().signal;
-    await intel(client).evaluateExchange({ ...base, signal } as typeof base);
+    await intel(client).evaluateExchange({ ...base, signal });
     const [params, opts] = parse.mock.calls[0];
     expect(params.model).toBe('test-grade-model');
     expect(params.output_config.effort).toBe('low');
