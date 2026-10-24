@@ -465,6 +465,7 @@ createServer(async (req, res) => {
         [CHAT_HEADERS.interceptId]: ic.intercept_id ?? '',
         [CHAT_HEADERS.nodeId]: ic.node_id ?? '',
         [CHAT_HEADERS.level]: ic.level ? String(ic.level) : '',
+        [CHAT_HEADERS.quizAttached]: String(ic.quiz_attached),
       });
       let full = '';
       for await (const chunk of intel.chat(msgs)) { full += chunk; res.write(chunk); }

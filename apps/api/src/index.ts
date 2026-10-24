@@ -12,6 +12,9 @@ process.on('unhandledRejection', (reason) => console.error('[api] unhandled reje
 process.on('uncaughtException', (err) => console.error('[api] uncaught exception:', err));
 
 const config = loadConfig();
+if (config.useRealIntelligence && !process.env.ANTHROPIC_API_KEY) {
+  console.warn('[api] USE_REAL_INTELLIGENCE=1 but ANTHROPIC_API_KEY is not set (add it to .env). Model calls will fail with llm_error.');
+}
 const intel = await loadIntelligence(config.useRealIntelligence);
 const dbPath = defaultDbPath();
 const store = createJsonStore(dbPath);

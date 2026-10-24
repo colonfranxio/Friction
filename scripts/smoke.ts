@@ -26,6 +26,7 @@ const urlFlag = process.argv.indexOf('--url');
 const api = createFrictionClient((urlFlag >= 0 ? process.argv[urlFlag + 1] : undefined) ?? process.env.API_URL ?? DEFAULT_API_URL);
 const student = SEED_IDS.demoStudent;
 let step = 0;
+let isMockServer = false;
 
 function check(cond: unknown, msg: string): asserts cond {
   if (!cond) {
@@ -52,6 +53,7 @@ let firstInterceptId = '';
 
 await run('health', async () => {
   const h = await api.health();
+  isMockServer = h.mode.server === 'mock';
   console.log(`   server=${h.mode.server} intelligence=${h.mode.intelligence} demo=${h.mode.demo}`);
   check(h.mode.demo, 'smoke needs DEMO_MODE=1');
   check(h.ok && h.contract_version === CONTRACT_VERSION, 'health must report the current contract');
@@ -159,7 +161,7 @@ let history: ChatMessage[] = [{ role: 'user', content: DEMO_PROMPTS.question }];
 let conversation = 'smoke-sandbox-1';
 let lastChatInterceptId = '';
 
-async function chatTurn(expectedLevel: number) {
+async function chatTurn(expectedLevel: number, expectedQuizAttached: boolean) {
   const response = await api.chat({ student_id: student, conversation_id: conversation, messages: history },
     AbortSignal.timeout(90_000));
   check(response.ok, `chat HTTP ${response.status}`);
@@ -168,8 +170,17 @@ async function chatTurn(expectedLevel: number) {
   check(response.headers.get(CHAT_HEADERS.level) === String(expectedLevel), `chat must report L${expectedLevel}`);
   check(response.headers.get(CHAT_HEADERS.interceptId), 'chat must identify its intercept');
   lastChatInterceptId = response.headers.get(CHAT_HEADERS.interceptId)!;
+  const quizAttached = response.headers.get(CHAT_HEADERS.quizAttached);
+  // v3's exact quiz header is implemented in the mock first. A/C own the
+  // real endpoint/UI rollout; absence there remains compatible during CP2.
+  if (isMockServer || quizAttached !== null) {
+    check(quizAttached === String(expectedQuizAttached), 'chat must report exact quiz attachment for this turn');
+  }
   const exposed = (response.headers.get('access-control-expose-headers') ?? '').toLowerCase().split(',').map(h => h.trim());
-  for (const header of Object.values(CHAT_HEADERS)) check(exposed.includes(header.toLowerCase()), `${header} must be exposed to the dashboard`);
+  for (const header of Object.values(CHAT_HEADERS)) {
+    if (header === CHAT_HEADERS.quizAttached && quizAttached === null && !isMockServer) continue;
+    check(exposed.includes(header.toLowerCase()), `${header} must be exposed to the dashboard`);
+  }
   check(response.body, 'chat must have a response stream');
   let reply = '';
   const decoder = new TextDecoder();
@@ -181,12 +192,12 @@ async function chatTurn(expectedLevel: number) {
 }
 
 await run('sandbox L1: reply stream + metadata + CORS', async () => {
-  await chatTurn(1);
+  await chatTurn(1, true);
 });
 
 await run('sandbox answer without /responses → L4', async () => {
   history.push({ role: 'user', content: DEMO_PROMPTS.correctAnswer });
-  await chatTurn(4);
+  await chatTurn(4, false);
   const s = await api.getStudent(student);
   check(s.states.find(x => x.node_id === useEffectId)?.current_blooms_level === 4, 'sandbox answer must promote useEffect');
 });
@@ -194,7 +205,7 @@ await run('sandbox answer without /responses → L4', async () => {
 await run('sandbox new chat: same question at L4', async () => {
   conversation = 'smoke-sandbox-2';
   history = [{ role: 'user', content: DEMO_PROMPTS.question }];
-  await chatTurn(4);
+  await chatTurn(4, false);
 });
 
 await run('educator HTTP + SSE privacy', async () => {

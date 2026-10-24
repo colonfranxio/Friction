@@ -1,5 +1,5 @@
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { computeNextLevel, type EvaluateInput, type EvaluationResult } from '@friction/shared';
+import { computeNextLevel, LEVEL_LABELS, type EvaluateInput, type EvaluationResult } from '@friction/shared';
 import type { Config } from './config';
 import { GradeSchema } from './schemas';
 
@@ -8,9 +8,11 @@ export type EvaluateArgs = EvaluateInput & { signal?: AbortSignal };
 
 const SYSTEM = `You grade a student's message as their answer to a tutor's check-for-understanding question.
 
+Judge whether the student understands the central mechanism behind the learning goal; the question is context. Students answer in a sentence or two, so an answer that explains that mechanism accurately is correct even if it doesn't apply it to every case or follow-up the question mentions. If the question has several parts, an accurate answer to the part closest to the learning goal is enough.
+
 Verdicts:
-- correct: demonstrates the idea in the learning goal.
-- partial: on the right track but missing the key point.
+- correct: explains the central mechanism accurately, in any words.
+- partial: on the right track, but the mechanism itself is vague or incomplete.
 - incorrect: shows a misconception.
 - not_an_answer: not answering the question (a new question, chit-chat, off-topic).
 - lazy: asks for the answer or code without engaging (e.g. "just give me the code").
@@ -22,6 +24,7 @@ export async function evaluateExchange(cfg: Config, input: EvaluateArgs): Promis
   const prompt = [
     `Concept: ${node.concept_name}`,
     `Learning goal: ${node.mastery_criteria}`,
+    `Student's level: ${level} of 4 (${LEVEL_LABELS[level].bloom}). Grade at that depth: below level 3, explaining the idea correctly is enough; don't require applying it.`,
     `Question asked: ${quiz_text ?? '(not captured; grade against the learning goal)'}`,
     `Student's message:\n${student_message}`,
   ].join('\n\n');

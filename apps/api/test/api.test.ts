@@ -465,6 +465,21 @@ describe('chat (sandbox)', () => {
     expect((await res.json()).error.code).toBe('llm_error');
   });
 
+  it('a quiz whose reply never arrived does not stay pending (failed, cut-off or empty reply)', async () => {
+    const cases: Array<[string, Intelligence['chat']]> = [
+      ['fails before the first token', () => (async function* () { throw new Error('down'); })()],
+      ['fails mid-stream', () => (async function* () { yield 'partial reply '; throw new Error('cut'); })()],
+      ['empty stream', () => (async function* () { /* nothing */ })()],
+    ];
+    for (const [name, chatFn] of cases) {
+      const t = makeApp({ intel: { ...fakeIntelligence, chat: chatFn } });
+      const res = await chat(t, DEMO_PROMPTS.question);
+      await res.text().catch(() => '');
+      await sleep(20);
+      expect([name, t.store.db.logs[0].quiz_pending]).toEqual([name, false]);
+    }
+  });
+
   it('400 when there is no user message', async () => {
     const t = makeApp();
     const r = await t.call('POST', '/chat', { student_id: S, conversation_id: 'x', messages: [{ role: 'assistant', content: 'hi' }] });
