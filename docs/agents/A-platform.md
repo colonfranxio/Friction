@@ -113,6 +113,11 @@ If an issue is outside your folder (shared types, scripts), write it in your sta
 
 ## work left to do
 
+### Moss sponsor-track handoff
+
+Read [the detailed execution plan](../moss-implementation-handoff.md). Use `agent/moss-platform` for this feature. Review runtime code from experiment `8f8fe63` now; runnable implementation waits for E's B-ready base and lockfile. Own API lifecycle, freshness, bounded resource handling, sanitized traces and the live harness. Keep the existing v4 correction separate. Publish MOSS API READY; never merge directly to main.
+
+
 Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
 
 This section is the current remaining-work assignment after the CP2 review; it supersedes stale unfinished items above. Your cancellation/header fix `d757427` is already on `main`. Do not rebuild it. Own only `apps/api/**` and your status file on `agent/platform`.

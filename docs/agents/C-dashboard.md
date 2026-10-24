@@ -113,6 +113,11 @@ Also check it in a real browser (Claude in Chrome, if you have it) and attach sc
 
 ## work left to do
 
+### Moss sponsor-track handoff
+
+Read [the detailed execution plan](../moss-implementation-handoff.md). Moss requires no new dashboard search interface or API contract. Continue your separate learning-map branch; the existing teaching-context display may show the concept selected through the normal flow. Later combined checks must point dashboard and extension at the same backend.
+
+
 Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
 
 This section updates the remaining-work assignment after CP2. Own only `apps/dashboard/**` and your status file on `agent/dashboard`. Your tree, upload, sandbox, bypass/toast and existing polish are already integrated. Finish correctness and acceptance before adding more decoration.

@@ -79,6 +79,11 @@ Some branches are developed on Windows. At each merge, reject (send back) change
 
 ## work left to do
 
+### Moss sponsor-track handoff
+
+Read [the detailed execution plan](../moss-implementation-handoff.md). Integrate Moss on `moss-integration`, B then A, using the detailed handoff. Reconcile only E-owned root/docs/lock changes, independently verify enabled/disabled behavior and preserve honest live evidence. Do not merge to main or claude-skill-tree until the human directs the reviewed release decision.
+
+
 Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
 
 This is the remaining-work coordination plan after the CP2 review. It supersedes stale assignments above where they conflict. `main` at `7d2beaf` includes A's independently verified cancellation/header fix; the last integrated suite passed 153 tests. Do not reopen that resolved defect. Own shared contracts, reference fakes/mock, verification tools, root configuration/docs, integration and acceptance; never edit builder code or builder status files.

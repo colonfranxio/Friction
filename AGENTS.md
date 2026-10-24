@@ -14,6 +14,10 @@ You are one of four agents building Friction in parallel. Your personal brief is
 **Read-only for builders A–D (owned by E, the integrator):** `packages/shared/**`, `scripts/**`, `fixtures/**`, `docs/**` (except your own status file), root config (`package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.env.example`, `.gitignore`), `PLAN.md`, `PRD.md`, `design.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`.
 
 ## Working rules
+
+### Moss sponsor integration (separate feature)
+
+Follow [docs/moss-implementation-handoff.md](docs/moss-implementation-handoff.md) for Moss work. E integrates on `moss-integration`; B uses `agent/moss-intelligence`, A uses `agent/moss-platform`. These destinations override normal branches for this feature only. C/D retain the separate learning-map assignment. Main and `claude-skill-tree` receive no Moss implementation until the reviewed release decision. All existing path ownership and isolated-checkout rules apply.
 1. **Contracts are frozen** (`packages/shared`, `docs/contracts.md`). Import types, rules, the client, seed and fakes from `@friction/shared`. Never redefine them.
 2. If a contract is wrong or missing something: work around it inside your own folder (for example, extend a type locally), add a **Change request** to your status file, and keep going. Contracts change only at checkpoints, additive only.
 3. **Dependencies:** add them only to your own package (`pnpm add --filter @friction/<yours> <pkg>`). Never edit the root `package.json`. Lockfile conflicts are resolved at merge time.

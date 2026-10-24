@@ -77,6 +77,11 @@ Windows works the same (load `apps\extension\dist`).
 
 ## work left to do
 
+### Moss sponsor-track handoff
+
+Read [the detailed execution plan](../moss-implementation-handoff.md). Moss requires no new extension integration or credentials in the browser. Continue your separate learning-map branch and consent/chat safety work. A later combined demo must target the same backend as C's dashboard; no feature branches are automatically merged together.
+
+
 Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
 
 This section updates the remaining-work assignment after CP2. Own only `apps/extension/**` and your status file on `agent/extension`. Your newer hardening at `56a5183` is pushed but not integrated. Review and preserve completed fixes rather than rebuilding them. The extension remains a bonus surface; it must not block the main sandbox demo.

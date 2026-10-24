@@ -128,6 +128,11 @@ pnpm typecheck
 
 ## work left to do
 
+### Moss sponsor-track handoff
+
+Read [the detailed execution plan](../moss-implementation-handoff.md). Use `agent/moss-intelligence` for this feature. Review/adapt experiment `8f8fe63` within your package, preserving keyword routing, Claude abstention, semantic-cache invalidation, default-off native isolation and bounded queries. Publish MOSS INTELLIGENCE READY so E can integrate before A's runtime wiring.
+
+
 Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
 
 This section updates the remaining-work assignment after CP2. Own only `packages/intelligence/**` and your status file on `agent/intelligence`. Your pushed CP3 freeze/cleanup at `a6af828` still needs E's integration review; do not assume pushed work is on `main`.
