@@ -53,7 +53,7 @@
       </section>
       <section>
         <button id="bypass" disabled>Bypass this message</button>
-        <p class="muted">Re-sends your last message to Claude without friction. Uses one bypass and notifies your teacher.</p>
+        <p class="muted" id="bypass-note">Re-sends your last message to Claude without friction. Uses one bypass and notifies your teacher.</p>
         <div id="msg"></div>
       </section>
       <details>
@@ -61,6 +61,7 @@
         <form id="settings-form">
           <label class="muted">Student ID <input type="text" id="student" /></label>
           <label class="muted">API URL <input type="text" id="api" /></label>
+          <label class="muted">API READY SHA (optional) <input type="text" id="ready-sha" placeholder="only after E approves A's API READY" spellcheck="false" /></label>
           <button class="save" type="submit">Save</button>
         </form>
       </details>

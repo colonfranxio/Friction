@@ -36,7 +36,12 @@ async function render() {
 
   const btn = $<HTMLButtonElement>('bypass');
   const quota = s.bypass_quota;
-  btn.textContent = quota === null ? 'Bypass this message' : `Bypass this message (${quota} left)`;
+  // Honest wording: a prompt-scoped bypass skips one message; the legacy one pauses the concept until reset.
+  const what = s.prompt_bypass ? 'message' : 'concept';
+  btn.textContent = quota === null ? `Bypass this ${what}` : `Bypass this ${what} (${quota} left)`;
+  $('bypass-note').textContent = s.prompt_bypass
+    ? 'Re-sends your last message to Claude without friction. Uses one bypass and notifies your teacher.'
+    : 'Re-sends your last message without friction and pauses friction on this concept until reset. Uses one bypass and notifies your teacher.';
   btn.disabled = !s.online || !s.enabled || !last?.node_id || s.paused || quota === 0;
 }
 
@@ -44,6 +49,7 @@ async function init() {
   const settings = await getSettings();
   $<HTMLInputElement>('student').value = settings.studentId;
   $<HTMLInputElement>('api').value = settings.apiUrl;
+  $<HTMLInputElement>('ready-sha').value = settings.promptBypassReadySha;
 
   $<HTMLInputElement>('enabled').addEventListener('change', async (e) => {
     await saveSettings({ enabled: (e.target as HTMLInputElement).checked });
@@ -60,7 +66,7 @@ async function init() {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.id === undefined) throw new Error('no tab');
       const r = (await chrome.tabs.sendMessage(tab.id, { type: 'friction:bypass-resend' } satisfies TabRequest)) as BypassResendResult;
-      const scopeNote = r.ok && r.scope_applied === 'concept' ? ' (This server paused the whole concept until reset.)' : '';
+      const scopeNote = r.ok && r.scope_applied === 'concept' ? ' Friction stays off for this concept until reset.' : '';
       $('msg').textContent = !r.ok
         ? r.message
         : (r.resent
@@ -77,6 +83,7 @@ async function init() {
     await saveSettings({
       studentId: $<HTMLInputElement>('student').value.trim(),
       apiUrl: $<HTMLInputElement>('api').value.trim().replace(/\/$/, ''),
+      promptBypassReadySha: $<HTMLInputElement>('ready-sha').value.trim(),
     });
     $('msg').textContent = 'Settings saved.';
     await render();

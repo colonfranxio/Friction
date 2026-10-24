@@ -167,6 +167,55 @@ describe('background ⇄ mock API', () => {
     expect(st.states.find((x: { node_id: string }) => x.node_id === SEED_IDS.nodes.dataFetching).paused).toBe(true);
   });
 
+  /** Make the in-process mock look like the real API (server:'api') and record /bypass request bodies. */
+  async function asRealApi<T>(fn: (bodies: Array<Record<string, unknown>>) => Promise<T>): Promise<T> {
+    const realFetch = globalThis.fetch;
+    const bodies: Array<Record<string, unknown>> = [];
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/bypass') && init?.body) bodies.push(JSON.parse(String(init.body)));
+      const res = await realFetch(input, init);
+      if (!url.endsWith('/health')) return res;
+      const h = await res.json();
+      return new Response(JSON.stringify({ ...h, mode: { ...h.mode, server: 'api' } }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    try {
+      return await fn(bodies);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  }
+
+  it('gate: a real API without an API READY SHA gets the legacy payload (no scope field) → concept', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    store.promptBypassReadySha = '';
+    await asRealApi(async (bodies) => {
+      const s = await call<StatusResponse>({ type: 'friction:status' });
+      expect(s.prompt_bypass).toBe(false);
+      const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
+      expect(b.ok && b.scope_applied).toBe('concept');
+      expect(bodies).toHaveLength(1);
+      expect('scope' in bodies[0]).toBe(false); // never send new fields to an uncertified server
+    });
+  });
+
+  it('gate: a real API WITH an exact API READY SHA gets scope "prompt"', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    store.promptBypassReadySha = 'd52e791' + 'a'.repeat(33);
+    try {
+      await asRealApi(async (bodies) => {
+        const s = await call<StatusResponse>({ type: 'friction:status' });
+        expect(s.prompt_bypass).toBe(true);
+        const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
+        expect(b.ok && b.scope_applied).toBe('prompt');
+        expect(bodies[0]).toMatchObject({ scope: 'prompt' });
+        expect('raw_prompt' in bodies[0] || 'conversation_id' in bodies[0]).toBe(false); // D resends itself: no token binding
+      });
+    } finally {
+      store.promptBypassReadySha = '';
+    }
+  });
+
   it('bypass makes no API call when consent is off', async () => {
     store.enabled = false;
     const realFetch = globalThis.fetch;

@@ -32,18 +32,19 @@ export interface StatusResponse {
   last: LastIntercept | null;
   /** true when the last intercept's node is currently paused by a bypass */
   paused: boolean;
+  /** true when a bypass would be prompt-scoped (gate in lib/bypass-gate.ts); false = it pauses the concept. */
+  prompt_bypass: boolean;
 }
 
 /**
- * scope_applied: what the server actually did. 'concept' when a prompt-scoped request reached a pre-v4 server
- * (it ignores `scope` and pauses the whole concept), detected by the node's paused flag going false → true.
- * 'unknown' when the flag couldn't be read; the UI then makes no claim either way.
+ * scope_applied: 'prompt' only when the bypass gate allowed a prompt-scoped request (see lib/bypass-gate.ts);
+ * otherwise the legacy payload was sent and the server paused the whole concept until reset.
  */
 export type BypassResult =
-  | { ok: true; remaining_quota: number; scope_applied: 'prompt' | 'concept' | 'unknown' }
+  | { ok: true; remaining_quota: number; scope_applied: 'prompt' | 'concept' }
   | { ok: false; code: string; message: string };
 
 /** Content script's answer to 'friction:bypass-resend'. resent=false: quota used, text left in the composer, next send goes out unmodified. */
 export type BypassResendResult =
-  | { ok: true; remaining_quota: number; resent: boolean; scope_applied: 'prompt' | 'concept' | 'unknown' }
+  | { ok: true; remaining_quota: number; resent: boolean; scope_applied: 'prompt' | 'concept' }
   | { ok: false; code: string; message: string };
