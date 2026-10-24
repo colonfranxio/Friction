@@ -8,7 +8,15 @@ Proposal `proposal/b-owns-learning-map` at `d1e83f6` is accepted on **`claude-sk
 - D `agent/extension` at `7e078cf` reviewed in candidate `97d8fe9`, preserved locally as `integration/d-learning-map-review`. **D merge held** for the source-review blockers below. No D runtime changes are published on the feature target yet.
 - Candidate frozen installation, workspace typecheck, all **228 tests** (extension 82), dashboard build and extension build passed. These passes do not cover the discovered content-script races.
 - Independent read-only `verify_d_learning_map` (agreed gpt-6.1-sol medium substitute) reviewed bypass/chat/panel behavior. It found no additional blocker in the panel shell itself: URL restrictions, consent removal, stale probe handling and synchronous Chrome user gesture are present.
-- `feature/learning-map` was absent from the remote at review time; a push is required before E can review/merge it. No empty replacement branch was created and no feature implementation is claimed.
+- `feature/learning-map` was absent at initial review. **Follow-up: B pushed `be27b6a`, PANEL READY confirmed.** B is now source-reviewed and checked in the local D-first candidate `60c634b` (`integration/learning-map-panel-review`). No independent B blocker found. Publishing both runtime merges still waits for D's corrections; D remains at `7e078cf`.
+
+## B follow-up verification
+
+- B changes only its authorized dashboard route, new EmbedPage/style/test and B status. Existing D shell is preserved.
+- Temporary local D → B candidate: workspace typecheck PASS, dashboard **13/13**, extension **82/82**, both builds PASS. This is candidate evidence, not a published feature merge.
+- E's headless Chromium checks on private mock 8792/dashboard 5176: **PASS** at 360px and 420px, with/without expanded map, no horizontal overflow or TopBar; actual grading elsewhere updates useEffect to mastered and progress to 4/8 live; full Student route retains TopBar; unknown student gets Retry. Screenshots under `/tmp/friction-b-panel-evidence/`. No shared service/store was reset.
+- Independent read-only verifier reviewed B's ownership, read-only layout, recommendations, shared rules/SSE and error behavior: no independent B blocker. Actual Chrome side-panel/user-gesture/consent and human claude.ai checks remain open.
+- D still needs the safety fixes below. B's implementation is ready for final revalidation after the corrected D base; do not bypass the requested D-first merge order.
 
 ## D fixes required before merge
 
