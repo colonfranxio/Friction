@@ -17,7 +17,7 @@ export interface TestApp {
   call: <T = any>(method: string, path: string, body?: unknown) => Promise<{ status: number; body: T; headers: Headers }>;
 }
 
-export function makeApp(opts: { config?: Partial<Config>; intel?: Intelligence; store?: Store; demoMatches?: boolean } = {}): TestApp {
+export function makeApp(opts: { config?: Partial<Config>; intel?: Intelligence; store?: Store; demoMatches?: boolean; clock?: () => number } = {}): TestApp {
   const config: Config = {
     port: 0,
     demo: true,
@@ -35,6 +35,7 @@ export function makeApp(opts: { config?: Partial<Config>; intel?: Intelligence; 
     intelligenceMode: 'fake',
     store,
     demoMatcher: () => opts.demoMatches ?? true,
+    clock: opts.clock,
   });
   const app = createApp(ctx);
   const events: ServerEvent[] = [];

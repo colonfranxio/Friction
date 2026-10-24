@@ -127,6 +127,7 @@ export async function parseTree(ctx: Ctx, input: ParseTreeRequest): Promise<Pars
   // DEMO_MODE cache: the demo syllabus re-activates the seed tree (which already has classmates).
   if (config.demo && demoMatcher(input)) {
     await sleep(config.parseDelayMs);
+    ctx.promptTokens.clear();
     resetSeedTree(store.db);
     store.save();
     bus.publish(SEED_IDS.tree, { type: 'tree_updated', data: { tree_id: SEED_IDS.tree } });
@@ -142,8 +143,9 @@ export async function parseTree(ctx: Ctx, input: ParseTreeRequest): Promise<Pars
     throw new HttpError(502, 'llm_error', `could not parse syllabus: ${(e as Error)?.message ?? 'unknown error'}`);
   }
 
+  ctx.promptTokens.clear(); // the demo student moves to the new tree below
   const db = store.db;
-  const educator = db.users.find((u) => u.role === 'educator');
+  const educator =db.users.find((u) => u.role === 'educator');
   const rows = buildRowsFromParsed(parsed, educator?.id ?? SEED_IDS.educator, {
     title: input.title,
     source_ref: input.kind === 'pdf' ? input.filename ?? 'uploaded.pdf' : 'pasted text',
