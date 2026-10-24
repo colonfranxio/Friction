@@ -99,16 +99,18 @@ an individual response prevents additional outstanding retrieval operations, not
 | Existing demo smoke | PASS: 16/16 on an ephemeral in-memory API; shared services/data untouched |
 | Missing-credential trial | Correctly reports `credentials_missing`; live retrieval not run |
 | Independent implementation verification | PASS for default-off trial; native disposal race fixed and tested |
-| Authenticated retrieval / comparative Claude quality | NOT RUN: Moss credentials unavailable |
+| Authenticated retrieval / comparative Claude quality | PASS technical feasibility; no incremental quality gain demonstrated — see [live results](moss-live-results.md) |
 
 Independent verifier `verify_moss_trial` confirmed opt-in isolation, keyword preservation,
 canonical catalog retention, freshness invalidation, bounded queries, and the resource-lifecycle
 fix. It requested ambiguous cases and provider-failure observability; both are now in the harness.
 Its follow-up review also passed the final harness changes and independently passed typechecking.
 
-**Rollout remains NO-GO pending measured live results.** Ordinary API startup stays unchanged,
-including when Moss credentials exist. A later opt-in API hook should only be considered after
-the complete baseline-versus-experiment comparison demonstrates a useful improvement.
+**Rollout remains NO-GO after the initial live comparison.** Both pipelines were correct on all
+21 healthy paired cases; the apparent 23/23 versus 21/23 advantage came from two baseline provider
+errors. Ordinary API startup stays unchanged, including when Moss credentials exist. A later
+opt-in API hook should only be considered after a realistic larger-curriculum comparison
+demonstrates useful improvement. See [authenticated trial results](moss-live-results.md).
 
 ## Sources
 
