@@ -2,7 +2,7 @@
  * Frozen constants shared by every workstream.
  * Changes only at checkpoints, additive only. See docs/contracts.md.
  */
-export const CONTRACT_VERSION = 2;
+export const CONTRACT_VERSION = 3;
 
 export const PORTS = { api: 8787, mock: 8788, dashboard: 5173 } as const;
 /** 127.0.0.1, not localhost: on Windows, Node's fetch may resolve localhost to ::1 first and get refused. */
@@ -29,6 +29,8 @@ export const CHAT_HEADERS = {
   interceptId: 'X-Friction-Intercept-Id',
   nodeId: 'X-Friction-Node-Id',
   level: 'X-Friction-Level',
+  /** Optional during rollout; exact boolean string for this turn, not inferred from level. */
+  quizAttached: 'X-Friction-Quiz-Attached',
 } as const;
 
 /** Allowed SkillNode.icon keywords. B's parser must pick from this list; C maps each to an icon (fallback: circle). */
