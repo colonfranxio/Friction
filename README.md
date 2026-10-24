@@ -33,5 +33,6 @@ On `experiment/moss-retrieval`, the API can use [Moss](https://docs.moss.dev) to
 - **Enable:** set `USE_REAL_INTELLIGENCE=1`, `USE_MOSS_RETRIEVAL=1`, `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY` in `.env`. Credentials alone do not turn it on.
 - **Behavior:** the API starts serving right away and indexes up to two active courses in the background. Edits are detected within about 1s and stale queries fall back immediately; Moss resumes once re-indexing finishes (about 1.5s live, up to 30s backoff after failures). Until the index is fresh, or if Moss fails or takes more than 200ms, the existing classifier handles the prompt.
 - **Visible traces:** `[moss] {"state":"ready"|"retrieved"|"fallback",...}` lines in the API log. They contain no prompts, student IDs or credentials.
+- **Handoff for other agents (what changed vs. main, how to run, decision options):** [docs/moss-handoff.md](docs/moss-handoff.md)
 - **Live check (paid; private port, in-memory store):** `pnpm --filter @friction/api moss:live` writes `apps/api/harness/results/moss-live.json`.
 - **Limits:** on the 8-skill seed course, Moss showed no accuracy gain over the baseline classifier ([docs/moss-live-results.md](docs/moss-live-results.md)). It adds semantic retrieval; it does not make classification more correct.
