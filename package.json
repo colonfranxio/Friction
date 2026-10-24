@@ -1,0 +1,26 @@
+{
+  "name": "friction",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:mock": "tsx scripts/mock-api.ts",
+    "dev:api": "pnpm --filter @friction/api dev",
+    "dev:dash": "pnpm --filter @friction/dashboard dev",
+    "build:ext": "pnpm --filter @friction/extension build",
+    "harness": "pnpm --filter @friction/intelligence harness",
+    "smoke": "tsx scripts/smoke.ts",
+    "typecheck": "pnpm -r typecheck && tsc --noEmit -p scripts",
+    "test": "pnpm -r --if-present test"
+  },
+  "devDependencies": {
+    "@friction/shared": "workspace:^",
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

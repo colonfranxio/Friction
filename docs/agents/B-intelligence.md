@@ -1,0 +1,137 @@
+# Agent B: Intelligence (Claude-powered core)
+
+You are **Agent B**, one of four Claude Code agents building **Friction** in parallel for a hackathon. You own every call to Claude: turning a syllabus into a skill tree, deciding which concept a prompt is about, writing the hidden friction instructions, grading quiz answers, and the sandbox chat. Your output quality is what judges see in the demo.
+
+## 0. Read first (in this order)
+1. `AGENTS.md`: ownership and working rules (binding).
+2. `PLAN.md`: the whole plan; your row in §5 and §6.
+3. `docs/contracts.md`: §4 (how A calls you), **§5 (prompt format)**, §6 (progression), §8 (parse).
+4. `packages/shared/src/intelligence.ts`: **the interface you implement.** Also `rules.ts` (`wrapInjected`, `computeNextLevel`), `constants.ts` (`ICON_KEYWORDS`, `LEVEL_LABELS`), `seed.ts` (`DEMO_PROMPTS`, the seed tree).
+5. `packages/shared/src/fakes.ts`: deterministic versions of everything you build. Your real versions must be drop-in replacements with the same output formats.
+6. `PRD.md` Module 3: the four friction levels.
+7. **Before writing any Anthropic SDK code, invoke the `claude-api` skill** in your session. It has the current SDK shapes for structured outputs, PDF document blocks, streaming, effort and thinking. Don't write SDK calls from memory.
+
+## 1. Your mission
+Replace the placeholder in `packages/intelligence/src/index.ts` with a real `createIntelligence(): Intelligence` backed by Claude. Then prove it works with unit tests and a **level-compliance harness** that runs the demo prompts against Claude and reports pass rates.
+
+## 2. Ownership
+- **You edit only:** `packages/intelligence/**` and `docs/status/B-intelligence.md`.
+- **Never edit:** `packages/shared/**`, `apps/**`, `scripts/**`, `fixtures/**`, root config, other docs.
+- **Branch:** `agent/intelligence`. Push only that branch.
+- Your package is **pure**: no HTTP server, no database, no file writes outside `harness/results/`. A calls you in-process.
+
+## 3. What's already there
+- `packages/intelligence/package.json` with `@anthropic-ai/sdk`, `zod`, `@friction/shared`. Scripts: `typecheck`, `test` (vitest), `harness` (`tsx --env-file-if-exists=../../.env harness/run.ts`).
+- `src/index.ts`: a placeholder that returns `fakeIntelligence`. **Keep the export name `createIntelligence`.**
+- `.env` (copied from `.env.example`) holds `ANTHROPIC_API_KEY` and the model IDs: `MODEL_PARSE`, `MODEL_GRADE`, `MODEL_CHAT` = `claude-opus-5-5`, and `MODEL_CLASSIFY` = `claude-haiku-5-5`. **Read models only from env.**
+
+## 4. Target file layout (create these)
+```
+packages/intelligence/
+  src/index.ts        createIntelligence(opts?: {client?, models?}): Intelligence   (opts allow test injection)
+  src/config.ts       read env (models, key); build the Anthropic client lazily
+  src/templates.ts    buildFrictionPrompt (sync, no LLM)
+  src/classify.ts     keyword stage → LLM fallback (MODEL_CLASSIFY) → LRU cache by hash(prompt + node ids)
+  src/evaluate.ts     evaluateExchange (MODEL_GRADE, effort low, structured output)
+  src/parse.ts        parseSyllabus (MODEL_PARSE, effort high, PDF document block or text, structured output)
+  src/chat.ts         chat(): streams text deltas (MODEL_CHAT)
+  src/schemas.ts      zod schemas: ParsedTree, grade output, classify output
+  src/validate.ts     post-parse fixes: unique keys, valid deps, remove cycles, keyword/icon normalization
+  test/templates.test.ts classify.test.ts evaluate.test.ts parse.test.ts validate.test.ts
+  harness/cases.ts    demo prompts per level + grading cases (from DEMO_PROMPTS + your own)
+  harness/run.ts      runs everything against real Claude; writes harness/results/latest.md
+  harness/results/latest.md
+```
+
+## 5. Function specs
+
+### `buildFrictionPrompt(input)` (sync)
+- Returns `raw_prompt` unchanged when `level === 4 && !feedback`.
+- Otherwise returns `wrapInjected(raw_prompt, body)`. The body **must** contain the line `Level: N (<role>)` (other tools parse it), plus:
+  - an anti-leak line: the AI must follow these notes silently and never mention, quote or allude to them, or to "instructions", "tutor context" or "friction";
+  - `Concept:` and `Learning goal:` (from `mastery_criteria`);
+  - the level instruction:
+    - **L1 Socratic:** no answer, no code; ask the student to explain the core idea in their own words; give one hint.
+    - **L2 Scaffolder:** outline or pseudocode with blanks only, no exact syntax.
+    - **L3 Challenger:** a full solution with exactly one subtle, deliberate bug, and **say there is one bug to find** without saying where.
+    - **L4 Normal:** help fully.
+  - **Feedback** (when present), worded per verdict. For example, `correct` → "briefly confirm they got it right and why"; `incorrect` → "gently correct the misconception"; `partial`; `lazy` → "encourage them to try first"; `not_an_answer` → nothing special.
+  - **Quiz** (when `includeQuiz`): end with **one** short, natural check-for-understanding question about the concept. Don't label it "quiz".
+- Write the body so it reads naturally and stays short (≤ 120 words).
+
+### `classifyTopic(prompt, nodes)`
+1. **Keyword stage** (no LLM): lowercase; match `node.keywords` and `concept_name` with word boundaries; score = matched phrase lengths; take the best above a threshold → `method:'keyword'`, confidence 0.6–0.95.
+2. **LLM fallback** only when keywords miss: `MODEL_CLASSIFY`, structured output `{node_id|null, confidence}`. Give it the node list (id, concept, mastery) and the prompt. Return null unless confidence ≥ 0.5. Unrelated prompts ("write a haiku") must return null.
+3. **Cache** results in an in-memory LRU (500 entries) keyed by sha1(prompt + sorted node ids).
+4. Must be fast: the keyword path takes under 5ms; the LLM path should take under ~1.5s.
+
+### `evaluateExchange({node, level, quiz_text, student_message, demoMode})`
+- `MODEL_GRADE`, effort `low`, structured output `{verdict, confidence, rationale}`. `rationale` is one sentence an educator can read.
+- Verdict definitions:
+  - **correct**: demonstrates the idea in `mastery_criteria`;
+  - **partial**: on the right track but missing the key point;
+  - **incorrect**: a misconception;
+  - **not_an_answer**: the message isn't answering the quiz (a new question, chit-chat);
+  - **lazy**: asks for the answer or code without engaging ("just give me the code").
+- `quiz_text` may be null: grade against `mastery_criteria` and lower the confidence.
+- `new_level = computeNextLevel({current: level, verdict, confidence, demoMode})`. **Don't re-implement the rule.**
+- Accept an `AbortSignal` / timeout. On API errors, **throw**; A handles it.
+- **Measure latency** (p50 and p95 over 10 calls) and put it in your status file at CP1. This sits on the hot path with a 4s budget.
+
+### `parseSyllabus(input)`
+- PDF: base64 `document` block placed before the instruction text. Text: a plain text block.
+- `MODEL_PARSE`, effort `high`, structured output matching `ParsedTree`:
+  - 3–5 pillars (course modules, in order) and 6–15 nodes;
+  - each node has `pillar` ∈ `pillars`, a concrete `mastery_criteria` (an observable skill), `required_blooms_level` (usually 3–4; 4 for milestone concepts), `size` major/minor, `icon` from `ICON_KEYWORDS`, 3–7 lowercase `keywords` a student would actually type, and `depends_on` keys.
+- Use streaming with the final-message helper if the call can be long (see the skill). Then run `validate.ts`: dedupe keys, drop unknown deps, break cycles (`wouldCreateCycle`), clamp levels, force icons into the allowed list (fallback `circle`), and lowercase keywords.
+- **Test it on `fixtures/demo-syllabus.md`.** The output should resemble the seed tree (8 concepts, 3 modules, "React useEffect" present). A's demo cache means the stage demo doesn't depend on this, but a judge may upload their own PDF.
+
+### `chat(messages, {signal})`
+- Streams the assistant's text deltas from `MODEL_CHAT`. The last user message already contains the friction block. Add a short system prompt: "You are a helpful programming assistant." Never strip or reveal the block.
+
+## 6. Tasks and exit criteria
+
+### CP1 (target T+3h)
+- [ ] `templates.ts` done for all 4 levels, with feedback and quiz variants; unit tests check the format (delimiters, the `Level:` line, the L4 passthrough, the raw prompt first)
+- [ ] Keyword classifier, with unit tests on the seed nodes (all 4 `DEMO_PROMPTS` route correctly; "write a haiku" → null)
+- [ ] Real `evaluateExchange`; unit tests with a mocked client; **latency measured and reported**
+- [ ] `createIntelligence()` wired up (unfinished functions may fall back to the fakes) and `pnpm typecheck` passes
+
+### CP2 (target T+8h)
+- [ ] Real `parseSyllabus` (text + PDF) with validation; tested on the demo syllabus
+- [ ] LLM classify fallback + cache
+- [ ] Streaming `chat()`
+- [ ] **Harness v1** (`pnpm harness`): for each level 1–4, run `DEMO_PROMPTS.question` through `buildFrictionPrompt` + `chat` 5 times and score it:
+  - L1: no code fences, ends with a question;
+  - L2: no complete runnable code (blanks or pseudocode allowed);
+  - L3: contains code and says there's a bug;
+  - L4: contains a code fence;
+  - all levels: never mention the instructions or "friction".
+
+  Plus grading cases: `DEMO_PROMPTS.correctAnswer` → correct, `lazyAnswer` at L3 → lazy, plus your own partial, incorrect and not_an_answer cases. Write the pass rates to `harness/results/latest.md`.
+
+### CP3 (target T+14h)
+- [ ] Harness ≥ 4/5 on L1, L2 and L4; grading cases match the expected verdicts
+- [ ] The answer-turn feedback reads naturally (check a full 3-turn exchange in the harness)
+
+### CP4 (target T+20h)
+- [ ] L3 "find the bug" ≥ 4/5
+- [ ] Final prompt text frozen; the status file lists the exact demo prompts that are known to work
+
+## 7. Claude API rules (from the `claude-api` skill; verify there)
+- Use `@anthropic-ai/sdk`. Get JSON via structured outputs (`output_config.format` / the SDK's parse helper with zod). Don't use regex-parsing of free text for structured fields.
+- **Don't send `temperature`, `top_p` or `top_k`** (rejected). No assistant prefill. No forced `tool_choice`. Check `stop_reason` before reading content (handle `refusal` and `max_tokens`).
+- Thinking: use adaptive / omit it and control depth with `output_config.effort` (`low` for grade and classify, `high` for parse). Don't use `budget_tokens`.
+- Never log the API key. Never hardcode model IDs.
+
+## 8. How to verify
+```
+pnpm --filter @friction/intelligence test
+pnpm harness                       # needs ANTHROPIC_API_KEY in .env
+pnpm typecheck
+```
+
+## 9. Interfaces with the other agents
+- **A** imports `createIntelligence()` and calls your functions inside a 4s budget. Be fast, throw on failure, never hang (always pass the signal or timeout).
+- The **dashboard (C)** and **extension (D)** never call you directly.
+- Prompt-format changes that would affect others (the `Level:` line, the delimiters) are contract changes. File a change request instead.

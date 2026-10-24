@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Node / Friction monorepo ---
+node_modules/
+.pnpm-store/
+*.tsbuildinfo
+apps/api/data/
+apps/extension/dist/
+apps/dashboard/dist/
+.env.local
+.DS_Store
