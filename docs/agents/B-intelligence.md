@@ -128,11 +128,13 @@ pnpm typecheck
 
 ## work left to do
 
+Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
+
 This section updates the remaining-work assignment after CP2. Own only `packages/intelligence/**` and your status file on `agent/intelligence`. Your pushed CP3 freeze/cleanup at `a6af828` still needs E's integration review; do not assume pushed work is on `main`.
 
 ### Start now, in parallel
 
-- Merge current `main` into your branch, confirm v3 and rerun the actual-B-factory cancellation check. A's quiet-abort lifecycle fix is already merged; preserve B's quiet cancellation and required late grading.
+- Merge current `main` into your branch, confirm the v4 handoff and rerun the actual-B-factory cancellation check. A's quiet-abort lifecycle fix is already merged; preserve B's quiet cancellation and required late grading.
 - Add repeated and rephrased original questions to grader unit tests and the live harness: they must not earn mastery merely by repeating concept keywords. Also retain genuine short answers, question-shaped answers, correct/partial/incorrect/lazy and unrelated-message cases. E independently owns the fake-grader correction; never edit `packages/shared` yourself.
 - Handle and test incomplete model outcomes, especially `max_tokens`, refusal and interrupted streams. Give A a precise failure-versus-cancellation behavior description. Do not silently return a truncated answer as a successful full response.
 - Make only targeted grading/error fixes to the frozen prompts. Rerun the full live harness after any prompt change, retain exact known-good demo prompts and re-freeze them. Reconfirm L1/L2/L4 compliance, demo grading against actual quizzes and L3 >=4/5; record latency as well as pass rates. Do not add unrelated tuning or features.

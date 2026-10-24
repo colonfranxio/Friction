@@ -113,11 +113,13 @@ Also check it in a real browser (Claude in Chrome, if you have it) and attach sc
 
 ## work left to do
 
+Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
+
 This section updates the remaining-work assignment after CP2. Own only `apps/dashboard/**` and your status file on `agent/dashboard`. Your tree, upload, sandbox, bypass/toast and existing polish are already integrated. Finish correctness and acceptance before adding more decoration.
 
 ### Start now, in parallel
 
-- Merge current `main` and confirm v3. Read `CHAT_HEADERS.quizAttached` per response, store it on that turn and display the exact value. Retain an explicitly approximate fallback only when the header is absent; never infer a new quiz solely from `level < 4`. Test true, false at L1 with an already-pending quiz, L4, no-match and old-server fallback. A and E's mock already emit the header; this task does not need a new contract.
+- Merge current `main` and confirm the v4 handoff. Read `CHAT_HEADERS.quizAttached` per response, store it on that turn and display the exact value. Retain an explicitly approximate fallback only when the header is absent; never infer a new quiz solely from `level < 4`. Test true, false at L1 with an already-pending quiz, L4, no-match and old-server fallback. A and E's mock already emit the header; this task does not need a new contract.
 - Add UI coverage for interrupted/partial replies and clear recovery behavior. The current API can finish a partial HTTP 200 response after a model error. Coordinate with A/E before relying on any new completion/error signal; do not label an interrupted reply complete or resend an unseen quiz answer automatically.
 - Preserve New chat cancellation, per-turn bypass targeting, live mastery in all views, quota/toast, reset and mobile behavior. Expand the real-model acceptance checks without hardcoding the fake reply wording. Existing animations/class/activity code needs regression validation, not a rebuild.
 

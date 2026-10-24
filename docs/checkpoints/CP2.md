@@ -1,5 +1,7 @@
 # CP2 integration report (2026-10-24)
 
+Followup: [CONTRACT READY v4](CONTRACT-READY-v4.md) records merged B READY/PR #2 and the new prompt-bypass/stream-failure handoff. The v3 evidence below is historical; API READY for v4 remains pending A's implementation.
+
 **A's code blocker is resolved; CP2 live acceptance remains open.** A's fix `d757427` from PR #1 is merged at `c657422`, and E independently reran the previously failing cancellation regression successfully. Independent real-Claude validation, the real-model visual gate and human rehearsal remain unavailable in this instance. Do not describe those gates as passed or the demo as fully accepted.
 
 Contract version: **v3**. The exact quiz-attachment header is now emitted by both the mock and real API, with API value/CORS tests. C's UI consumption remains pending. See [the changelog](../contracts-CHANGELOG.md) and [demo runbook](../demo-runbook.md).

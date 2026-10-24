@@ -79,11 +79,13 @@ Some branches are developed on Windows. At each merge, reject (send back) change
 
 ## work left to do
 
+Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
+
 This is the remaining-work coordination plan after the CP2 review. It supersedes stale assignments above where they conflict. `main` at `7d2beaf` includes A's independently verified cancellation/header fix; the last integrated suite passed 153 tests. Do not reopen that resolved defect. Own shared contracts, reference fakes/mock, verification tools, root configuration/docs, integration and acceptance; never edit builder code or builder status files.
 
 ### Phase 1 — all agents start in parallel
 
-- All builders merge the instruction-bearing `main` into their own branches, confirm v3 and update their own status. Use separate existing isolated environments/checkouts; do not run multiple branches in one working directory or create worktrees without an explicit user request.
+- All builders merge the instruction-bearing `main` into their own branches, confirm the v4 handoff and update their own status. Use separate existing isolated environments/checkouts; do not run multiple branches in one working directory or create worktrees without an explicit user request.
 - **A:** endpoint interruption tests/failure semantics and bypass test preparation. **B:** repeated/rephrased-question grading regressions, incomplete SDK outcomes and targeted prompt revalidation. **C:** exact v3 quiz-header UI now, plus interruption/recovery tests. **D:** existing consent/chat-isolation/draft-safety hardening and local robustness tests.
 - **E:** review `proposal/e-fake-grader` (`682c085`) rather than blindly cherry-picking its history. Repeating the original question currently produces `correct`/L4 in the fake grader. Fix only the lead-owned behavior, preserving legitimate short and question-shaped answers; add shared regressions and coordinate real-grader cases with B. Do not touch B's implementation.
 - Collect current B/D source tips (`a6af828` and `56a5183` were unmerged at review), ownership, dependencies, test evidence and change requests. Review B's freeze/cleanup and D's mixed hardening/bypass changes; do not merge a semantic mismatch merely because unit tests pass. No CP3 freeze yet.

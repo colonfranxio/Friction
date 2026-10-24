@@ -169,15 +169,24 @@ export interface AcceptedResponse {
 export interface BypassRequest {
   student_id: UUID;
   node_id: UUID;
+  /** Omitted/"concept": legacy pause until reset. "prompt": quota/event only; client resends one prompt without intercepting. */
+  scope?: 'concept' | 'prompt';
+  /** With prompt scope, supply both to obtain a one-use sandbox chat token bound to this exact resend. */
+  raw_prompt?: string;
+  conversation_id?: string;
 }
 export interface BypassResponse {
   remaining_quota: number;
+  /** Issued only for prompt scope with an exact prompt/conversation binding. Expires in two minutes. */
+  prompt_bypass_token?: string;
 }
 
 // ---------- sandbox chat ----------
 /** Response is a text/plain stream of assistant text. See CHAT_HEADERS for metadata headers. */
 export interface ChatRequest {
   student_id: UUID;
+  /** Optional one-use authorization from prompt-scoped /bypass; never a global bypass flag. */
+  prompt_bypass_token?: string;
   /** Stable per sandbox chat session (client generates a uuid). */
   conversation_id: string;
   /** Full history; last message must be role "user" (raw, not injected). */

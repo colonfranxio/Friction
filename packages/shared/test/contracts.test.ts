@@ -62,6 +62,23 @@ describe('seed graph and mastery', () => {
 });
 
 describe('prompt and fake intelligence contract', () => {
+  it.each([
+    [DEMO_PROMPTS.question, 'not_an_answer'],
+    ['How can I prevent a useEffect render loop?', 'not_an_answer'],
+    ['btw how does the dependency array work?', 'not_an_answer'],
+    ['Explain the dependency array.', 'not_an_answer'],
+    ['The dependency array', 'correct'],
+    ['Is it the dependency array?', 'correct'],
+    ['Could it be the dependency array?', 'correct'],
+    [DEMO_PROMPTS.correctAnswer, 'correct'],
+  ])('fake grading does not confuse a new question with an answer: %s', async (message, verdict) => {
+    const node = buildSeed().nodes.find(n => n.id === SEED_IDS.nodes.useEffect)!;
+    const result = await fakeIntelligence.evaluateExchange({ node, level: 1, quiz_text: 'Explain the dependency array.',
+      student_message: message, demoMode: true });
+    expect(result.verdict).toBe(verdict);
+    expect(result.new_level).toBe(verdict === 'correct' ? 4 : 1);
+  });
+
   it('preserves raw prompt before the block and hides every block for display', () => {
     const raw = 'Explain useEffect.\nKeep this line.';
     const injected = wrapInjected(raw, 'Level: 2 (Scaffolder)');

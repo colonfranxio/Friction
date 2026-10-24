@@ -1,4 +1,4 @@
-# Friction Contracts (v3)
+# Friction Contracts (v4)
 
 **Source of truth for shapes is code:** `packages/shared/src/*`. This doc explains the **behavior** those shapes must have. If this doc and the code disagree, the code wins. File a change request.
 
@@ -90,6 +90,20 @@ B computes `new_level` with `computeNextLevel`. A writes it. Paused nodes are ne
 - else quota −1, `paused = true`, close any pending quiz on that node, insert a `BypassEvent`, emit `student_state` + `bypass` (with `student_name`, `concept_name`), and return `{remaining_quota}`.
 - Later intercepts on that node return **L4**. Paused lasts until `/demo/reset` (good enough for the MVP).
 
+### v4 explicit prompt scope (additive)
+
+`BypassRequest.scope?: 'concept' | 'prompt'`. Omitted or `'concept'` preserves every legacy rule above, including charging another quota for a repeated bypass on a paused node. Unknown scope returns 400 `bad_request` before any mutation.
+
+With `scope:'prompt'`, validate the student/node/state and quota, decrement quota exactly once per successful request, close pending quizzes for that student/node, record/emit the existing bypass notification and return the unchanged `{remaining_quota}`. Do **not** change mastery or set `paused`. An existing concept pause is not undone. Preserve the existing state notification so clients can refetch quota and display the educator toast. Zero quota remains 409 with no mutation.
+
+The client owns the single resend; this creates no server-wide bypass credit. D omits both optional binding fields and resends that exact prompt to claude.ai without another `/intercept` call through its guarded one-shot path.
+
+For C's server-mediated sandbox, prompt scope additionally supplies both `raw_prompt` and `conversation_id` in `/bypass`. Their nonempty string values bind the intended resend; a partial binding or binding on concept scope is 400 before spending quota. The response then adds optional opaque `prompt_bypass_token`, bound to student, node, exact text and conversation for 120 seconds. C sends it once in `ChatRequest.prompt_bypass_token`, with the identical last user message/conversation. A atomically validates and consumes it before generation, skips grading/interception for that one call, streams the raw prompt at L4 with quiz false, and records the normal matched-node activity/log without changing mastery. Charge only the issuance, never consumption. Unknown/expired/replayed/mismatched tokens return 400 before model calls; mismatches must not spend quota or consume a still-valid binding. Validate that the student still belongs to the token's tree/node. Demo reset/reparse invalidate affected authorizations; server restart can discard them. A consumed token is not refunded or reusable after cancellation/model failure. No automatic reissue/retry that could spend more quota. Never expose tokens or raw text in educator events.
+
+C must guard stale turns/conversations, drafts and in-flight sends before charging, retain the original intended prompt, and clearly show the quota/outcome. The next ordinary turn again gets its actual mastery/friction. Existing concept pauses are never undone by a prompt token. Do not substitute a caller-controlled `bypass:true` flag or silently omit interception without a validated token.
+
+Rollout: E's mock implements both scopes. A must implement the real endpoint and publish `API READY` before clients send prompt scope there; a version-4 health response alone is not evidence that A's rollout is complete. Current older API code can ignore unknown request fields and pause the concept, so do not capability-probe a shared server by spending quota.
+
 ## 8. Parse and the demo cache
 
 `POST /trees/parse` (PDF base64 without a `data:` prefix, or text):
@@ -114,6 +128,16 @@ Each message is `event: <type>` plus `data: <JSON>`. Comment pings (`: ping`) ar
 Runs the §4 intercept on the last user message (`app_source:'sandbox'`, the request's `conversation_id`). Replaces that message with `injected_prompt`, streams `Intelligence.chat()` as `text/plain`, and saves the full text as the log's `llm_response`. Headers: `X-Friction-Intercept-Id`, `X-Friction-Node-Id`, `X-Friction-Level` (empty when no node). They're exposed via CORS.
 
 From v3, optional `CHAT_HEADERS.quizAttached` (`X-Friction-Quiz-Attached`) reports the exact `InterceptResponse.quiz_attached` for that turn as `"true"` or `"false"`. When emitted, it must be exposed via CORS. It is false for unmatched prompts and L4 turns. Do not infer it from `level < 4`: a lower-level turn with an already-pending quiz may attach none. Both the mock and real API emit it; C owns the remaining UI rollout. Clients retain the existing fallback hint if connecting to an older server without it and must not claim exact attachment from the level alone. The original three headers remain required.
+
+### v4 observable stream completion/failure
+
+The response stays `text/plain` with existing headers. Before streaming starts, errors remain structured 502 `llm_error` or 504 `llm_timeout`. After bytes have started, upstream errors, refusals and truncated/non-natural model stops must **error the response body**, so a real fetch body reader rejects. Never append JSON, an error sentinel or an unannounced framing format to partial text. A clean EOF means successful complete generation; a rejected read means interruption. A status/header set after streaming starts cannot reliably communicate failure, and browser Fetch does not provide a portable response-trailer API.
+
+Caller cancellation is distinct: abort generation, retain any partial text and clear the unseen quiz, without reporting a successful completion or showing an unsolicited error after New chat/navigation. Upstream failure also retains partial text and closes the quiz. Preserve late-grade semantics; the intercept deadline still must not abort grading. C marks a reply complete only after clean EOF, retains a partial interrupted bubble on error and offers recovery without automatically resending or grading it. D's claude.ai surface does not consume the sandbox `/chat` body and must not change its site-send protocol for this signal.
+
+Pinned-stack evidence: Hono `stream()` callback throws and `s.abort()` both end cleanly; those alone do **not** implement this contract. A should use an explicitly errorable native `ReadableStream` (for example `controller.error(error)` after upstream failure, `controller.close()` only on natural completion and `cancel()` to abort the model). Preserve the first-chunk pull/error mapping and idempotent cleanup. Validate over actual localhost HTTP, not only `app.request()`.
+
+`pnpm exec tsx scripts/verify-stream-failure.ts` gates failure only after the client has received the partial chunk. It currently fails against A's old route and must pass before `API READY`. A must update its current-behavior characterization test to the new required failure behavior. The mock implements socket-error completion for started streams and first-chunk 502 mapping; its deterministic fake has no network timeout to simulate. Full API 504 and cancellation checks remain required.
 
 ## 11. Privacy
 

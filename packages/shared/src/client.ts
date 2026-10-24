@@ -81,7 +81,7 @@ export function createFrictionClient(baseUrl: string, fetchImpl: FetchLike = (i,
     bypass: (b: BypassRequest) => call<BypassResponse>('POST', '/bypass', b),
     heartbeat: (b: HeartbeatRequest) => call<void>('POST', '/heartbeat', b),
     demoReset: (b: DemoResetRequest) => call<AcceptedResponse>('POST', '/demo/reset', b),
-    /** Raw streaming response (text/plain). Read CHAT_HEADERS for metadata. */
+    /** Raw text/plain response. Consume to EOF; a body-read rejection means interrupted, not complete. Caller abort is separate. */
     chat: (b: ChatRequest, signal?: AbortSignal) =>
       fetchImpl(base + '/chat', {
         method: 'POST',

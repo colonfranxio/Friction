@@ -77,11 +77,13 @@ Windows works the same (load `apps\extension\dist`).
 
 ## work left to do
 
+Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
+
 This section updates the remaining-work assignment after CP2. Own only `apps/extension/**` and your status file on `agent/extension`. Your newer hardening at `56a5183` is pushed but not integrated. Review and preserve completed fixes rather than rebuilding them. The extension remains a bonus surface; it must not block the main sandbox demo.
 
 ### Start now, in parallel
 
-- Merge current `main`, confirm v3 and keep the consent guard/no-fetch regression, per-chat conversation IDs, pasted-marker cleaning, draft protection, correct-chat bypass targeting and expiry/navigation cleanup passing. A's cancellation fix and real quiz header are already merged.
+- Merge current `main`, confirm the v4 handoff and keep the consent guard/no-fetch regression, per-chat conversation IDs, pasted-marker cleaning, draft protection, correct-chat bypass targeting and expiry/navigation cleanup passing. A's cancellation fix and real quiz header are already merged.
 - Verify new chat before a site UUID exists, UUID aliasing, navigation, multiple tabs, sleeping/reloaded service worker, offline/timeout and ignored Send behavior. Consent off must prevent every API action, including queued/programmatic bypass messages. Never overwrite a new draft or spend quota when a bypass cannot safely target/send the intended prompt.
 - Keep your branch restricted to D-owned paths. The fake-grader proposal belongs on `proposal/e-fake-grader` for E's review; do not reintroduce shared-code edits or independently tune B's grader.
 - Document the one-prompt bypass work as awaiting API alignment. Current `/bypass` still pauses the concept until reset; your client-side one-shot resend does not change that server behavior. Do not claim one-prompt semantics end-to-end yet.

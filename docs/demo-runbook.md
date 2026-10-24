@@ -1,5 +1,7 @@
 # Friction demo runbook
 
+For the pre-freeze v4 rollout, see [CONTRACT READY v4](checkpoints/CONTRACT-READY-v4.md). Its new stream-failure regression and prompt/token bypass gates must pass before v4 API READY. The v3 demo/evidence below does not certify those new behaviors; keep the legacy concept bypass until clients and API are coordinated.
+
 Current state: CP2 code and A's cancellation/header fix are integrated and independently verified. The CP2 live gate is still open here: see [checkpoints/CP2.md](checkpoints/CP2.md) for the missing cloud real-Claude validation and human rehearsal. A reports three successful real-Claude smoke runs on its credentialed local machine. The steps below distinguish the validated fake-backed workflow from the real demo that still needs independent live acceptance.
 
 ## Prepare

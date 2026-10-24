@@ -113,11 +113,13 @@ If an issue is outside your folder (shared types, scripts), write it in your sta
 
 ## work left to do
 
+Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
+
 This section is the current remaining-work assignment after the CP2 review; it supersedes stale unfinished items above. Your cancellation/header fix `d757427` is already on `main`. Do not rebuild it. Own only `apps/api/**` and your status file on `agent/platform`.
 
 ### Start now, in parallel
 
-- Merge current `main` into your branch and confirm contract v3. Keep the quiet-abort regression, partial-reply persistence, exact quiz-header tests, per-student lock and late-grade behavior passing.
+- Merge current `main` into your branch and confirm the v4 handoff. Keep the quiet-abort regression, partial-reply persistence, exact quiz-header tests, per-student lock and late-grade behavior passing.
 - Harden mid-stream failures with B and C. Today the API can log a model error and end a partial HTTP 200 reply normally, which C treats as complete. Add an endpoint regression and propose observable failure/completion semantics to E. Do not silently change the existing `text/plain` contract or invent shared types.
 - Test the current concept-bypass behavior and prepare endpoint tests for explicit one-prompt bypass. Preserve quota exhaustion, pending-quiz cleanup and educator notification. Implement changed semantics only after E's contract handoff below.
 
