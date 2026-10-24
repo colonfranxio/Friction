@@ -45,6 +45,11 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
    - Extension side is done: the badge's **Bypass** button (and the popup's **Bypass this message**) calls `/bypass` for the node of the last friction-ed message, then re-sends that exact prompt unmodified (no `/intercept` call). If the page doesn't take the re-send, the text stays in the composer and the next Send goes out unmodified once.
    - Until the API changes, the concept also stays paused server-side (later prompts on it get L4). Sandbox (C) should switch its bypass button to the same per-prompt behavior.
 
+2. **Re-asking the question counts as a correct answer (found in live testing, 2026-10-24).** In the same chat, sending the original question again is graded as the answer to the check question. `fakeEvaluate` (packages/shared, E) marks any message containing one of the node's keywords as `correct`, and the question itself contains them ("useEffect", "infinite loop"), so in DEMO_MODE the student jumps L1 → L4. Repro: two `/intercept` calls with the same `raw_prompt` and a `previous_assistant_text` → 2nd returns `level: 4, graded.verdict: correct`.
+   - Ask (E): the fake grader returns `not_an_answer` when the message is (nearly) the same as the question that triggered the quiz, or when it is phrased as a question.
+   - Ask (B): the real grader prompt treats a repeated or re-phrased question as `not_an_answer`, never `correct`; add it to the harness.
+   - Not fixable in the extension: the server grades whenever a quiz is pending.
+
 ## Dependency changes
 - `happy-dom` (dev, extension only).
 
