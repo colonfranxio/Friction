@@ -7,6 +7,15 @@
 - Cancellation: A's fix (`complete = !abort.signal.aborted`, PR #1) is merged, and `scripts/verify-chat-abort.ts` **PASSES** on this branch with B's real factory. B's quiet abort is unchanged.
 - Last updated: 2026-10-24
 
+## PANEL READY (learning-map side panel, reassigned to B by the human, 2026-10-24)
+Branch `feature/learning-map` (off `main` `d23cb63`). Code commits `cc0e983` + `af2c9b9` (checker fixes). Ownership note for E: `proposal/b-owns-learning-map` (`d1e83f6`).
+- **Dashboard embed view** `/student/:studentId?embed=1` (`apps/dashboard/src/pages/EmbedPage.tsx`, `styles/embed.css`; route switch in `App.tsx`). Read-only: progress, **Now learning** (level and level/required), **Next up** (active nodes only, shallowest first, name tie-break, max 3, with mastery hint and a client-side "Try asking" starter; if nothing else is unlocked it says to master the current concept, no invented recommendation), and the map behind **Show map**. No TopBar, educator controls, upload/reset or chat. Same hooks as the Student page (`useStudentData` + `useTreeData` SSE), so mastery shows live. Compact error + Try again before first load; after that a transient error shows a banner and keeps the content. No-tree and loading states. Without `?embed=1` the Student page is unchanged.
+- **Extension:** D's side-panel shell on `agent/extension` (iframe to `?embed=1`, consent guard, Dashboard URL with 127.0.0.1⇄localhost fallback, unreachable → Retry) is kept unchanged. No postMessage readiness signal: D's reachability probe covers a dead dashboard and the embed's own error state covers an API outage.
+- **Evidence:** dashboard typecheck clean, `test` 13/13 (new `test/embed.test.ts`: active-only, excludes Now learning, cap 3, depth/name ordering, empty case), `build` OK (embed is its own lazy chunk).
+- **Checker (Sonnet 5.5, medium, fresh clone at `cc0e983`): PASS.** Fixed from its nitpicks: a transient refresh error no longer replaces the loaded panel; ordering test added. Not fixed (accepted): the "Now learning" pick is duplicated from TreePage to avoid editing C's file; the map is a fixed 440px behind the toggle. Headless Chrome against the running real API (user's own syllabus tree): 360px and 420px, zero horizontal overflow with and without the map, no TopBar; full `/student/:id` still has the TopBar.
+- **Not yet verified (human):** the live node-turns-green check inside the Chrome side panel on claude.ai. Needs D's branch merged (or built) plus this branch, with the dashboard's `VITE_API_URL` and the extension's API URL both on 8787.
+- **Merge order:** D's `agent/extension` first, then `feature/learning-map`. Touches only the four dashboard files above and this status file.
+
 ## B READY
 - **Source:** branch `agent/intelligence`; the exact SHA is in the "B READY" commit and the human handoff. It has `main` @ `ff25700` merged in, contract **v3** confirmed.
 - **Prompts:** unchanged and still frozen. The live grader already passes every new repeat/rephrase case, so no prompt fix was needed.
