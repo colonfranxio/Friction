@@ -75,7 +75,7 @@ apps/extension/
   ]
 }
 ```
-Settings defaults: `studentId = SEED_IDS.demoStudent`, `apiUrl = DEFAULT_API_URL` (8787; use `http://localhost:8788` while developing against the mock), `enabled = true`.
+Settings defaults: `studentId = SEED_IDS.demoStudent`, `apiUrl = DEFAULT_API_URL` (8787; use `http://localhost:8789` while developing against **your own** mock: `MOCK_PORT=8789 pnpm dev:mock`. Agent C uses the mock on 8788, and its smoke runs reset that mock's state), `enabled = true`.
 For concept names (badge/popup), the background fetches `client.getStudent(id)` → `client.getTree(tree_id)` once and caches `node_id → concept_name`. Refresh it when the intercept returns an unknown `node_id`.
 
 ## 6. First hour: capture real traffic (blocks everything else)
@@ -90,7 +90,7 @@ You need the real request and response shapes. **Don't rely on memory**; claude.
 - [ ] Fixtures captured and sanitized; `NOTES.md` written
 - [ ] `adapters/claude.ts` + `lib/sse.ts` unit tests pass against the fixtures (match the URL, extract `conversation_id`, read/write the prompt, parse the streamed text)
 - [ ] Bridge with nonce + timeout, unit tested
-- [ ] **Live test (human loads the extension, API = the mock on 8788):** a claude.ai prompt about useEffect reaches Claude with the friction block (verify the reply is Socratic or ends with a question), and the mock received `/responses`. **Report GO / NO-GO in your status file.**
+- [ ] **Live test (human loads the extension, API = your mock on 8789):** a claude.ai prompt about useEffect reaches Claude with the friction block (verify the reply is Socratic or ends with a question), and the mock received `/responses`. **Report GO / NO-GO in your status file.**
 - [ ] If NO-GO: implement the fallback, which writes the injected text into the composer before submit (`execCommand('insertText')` on the ProseMirror editor). Report which approach works.
 
 ### CP2 (target T+8h)
@@ -111,11 +111,11 @@ You need the real request and response shapes. **Don't rely on memory**; claude.
 ```
 pnpm --filter @friction/extension test
 pnpm build:ext                 # → apps/extension/dist (human: Load unpacked / reload)
-pnpm dev:mock                  # API for live testing (set popup API URL to http://localhost:8788)
+MOCK_PORT=8789 pnpm dev:mock   # your own mock for live testing (popup API URL: http://localhost:8789)
 pnpm typecheck
 ```
 
 ## 9. Interfaces with the other agents
-- You depend only on the HTTP API (A) via the shared client. The mock (8788) behaves exactly like the real API.
+- You depend only on the HTTP API (A) via the shared client. The mock behaves exactly like the real API.
 - You never parse or build friction prompts yourself. Use `injected_prompt` verbatim and `stripInjected` for display.
 - New data needs → change request in your status file.

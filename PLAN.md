@@ -20,7 +20,7 @@ A student uses claude.ai normally. A Chrome extension catches each prompt just b
 |---|---|---|
 | 1 | **Supabase was a human blocker** (create project, keys, RLS, realtime publication) and depends on venue Wi-Fi for every DB read. | **The API owns a local JSON-file store** (`apps/api/data/db.json`), seeded from `packages/shared/src/seed.ts`. **Live updates are Server-Sent Events** from the API (`GET /events`). No accounts or RLS, nothing to configure. A `Store` interface keeps Supabase as an optional swap after CP3. |
 | 2 | Next.js added SSR/app-router complexity to what is a client-only dashboard. | **Vite + React SPA** on 5173 (React Router, React Flow, Tailwind, framer-motion). |
-| 3 | No lead session exists to own shared files or merge mid-build. | **Contracts are already built and frozen.** The human merges only at checkpoints (§7). Agents log change requests in their own status file. |
+| 3 | No lead session existed to own shared files or merge mid-build. | **A fifth session, Agent E (Integrator)**, owns `main`, `packages/shared`, `scripts/` and `docs/`. It merges at each checkpoint, verifies, applies change requests, and reports (§7, [docs/agents/E-integrator.md](docs/agents/E-integrator.md)). Builders never touch lead-owned files. |
 | 4 | Lockfile and dependency bottleneck: "only the lead adds deps." | All expected deps are **pre-installed now**. If an agent needs more, it adds them to **its own** `package.json` only. On merge, a lockfile conflict is fixed with `pnpm install` (§7). |
 | 5 | Port clash between the mock API and the real API. | Real API **8787**, mock **8788**, dashboard **5173** (`PORTS` in shared). |
 | 6 | Agents could drift on shapes, rules or prompt format. | Single source of truth in `packages/shared`: types, endpoint contract, a **typed client**, **progression and status rules as functions**, `wrapInjected`/`stripInjected`, seed data and fakes. Nobody re-implements a rule. |
@@ -72,7 +72,7 @@ A student uses claude.ai normally. A Chrome extension catches each prompt just b
 
 ## 4. Final repository layout and ownership
 
-**Legend:** 🔒 Lead (frozen; agents never edit) · 🅰 Platform · 🅱 Intelligence · 🅲 Dashboard · 🅳 Extension · ✅ = exists now · ⬜ = the owning agent creates it
+**Legend:** 🔒 Lead = Agent E, the Integrator (builders never edit) · 🅰 Platform · 🅱 Intelligence · 🅲 Dashboard · 🅳 Extension · ✅ = exists now · ⬜ = the owning agent creates it
 
 ```
 Friction/
@@ -177,6 +177,7 @@ Friction/
 | **B Intelligence** | Real `Intelligence` implementation (parse, classify, templates, evaluate, chat) and a level-compliance harness | `@friction/shared`, Claude API | [docs/agents/B-intelligence.md](docs/agents/B-intelligence.md) |
 | **C Dashboard** | Educator canvas (edit, upload, class view, activity, alerts), student view, sandbox, all design.md polish | API (mock → real), shared client/rules | [docs/agents/C-dashboard.md](docs/agents/C-dashboard.md) |
 | **D Extension** | MV3 interception on claude.ai, response capture, popup + bypass, on-page badge, hide injected text | API (mock → real), shared client/rules | [docs/agents/D-extension.md](docs/agents/D-extension.md) |
+| **E Integrator** | Merges at each checkpoint, verifies (typecheck, tests, smoke, builds), applies contract changes, writes `docs/checkpoints/CPn.md`, owns the demo runbook. **Builds no features.** | All four branches | [docs/agents/E-integrator.md](docs/agents/E-integrator.md) |
 
 Everyone can start immediately and in parallel. C and D develop against the mock (`pnpm dev:mock`). A develops against the fakes. B develops against unit tests and the harness.
 
@@ -203,18 +204,25 @@ Everyone can start immediately and in parallel. C and D develop against the mock
 2. Each agent gets its own branch, either on one machine (`scripts/setup-worktrees.sh` creates `../Friction-<agent>` worktrees and copies `.env`) or on separate machines (`git checkout -b agent/<name>`).
 3. Everyone: `corepack enable` (or `npm i -g pnpm@9`), then `pnpm install`, then `cp .env.example .env` and fill in `ANTHROPIC_API_KEY` (needed by A and B).
 4. Open Claude Code in that folder and send: **"Read docs/agents/<X>.md and execute it. Start now."**
+5. Open a **fifth** Claude Code session in the main checkout for **Agent E**: **"Read docs/agents/E-integrator.md. You are the integrator. Wait for checkpoints; meanwhile run hourly preview merges."**
 
 ### Between checkpoints
 - Agents commit small and often to `agent/<name>`, and may push **their own branch only**. Never push to `main`.
 - Each agent keeps `docs/status/<X>.md` current: progress against exit criteria, change requests, blockers.
 
-### At each checkpoint (human, about 15 min)
-1. Read the four status files.
-2. Merge into `main` in the order **B → A → C → D**. Owned paths don't overlap, so the only possible conflict is `pnpm-lock.yaml`. Fix it with `git checkout --theirs pnpm-lock.yaml && pnpm install`, then commit.
-3. `pnpm install && pnpm typecheck && pnpm test`, then start the API (`pnpm dev:api`) and run `pnpm smoke`.
-4. Apply approved contract change requests in `packages/shared` (additive only), bump `CONTRACT_VERSION`, and add an entry to `docs/contracts-CHANGELOG.md`. Keep `scripts/mock-api.ts` in sync.
-5. Tell each agent: **"Checkpoint CPn merged. Merge main into your branch, read docs/contracts-CHANGELOG.md, confirm in your status file, continue."**
-6. Human check in Chrome: load `apps/extension/dist` unpacked and run the demo steps for that gate.
+### At each checkpoint
+1. **Builders (A–D):** tests and typecheck green → status file updated → commit → **push `agent/<name>`** → say "CPn pushed". Then they continue with the next checkpoint's tasks.
+2. **Human:** once all four have pushed (or the time box is up), tell Agent E: **"CPn: all agents pushed."**
+3. **Agent E** follows its procedure ([docs/agents/E-integrator.md](docs/agents/E-integrator.md) §2):
+   - checks each branch only touched its own paths;
+   - merges **B → A → C → D**; lockfile conflicts are fixed with `git checkout --theirs pnpm-lock.yaml && pnpm install`; anything else blocks that branch;
+   - runs typecheck, tests, the real-API smoke test (3× from CP3) and both builds;
+   - applies additive contract changes (+ mock, changelog, version bump);
+   - pushes `main` and writes `docs/checkpoints/CPn.md` with a message for each agent.
+4. **Human:** passes E's message to each agent (or E sends them directly, if the sessions run on the same machine), and does the live Chrome test with `apps/extension/dist`.
+5. **Builders:** merge `main` into their branch, read the changelog, confirm in their status file, continue.
+
+A branch that breaks the merge or the smoke test is **skipped, not fixed by E**. The owner gets the exact error and resubmits.
 
 ### Demo hygiene
 Run `POST /demo/reset` (or the dashboard's Reset button) before going on stage. Keep `DEMO_MODE=1`. Don't reload claude.ai mid-demo. Run step 4 in a new chat. Keep the sandbox tab open behind claude.ai, a phone hotspot as backup Wi-Fi, and the backup recording on the desktop.
