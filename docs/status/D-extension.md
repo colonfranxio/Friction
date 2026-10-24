@@ -3,12 +3,12 @@
 **Owned by Agent D. Only this agent edits this file.**
 
 - Contract version confirmed: **2** (read docs/contracts-CHANGELOG.md: v2 only adds an optional grading AbortSignal between A and B; no impact on the extension). My CP2 work is already on main via E's CP1 merge.
-- Current checkpoint: **CP2** (CP1 closed: GO on live claude.ai)
+- Current checkpoint: **D READY** (old-server gate resolved, see below). CP1/CP2 done; CP3 hardening done.
 - Last updated: 2026-10-24
 
 ## CP1 exit criteria
 - [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
-- [x] Unit tests pass (34 at CP1; 57 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
+- [x] Unit tests pass (34 at CP1; 64 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
 - [x] Background tests against the real mock (in-process HTTP) pass: status, L1 intercept, correct answer graded via `previous_assistant_text` → L4, passthrough, bypass + paused, concept kept after off-topic, consent off (zero fetches), offline fail-open.
 - [x] **Human live try → GO.** On real claude.ai with the mock (8789), the useEffect question got a Socratic L1 reply: no code, asked the student to explain, one hint about the dependency array, ended with a check question. So the composer rewrite + send work on the live page.
 - (moved to CP2) Full loop on claude.ai: answer → L4, new chat → full answer, badge text, block hidden in the user bubble.
@@ -45,13 +45,33 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
 - [x] Fixes from the CP2-followup verification (fresh clone, PASS): the bypass target is dropped when you switch chats (it could charge the wrong concept and send an old prompt into another chat); a bypass is refused **before** spending quota if you have a different draft in the box or a send is in flight; the "send unmodified once" fallback expires after 2 minutes and on navigation; `cleanPrompt` repeats until stable so nested fragments can't rebuild a marker. Tests added.
 - Handover: a second Agent D session briefly worked in this worktree (commits 6137ea1 per-prompt bypass + badge Bypass button, a1e5731 strip pasted friction blocks, f6c75db per-chat conversation ids). Those were reviewed and kept by the current Agent D session. Its edit to E-owned `packages/shared` (682c085, fake grader treats a re-asked question as `not_an_answer`, human-approved) was **moved to branch `proposal/e-fake-grader`** for E to review/cherry-pick, and reverted here so this branch only touches D-owned paths.
 
-## v4 rollout (contract READY v4)
+## D READY (2026-10-24) — code commit `9fe390131e20d9ace2abd4a2cbb6c1ace0adfd2f`
+Responds to FINAL-INTEGRATION-CHECK "Required completion order" item 2.
+
+**Old-server gate deviation: RESOLVED.** The extension now uses the same rule as C's sandbox (`apps/extension/src/lib/bypass-gate.ts`): `scope:'prompt'` is sent only when `/health` reports contract ≥ 4 **and** either `mode.server === 'mock'` or the popup setting **API READY SHA** holds an exact 40-hex SHA (set only after E approves A's API READY). Otherwise the bypass request is the **legacy payload with no `scope` field**, the result is `scope_applied:'concept'`, and the UI says so up front: the popup button reads "Bypass this concept" with a "pauses friction on this concept until reset" note; the badge says "concept bypassed". No capability probe spends quota; `/health` is read-only. The earlier send-and-detect logic (reading `paused` before/after) is removed.
+
+**Preserved guards (all still tested):** consent off → zero API calls (intercept, status, bypass); bypass refused before spending quota if the target message belongs to another chat, a different draft is in the composer, or a send is in flight; armed "send unmodified once" expires after 2 min and on navigation; per-chat conversation ids; pasted friction blocks/markers stripped; fail-open sends (error/timeout/ignored send restores the original text).
+
+**Evidence, by kind:**
+| Kind | Result |
+|---|---|
+| Simulated (unit, happy-dom) | `pnpm --filter @friction/extension test`: **64/64** (6 files; incl. 5 gate rules and send-interceptor/site/hide/badge/conversation) |
+| In-process real HTTP vs reference mock | included above: 15 service-worker integration cases, incl. two gate cases that make the mock answer as `server:'api'` and inspect the actual `/bypass` body (no SHA → no `scope` field; valid SHA → `scope:'prompt'`, no binding fields) |
+| Fake-backed API (separate process) | `test:api` vs D's v4 mock on 8789: **15/15** |
+| Typecheck / build | extension typecheck clean; `pnpm build:ext` OK |
+| Real API + real Claude (human laptop, earlier today) | extension on claude.ai against 8787: L1 friction confirmed by the human (CP1 GO); sandbox/real-Claude smoke 3/3 run by the human |
+
+**Pending live checks (not claimed):** v4 prompt-scoped bypass against A's merged real API (needs A's corrected API READY + E's approval, then set the SHA in the popup); the human claude.ai bypass check after that; Windows Chrome load check.
+
+**Backlog (accepted, not scheduled):** learning-map Chrome side panel (brief "Requested addition"). Not started, per its priority rule; waiting for E to schedule it and for C's EMBED READY.
+
+## v4 rollout (contract READY v4) — superseded by D READY above
 - [x] Merged main (v4); `packages/shared` and `scripts/` identical to main.
 - [x] Badge/popup bypass requests **`scope: 'prompt'`** (no binding fields), then the guarded direct resend to claude.ai (consent / current-chat / draft / busy guards and 2-min armed expiry unchanged). Future ordinary sends still get friction.
 - [x] **Old-server honesty:** a pre-v4 server ignores `scope` and pauses the concept. After a prompt-scoped bypass the service worker reads the node's `paused` flag and returns `scope_applied: 'prompt' | 'concept'`; the badge says "concept bypassed" and the popup adds "(This server paused the whole concept until reset.)". Verified for real: run against a still-running v2 mock, the prompt-scope tests saw `concept`; against the v4 mock they see `prompt`.
 - [x] Tests: 57 extension tests (incl. v4 prompt scope → no pause, concept scope → pause); `test:api` 13/13 against the v4 mock on 8789 (restarted to load v4).
-- [x] Detection hardened (v4 verification, PASS): `paused` is read before and after with a 1.5s timeout; "concept" only on false → true; `scope_applied:'unknown'` (no claim in the UI) if either read fails.
-- **Note for E (wording deviation):** your handoff says "Do not send new fields to an old real server". D sends `scope:'prompt'` anyway and detects the outcome, because old servers ignore unknown fields (A's `/bypass` only reads `student_id`/`node_id`), so the worst case is exactly the legacy concept pause, reported honestly. Once A publishes API READY this is moot. If you prefer a strict gate, D can send `scope` only when `/health` reports contract ≥ 4.
+- [x] (superseded: detection removed in D READY) Detection hardened (v4 verification, PASS): `paused` is read before and after with a 1.5s timeout; "concept" only on false → true; `scope_applied:'unknown'` (no claim in the UI) if either read fails.
+- ~~Note for E (wording deviation)~~ → resolved by D READY (gate like C).
 - [ ] Live use against the **real** API waits for A's **API READY** SHA (per E). Until then, a bypass against the real API degrades honestly to concept scope (see above).
 
 ## Change requests (contract)
@@ -76,7 +96,7 @@ The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/
 
 ## How to run and verify my part
 ```
-pnpm --filter @friction/extension test        # 57 tests
+pnpm --filter @friction/extension test        # 64 tests
 pnpm --filter @friction/extension test:api    # integration tests vs a running API (default :8787)
 pnpm --filter @friction/extension typecheck
 pnpm build:ext                                # → apps/extension/dist
