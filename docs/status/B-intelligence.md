@@ -89,7 +89,24 @@ L1: no code fence, last line ends with "?". L2: every fence has a `____`-style b
 - [x] Templates for all 4 levels with feedback and quiz variants; keyword classifier; real `evaluateExchange`; `createIntelligence()` wired; `pnpm typecheck` passes. CP1 grade latency: p50 2335ms, p95 3700ms.
 
 ## Change requests (contract)
-None open. (1. The abort signal for `evaluateExchange` was **accepted in v2**, and the local workaround is removed. Without a signal, calls still time out at 20s: SDK timeout, 1 retry.)
+**CR-2 (open, requested by the human for the demo; owners A + E, no B change): a real syllabus upload moves the whole class onto the new tree.**
+- **Why:** the demo goes "teacher uploads any syllabus → tree → edit → the whole class fills in as students chat". Today a non-cached `POST /trees/parse` moves **only the demo student** (contracts §8, `apps/api/src/services/parse.ts`). The classmates stay on the old tree, so the class panel, the activity feed and the sandbox's student dropdown show one student. The cached demo-syllabus path already uses the full seed class and stays as the safe default.
+- **Ask (contracts §8 "Otherwise" path only):**
+  1. After creating the tree, take `previousTreeId` = the demo student's current `active_tree_id`.
+  2. Every student whose `active_tree_id === previousTreeId` (the demo student included) gets `active_tree_id = newTree.id` and fresh L1 states (`paused:false`) for every new node.
+  3. If the demo student is missing or has no tree, move every `role:'student'` user.
+  4. Their states, logs and bypasses on the old tree are left as they are, and so is their `bypass_quota`.
+  5. Publish `tree_updated` for both trees, as today.
+- **Unchanged:** the DEMO_MODE cache path; `resetSeedTree`, which already `Object.assign`s every seed user back onto the seed tree, so **Reset demo** restores the class; response shape `{tree_id, cached}`; no type changes. C's upload already navigates to the returned `tree_id` and reads `/trees/:id/students`, so it needs no change.
+- **Contract:** behaviour-only wording change to §8 plus a changelog entry, at E's discretion. If E prefers it opt-in, use an additive `ParseTreeRequest.assign?: 'demo_student' | 'class'` field, defaulting to `'class'` for the demo.
+- **Test (A):** parse non-demo text with fake intelligence. Then:
+  - every student previously on the seed tree is on the new tree, with L1 states for each new node;
+  - their seed-tree states still exist;
+  - `GET /trees/:new/students` lists the whole class;
+  - after `POST /demo/reset {full:true}`, everyone is back on the seed tree.
+- **Demo note:** moved classmates start at L1 everywhere (0/N mastered). Progress appears only as students chat; nothing is faked. A real parse took 11–14s in B's harness, which C's parse animation covers.
+
+(CR-1: the abort signal for `evaluateExchange` was **accepted in v2**, and the local workaround is removed. Without a signal, calls still time out at 20s: SDK timeout, 1 retry.)
 
 ## Dependency changes
 None.

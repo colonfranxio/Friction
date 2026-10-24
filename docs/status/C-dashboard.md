@@ -2,10 +2,19 @@
 
 **Owned by Agent C. Only this agent edits this file.**
 
-- Contract version confirmed: 1
-- Plan confirmed: v5 simplified MVP, merged origin/main at 948a8c8; changelog v1 plan-v5 amendment read
-- Current checkpoint: CP3 dashboard polish verified against mock; CP2 real API gate still pending
+- Contract version confirmed: 4
+- Plan confirmed: v5, latest remaining-work brief and CONTRACT READY v4 read; merged origin/main 836784c including a11c16a
+- Current checkpoint: C READY v4, mock-backed correctness/acceptance complete; real API READY and E's exclusive live acceptance still pending
 - Last updated: 2026-10-24
+
+## CP3 visual sign-off (dashboard only)
+- User requested a final UI check. Reviewed educator, student, and sandbox screenshots at 1440x1000, 1280x800, and 390x844, plus mobile upload. Browser checks confirm no horizontal overflow; the sandbox fits the 1280x800 demo screen without page scrolling.
+- Improved readable supporting text and contrast, safe formatted streaming code blocks/inline code/bold, responsive error actions and touch controls. Raw HTML is never rendered.
+- Pillar titles now track graph viewport positions, and shorter edge offsets keep connectors out of two-line labels. Sandbox includes a legend and zoom buttons at the top right, clear of the bottom-right node label.
+- Independent `verify_ui_finish` reviewed desktop/laptop/mobile evidence and source; no blocking UI issue. Its small-map feedback led to visible zoom controls; its overlap feedback led to moving them out of the node area.
+- Typecheck, dashboard 9-test suite, build, visual route checks, full editing and CP3 animation/reduced-motion regressions pass. V4 chat and full demo regressions are retained.
+- Evidence: `apps/dashboard/test/artifacts/ui-review/` (nine route/size screenshots and mobile upload). Run `pnpm --filter @friction/dashboard test:browser:visual` only on C's private mock/dashboard; it resets C's demo fixture.
+- Dashboard UI/polish is complete. This does not close E's integrated real-model acceptance, human rehearsals, recording, or final CP3 freeze.
 
 ## CP1 (v5): verified
 - [x] Shell, three routes, and working Live indicator.
@@ -22,8 +31,8 @@
 - [x] Text upload parses and navigates; PDF transport verified byte-for-byte with prefix-free base64. Parse animation and failure/retry verified. PDF fixture tests transport against the mock, not real AI parsing.
 - [x] Reset demo uses full:true and is hidden when health reports demo:false.
 - [x] Mobile has no horizontal overflow. API-down retry, chat 502, and cancellation by New chat verified in Chrome.
-- [ ] Real API and real Claude smoke x3: blocked on A/B implementations merged by E (current main still contains placeholders).
-- Optional educator editing was preserved from work begun before the v5 update; compiles, but has not been browser-verified as a full editing workflow. Class/activity panels are present. User subsequently authorized CP3 work while integration is pending (see below).
+- [ ] Independent real-Claude acceptance and three real smoke runs remain scheduled by E. API/intelligence code is integrated; v4 API READY is still pending A's new wire behavior.
+- [x] Retained educator editing now passes its full browser workflow: create, badge override, pillar rename, inspector save, drag/reload persistence, connect, cycle toast, keyboard edge selection/deletion, and node deletion. Controlled edge selection was fixed so keyboard deletion persists through API/SSE.
 - Independent verifier: `verify_v5_cp2` reviewed current-turn bypass, profile refresh, reset, and upload; no blocking source issue found.
 
 ## CP3 (v5): dashboard polish verified on mock
@@ -38,16 +47,27 @@
 - Parallax cut to keep focus on mastery and the simpler demo. No new dependencies or contract changes for CP3.
 - Integration/rehearsal freeze is NOT claimed: CP2 real-Claude verification and E's integrated rehearsals remain pending.
 
+## C READY v4 followup
+- Confirmed shared handoff `a11c16a1e7ead6f657ee71b9f627a4c3195ce3b6` and main `836784c`. No shared/API/mock/other-agent source was changed by C.
+- [x] Exact `CHAT_HEADERS.quizAttached` is stored on each reply. Browser covers true, false at L1 with an existing quiz, L4, no match, historical turn selection, and absent-header approximate fallback. Never infer attachment from level.
+- [x] Native HTTP body-read rejection keeps partial text as interrupted, excludes its pair from future history, and offers explicit edit-original recovery; no automatic resend of an unseen quiz answer. Structured pre-stream error and empty-stream handling remain separate.
+- [x] Mock v4 prompt bypass binds exact raw text and conversation, sends returned token once, charges only issuance, leaves levels/pause unchanged, and returns to ordinary friction on the next turn. Original reply is visibly superseded.
+- [x] Historical-turn, draft, busy, repeated attempt, session and synchronous expiry guards run before issuance/resend. Missing authorization never falls back to an unguarded resend. New chat cancels ordinary and bypass streams without resurrecting replies.
+- [x] Older real-server fallback keeps the legacy concept pause, sends no prompt scope/token, and clearly describes its effect even if health reports v4.
+- [x] Root `pnpm typecheck`, full `pnpm test` (181 tests: shared26, B42, C9, D35, A57, scripts12), and dashboard build passed. Browser editing, v4 acceptance, demo and resilience passed on C's mock; CP3 polish regression is rerun with separate evidence below.
+- Independent `verify_c_ready_v4` found the click-time expiry and session-invalidation busy-state defects; both fixed. It independently passed C's 9 tests using the thread pool and found no blocking defect in the final review. Browser/service tests were parent-owned.
+- Real prompt rollout is deliberately gated: only the reference mock enables it automatically. For a real endpoint, after A's API READY and E's approval, configure `VITE_PROMPT_BYPASS_API_READY_SHA` with A's exact 40-character ready SHA and restart Vite. Version/health alone is insufficient; no capability probe spends quota.
+- Real semantic quality, valid-PDF intelligence, rehearsals/recording and CP3 freeze are not certified by these mock tests. The real API's clean-EOF failure defect remains A's implementation gate in the published handoff.
+
 ## Evidence
 - `apps/dashboard/test/artifacts/CP1-educator.png`, `CP1-student-live.png` (original CP1).
 - `apps/dashboard/test/artifacts/v5-CP1-sandbox-L1.png`.
 - `apps/dashboard/test/artifacts/v5-CP2-sandbox-mastered.png`, `v5-CP2-educator-bypass.png`, `v5-CP2-mobile.png`.
 - `apps/dashboard/test/artifacts/v5-CP3-mastery.png`, `v5-CP3-activity.png`.
+- v4 run evidence: `apps/dashboard/test/artifacts/v4-acceptance/` (prompt bypass next turn and interrupted reply), `v4-demo/` (full flow), and `v4-polish/` (animation/activity). Existing screenshots are preserved rather than overwritten.
 
 ## Change requests (contract)
-Contract v1 confirmed, including Windows and plan-v5 amendments.
-
-Add optional `CHAT_HEADERS.quizAttached` / `X-Friction-Quiz-Attached` (boolean string), emitted/exposed by both mock and real chat endpoints. The frozen chat headers currently contain only intercept ID, node ID, and level, so the UI cannot report exact quiz attachment per turn. Local workaround: lower levels say "See check question in reply"; L4 says "Not attached". No frozen files changed.
+Contract v4 confirmed. Previous exact-quiz-header request was accepted in v3 and is now consumed by C. Prompt scope/token and rejected-body-read changes follow E's published v4 handoff. No new change request.
 
 ## Dependency changes
 Playwright added only to dashboard devDependencies (lockfile updated, 19 additive lines). Browser tests use installed Chrome by default; `BROWSER_PATH` can select another installed Chromium executable. Existing root Vitest/tsx run dashboard scripts.
@@ -56,7 +76,7 @@ Playwright added only to dashboard devDependencies (lockfile updated, 19 additiv
 Class badge uses the median level among students with the majority status. Fully mastered students have no focus count. Student Now learning follows ui-layouts section 3 (most recently updated active node); class focus uses lowest depth with update-time tie break.
 
 ## Blockers / needs from the human
-Real API/Claude integration awaits A/B and E's checkpoint merges. No origin/agent/platform branch available at verification time; local API and intelligence entry points remain placeholders. Do not mark CP2 fully complete yet.
+API and intelligence are integrated. Waiting for A's v4 API READY SHA and E's exclusive final-API/browser window; do not enable prompt scope on the older real route or claim CP2/CP3 live acceptance from mock evidence. E owns final merge and human rehearsal/recording scheduling.
 
 API key supplied by user is configured only in root git-ignored `.env` (UTF-8); no secret is committed or sent to the browser. This shell had no Node/pnpm on PATH; portable tools are in ignored dashboard node_modules/.tools for verification.
 
@@ -68,5 +88,7 @@ Select Alex or the Student route before `pnpm smoke:mock` to see his promotion (
 Checks: `pnpm typecheck`; `pnpm --filter @friction/dashboard test`; `pnpm --filter @friction/dashboard build`.
 
 With mock/dashboard running: `pnpm --filter @friction/dashboard test:browser` and `pnpm --filter @friction/dashboard test:browser:resilience`. Run sequentially: these deliberately reset demo data. Demo script supports `DASHBOARD_TEST_URL` and `DASHBOARD_TEST_API` for real API verification once ready; resilience script uses a synthetic PDF transport fixture and is intended for the mock.
+
+New gates: `pnpm --filter @friction/dashboard test:browser:v4` and `pnpm --filter @friction/dashboard test:browser:editing`. Both require the mock. Run all browser suites serially on C's backend. Demo and polish scripts refuse a non-mock backend unless `DASHBOARD_TEST_EXCLUSIVE=1` explicitly confirms E's scheduled window. `DASHBOARD_EVIDENCE_DIR` selects a unique evidence directory; defaults preserve prior screenshot files. Demo assertions use deterministic wording only in fake mode; real mode checks transport/metadata with a longer timeout and leaves semantic assessment/human acceptance separate.
 
 CP3: `pnpm --filter @friction/dashboard test:browser:polish` checks normal and reduced-motion contexts, real SSE progress transitions, initial/view-switch suppression, keyboard tooltip, circular confetti bounds, cleanup, edge drawing and ticker, and educator activity privacy. It also resets demo data; run separately from other browser scripts.
