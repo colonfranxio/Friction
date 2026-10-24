@@ -2,8 +2,8 @@
 
 **Owned by Agent B. Only this agent edits this file.**
 
-- Contract version confirmed: 1
-- Current checkpoint: CP1 (done, pushed)
+- Contract version confirmed: 1 (re-read after PLAN v5, 2026-10-24: no shape changes; merged main into this branch)
+- Current checkpoint: CP1 (done, pushed). Next: CP2 per PLAN v5 (chat first, then harness L1/L2/L4 + grading + 3-turn, parse, classify fallback)
 - Last updated: 2026-10-24
 
 ## Exit criteria for the current checkpoint (CP1)
