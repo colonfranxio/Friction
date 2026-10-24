@@ -12,11 +12,15 @@
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run --passWithNoTests",
     "harness": "tsx --env-file-if-exists=../../.env harness/run.ts",
-    "latency": "tsx --env-file-if-exists=../../.env harness/latency.ts"
+    "latency": "tsx --env-file-if-exists=../../.env harness/latency.ts",
+    "moss:trial": "tsx --env-file-if-exists=../../.env harness/moss.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
     "@friction/shared": "workspace:^",
     "zod": "^4.6.7"
+  },
+  "optionalDependencies": {
+    "@moss-js/moss": "1.21.0"
   }
 }

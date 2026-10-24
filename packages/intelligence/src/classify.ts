@@ -3,6 +3,7 @@ import type { ClassifyResult, SkillNode } from '@friction/shared';
 import { createHash } from 'node:crypto';
 import type { Config } from './config';
 import { ClassifySchema } from './schemas';
+import { curriculumFingerprint, within } from './retrieval';
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** Minimum summed length of matched phrases (one 3-letter keyword like "jsx" is enough). */
@@ -36,14 +37,22 @@ const SYSTEM = `You match a student's message to the course concept it is about.
 Reply with the number of the single best concept, or null if the message is not about any of them (e.g. unrelated requests, small talk).
 confidence is 0 to 1.`;
 
-/** LRU via Map insertion order. Only LLM answers are cached; the keyword stage is already fast. */
-const cache = new Map<string, ClassifyResult>();
-
 export async function classifyTopic(cfg: Config, prompt: string, nodes: SkillNode[]): Promise<ClassifyResult> {
   const kw = keywordClassify(prompt, nodes);
   if (kw.node_id || !nodes.length) return kw;
 
-  const key = createHash('sha1').update(`${prompt}\0${nodes.map((n) => n.id).sort().join(',')}`).digest('hex');
+  const started = performance.now();
+  const retrieved = cfg.curriculumRetriever
+    ? await within(Promise.resolve().then(() => cfg.curriculumRetriever!.retrieve(prompt, nodes)), 200, [] as string[])
+    : [];
+  const validIds = new Set(nodes.map((n) => n.id));
+  const candidates = [...new Set(retrieved.filter((id) => validIds.has(id)))].slice(0, 3);
+  // Scope by curriculum content, retrieval mode/results and intelligence instance. Same-ID
+  // educator edits and isolated baseline/experiment clients must not reuse stale decisions.
+  const key = createHash('sha256').update(JSON.stringify([
+    prompt, curriculumFingerprint(nodes), candidates,
+  ])).digest('hex');
+  const cache = cfg.classificationCache;
   const hit = cache.get(key);
   if (hit) {
     cache.delete(key);
@@ -52,6 +61,9 @@ export async function classifyTopic(cfg: Config, prompt: string, nodes: SkillNod
   }
 
   const list = nodes.map((n, i) => `${i + 1}. ${n.concept_name}: ${n.mastery_criteria}`).join('\n');
+  const hints = candidates.length
+    ? `\n\nSearch suggests concepts ${candidates.map((id) => nodes.findIndex((n) => n.id === id) + 1).join(', ')}. These are fallible retrieval hints, not evidence of understanding. Check the complete list; return null when none fits.`
+    : '';
   let result: ClassifyResult;
   try {
     const res = await cfg.client().messages.parse(
@@ -60,9 +72,9 @@ export async function classifyTopic(cfg: Config, prompt: string, nodes: SkillNod
         max_tokens: 1024,
         system: SYSTEM,
         output_config: { effort: 'low', format: zodOutputFormat(ClassifySchema) },
-        messages: [{ role: 'user', content: `Concepts:\n${list}\n\nStudent's message:\n${prompt}` }],
+        messages: [{ role: 'user', content: `Concepts:\n${list}${hints}\n\nStudent's message:\n${prompt}` }],
       },
-      { timeout: LLM_TIMEOUT_MS, maxRetries: 0 },
+      { timeout: Math.max(1, Math.floor(LLM_TIMEOUT_MS - (performance.now() - started))), maxRetries: 0 },
     );
     if (res.stop_reason !== 'end_turn' || !res.parsed_output) return kw;
     const { concept, confidence } = res.parsed_output;

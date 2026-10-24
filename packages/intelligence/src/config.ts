@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import type { ClassifyResult } from '@friction/shared';
+import type { CurriculumRetriever } from './retrieval';
 
 export interface Models {
   parse: string;
@@ -12,6 +14,8 @@ export interface IntelligenceOptions {
   client?: Anthropic;
   /** Override model IDs. Default: MODEL_* env vars. */
   models?: Partial<Models>;
+  /** Experimental context assist. Absent in normal API startup; prewarm outside requests. */
+  curriculumRetriever?: CurriculumRetriever;
 }
 
 function envModel(name: string): string {
@@ -24,6 +28,8 @@ function envModel(name: string): string {
 export function makeConfig(opts: IntelligenceOptions = {}) {
   let client = opts.client;
   return {
+    curriculumRetriever: opts.curriculumRetriever,
+    classificationCache: new Map<string, ClassifyResult>(),
     client(): Anthropic {
       // Grading sits on a 4s hot path but late grades still apply, so allow one retry within ~20s.
       return (client ??= new Anthropic({ timeout: 20_000, maxRetries: 1 }));
