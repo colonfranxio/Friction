@@ -92,3 +92,22 @@ pnpm typecheck
 ```
 Env (all optional): `API_PORT` (8787), `DEMO_MODE` (on), `USE_REAL_INTELLIGENCE` (off), `INTERCEPT_BUDGET_MS` (4000), `DEMO_PARSE_DELAY_MS` (3000).
 To start from a clean store, stop the server and delete `apps/api/data/db.json` (or call `POST /demo/reset {"full":true}`).
+
+## Moss sponsor integration — MOSS API READY
+
+Branch `agent/moss-platform` (base `moss-integration` `6427c24` = B-ready + lockfile). Source: `apps/api/**` adapted from experiment `8f8fe63`. The base's API code equals the reference's base, so no newer API fixes were overwritten. The separate v4 cancellation/token work is **not** included.
+
+**Mode:** off by default. On only with `USE_REAL_INTELLIGENCE=1` + `USE_MOSS_RETRIEVAL=1` + both Moss credentials. Fake mode never loads intelligence or the SDK.
+
+**Review of reference against handoff Step 3:**
+1. Fake/disabled/incomplete config never constructs an adapter (tests). PASS.
+2. `start()` runs after the app is built; preparation is background-only; `/health` serves during warmup (live). PASS.
+3. Pool of 2 courses (demo student's first); preparing and closing handles count toward it. Other courses use the baseline. PASS, documented.
+4. Store fingerprint checked before and after each query; edit/delete/parse/reset tests through real routes. PASS.
+5. **Stall limitation (documented):** the reconcile loop is shared, so a permanently hung native `prepare`/`close` stops further Moss preparation. Bounded: `refresh()` returns the same in-flight promise, so there's no queue growth. Requests see `cold_or_stale` and use the baseline. New test `a permanently hung native preparation never blocks requests or queues more work`. No worker process added (hackathon scope).
+6. **Lifecycle correction:** the reference capped `store.flush()` together with Moss disposal at 2s, which could cut persistence short. Now `close()` stops polling synchronously, `store.flush()` is awaited uncapped (as on main), and only native disposal is capped at 2s.
+7. Traces: `disabled | warming | ready | retrieved | fallback(reason) | closed`, with revision prefix, `candidates`, `ms`, and **new `ids`** (canonical curriculum node IDs only, on `retrieved`). No keys, prompts, student IDs or provider errors.
+
+**Live harness (`pnpm --filter @friction/api moss:live`)**, strengthened per Step 5: keyword control (0 Moss queries), Context API must be among the candidates, Claude must choose it, pending-quiz answer graded with 0 Moss queries, unrelated prompt must be abstained, injected init-failure and query-timeout doubles, genuine missing-credentials startup. Writes `harness/results/<timestamp>-<sha>/moss-live.json` with SHA, dirty flag and model IDs. The earlier run is preserved in `results/reference-388ce96/`.
+
+**Verify:** `pnpm --filter @friction/api typecheck` · `pnpm --filter @friction/api test` → 3 files, 76 tests PASS. A dev live run of this harness passed every step; the official run is E's, at the integration SHA.

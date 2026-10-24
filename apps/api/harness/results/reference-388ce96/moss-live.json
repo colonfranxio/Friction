@@ -1,0 +1,53 @@
+{
+  "timestamp": "2026-10-24T22:47:31.151Z",
+  "events": [
+    {
+      "provider": "moss",
+      "state": "warming",
+      "revision": "3fc20bf603a5"
+    },
+    {
+      "status": "available_during_warmup",
+      "http": 200
+    },
+    {
+      "provider": "moss",
+      "state": "ready",
+      "revision": "3fc20bf603a5",
+      "ms": 1551
+    },
+    {
+      "provider": "moss",
+      "state": "retrieved",
+      "revision": "3fc20bf603a5",
+      "candidates": 3,
+      "ms": 5
+    },
+    {
+      "status": "live_chat_pass",
+      "http": 200,
+      "concept": "Context API",
+      "level": "2",
+      "quizAttached": "true",
+      "replyCharacters": 2314,
+      "endsWithQuestion": true,
+      "replyExcerpt": "This is what the **Context API** is for. Instead of handing the theme down through every component, you put it in a shared \"channel\" near the top of the tree, and any descendant can read it directly, no matter how deep.\n\n## The three pieces\n\n**1. Create the context** (once, usually in its own file)\n\n```\nThemeContext = ____(defaultValue)     // which React function creates a context?\nexport ThemeCo",
+      "masteryUnchanged": true
+    },
+    {
+      "provider": "moss",
+      "state": "closed"
+    },
+    {
+      "status": "live_fallback_pass",
+      "http": 200,
+      "concept": "Context API",
+      "fault": "intentionally injected Moss initialization failure; Claude is real"
+    },
+    {
+      "status": "complete",
+      "privateMemoryOnly": true,
+      "sharedServicesUntouched": true
+    }
+  ]
+}
