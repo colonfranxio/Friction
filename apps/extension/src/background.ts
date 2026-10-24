@@ -55,7 +55,12 @@ async function handleIntercept(m: Extract<RuntimeRequest, { type: 'friction:inte
       },
       AbortSignal.timeout(API_BUDGET_MS),
     );
-    const concept = conceptName(client, s.studentId, r.node_id);
+    let concept = conceptName(client, s.studentId, r.node_id);
+    if (r.node_id && !concept) {
+      // First intercept: give the name map a moment so the badge can show the concept.
+      await Promise.race([refreshConcepts(client, s.studentId), new Promise((res) => setTimeout(res, 400))]);
+      concept = concepts.get(r.node_id) ?? null;
+    }
     const last: LastIntercept = {
       node_id: r.node_id,
       level: r.level,

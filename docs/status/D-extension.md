@@ -8,9 +8,19 @@
 
 ## CP1 exit criteria
 - [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
-- [x] Unit tests pass (32): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
+- [x] Unit tests pass (34): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
 - [x] Background tests against the real mock (in-process HTTP) pass: status, L1 intercept, correct answer graded via `previous_assistant_text` → L4, passthrough, bypass + paused, concept kept after off-topic, consent off (zero fetches), offline fail-open.
 - [ ] **Human live try → GO / NO-GO.** Steps in `apps/extension/NOTES.md` ("Live test").
+
+## CP1 verification (independent agent, Sonnet 5.5, fresh clone of the pushed branch)
+Verdict: **CP1 code-complete PASS**. Ownership is clean, `src/lib` is tracked, typecheck/test/build pass in a fresh clone, no leftover network interception, consent-off makes zero API calls, Windows-safe. The live try is legitimately human-only.
+Fixed from its findings:
+- **M1:** pressing Enter while Claude is streaming (Stop button, send ignored) left the friction block in the composer. Now: after sending, confirm the composer emptied (≤600ms); if not, restore the original text (badge stays "ready").
+- Text that already contains a friction block is never re-intercepted (no double injection).
+- Wait up to 300ms for the Send button to be enabled after the rewrite (React lag), instead of a fixed 30ms.
+- The badge shows the concept name on the first message (waits ≤400ms for the name map).
+- Console logs which composer-rewrite strategy worked (paste / insertText / dom), to help the live test.
+- Added tests: streaming/ignored send → original restored and nothing sent; already-injected text passes through untouched.
 
 ## Removed (per plan v5)
 Page-level fetch patch, postMessage bridge, SSE parser, network fixtures, `/responses` calls.
@@ -29,7 +39,7 @@ None.
 
 ## How to run and verify my part
 ```
-pnpm --filter @friction/extension test        # 32 tests
+pnpm --filter @friction/extension test        # 34 tests
 pnpm --filter @friction/extension typecheck
 pnpm build:ext                                # → apps/extension/dist
 pnpm dev:mock:ext                             # mock API on 8789

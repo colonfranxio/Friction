@@ -27,7 +27,10 @@ function fakeClaude() {
   const composer = document.querySelector<HTMLElement>('.ProseMirror')!;
   const button = document.querySelector<HTMLButtonElement>('button')!;
   const sent: string[] = [];
-  const doSend = () => sent.push(norm(composer.textContent ?? ''));
+  const doSend = () => {
+    sent.push(norm(composer.textContent ?? ''));
+    composer.innerHTML = '<p></p>'; // claude.ai clears the composer after sending
+  };
   button.addEventListener('click', doSend);
   composer.addEventListener('keydown', (e) => {
     if ((e as KeyboardEvent).key === 'Enter' && !(e as KeyboardEvent).shiftKey) doSend();
@@ -41,7 +44,7 @@ afterEach(() => cleanup());
 function install(intercept: (raw: string) => Promise<InterceptRuntimeResult>, site: SiteOps = realSite, timeoutMs = 300) {
   const modes: SendMode[] = [];
   const spy = vi.fn(intercept);
-  cleanup = installSendInterceptor({ doc: document, win: window, site, intercept: spy, timeoutMs, settleMs: 1, onSent: (m) => modes.push(m) });
+  cleanup = installSendInterceptor({ doc: document, win: window, site, intercept: spy, timeoutMs, settleMs: 20, confirmMs: 80, onSent: (m) => modes.push(m) });
   return { modes, spy };
 }
 
@@ -145,6 +148,27 @@ describe('send interceptor', () => {
     const { spy } = install(async () => injected);
     enter(page.composer);
     await new Promise((r) => setTimeout(r, 10));
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('while Claude is streaming (no Send button, Enter ignored): restores the original text, sends nothing', async () => {
+    page.button.remove();
+    // Simulate claude.ai ignoring Enter mid-stream: drop the page's own Enter handler by replacing the composer node.
+    const fresh = page.composer.cloneNode(true) as HTMLElement;
+    page.composer.replaceWith(fresh);
+    const { modes } = install(async () => injected);
+    enter(fresh);
+    await vi.waitFor(() => expect(modes).toEqual(['not-sent']), { timeout: 1000 });
+    expect(page.sent).toHaveLength(0);
+    expect(norm(fresh.textContent ?? '')).toBe(norm(RAW));
+    expect(fresh.textContent).not.toContain('⟦friction⟧');
+  });
+
+  it('never re-intercepts text that already contains a friction block', async () => {
+    page.composer.innerHTML = `<p>${INJECTED}</p>`;
+    const { spy } = install(async () => injected);
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
     expect(spy).not.toHaveBeenCalled();
   });
 

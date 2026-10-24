@@ -4,6 +4,7 @@
  *
  * DOM operations are injected (`site`) so this is testable in happy-dom.
  */
+import { FRICTION_OPEN } from '@friction/shared';
 import type { InterceptRuntimeResult } from '../background-types';
 
 export interface SiteOps {
@@ -15,7 +16,7 @@ export interface SiteOps {
   setComposerText(doc: Document, el: HTMLElement, text: string): Promise<boolean>;
 }
 
-export type SendMode = 'injected' | 'passthrough' | 'failed-open';
+export type SendMode = 'injected' | 'passthrough' | 'failed-open' | 'not-sent';
 
 export interface InterceptorDeps {
   doc: Document;
@@ -24,8 +25,10 @@ export interface InterceptorDeps {
   /** Ask the service worker. May reject. */
   intercept(raw: string): Promise<InterceptRuntimeResult>;
   timeoutMs: number;
-  /** Delay before re-triggering send, so the editor/React can update the button state. */
+  /** Max wait for the Send button to become enabled after the rewrite (React can lag). */
   settleMs?: number;
+  /** Max wait for the composer to empty after sending; if it doesn't, the original text is restored. */
+  confirmMs?: number;
   onSent?(mode: SendMode, result: InterceptRuntimeResult | null): void;
 }
 
@@ -37,6 +40,15 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
       (e) => (clearTimeout(t), reject(e)),
     );
   });
+}
+
+async function waitUntil(cond: () => boolean, maxMs: number, stepMs = 25): Promise<boolean> {
+  const end = Date.now() + maxMs;
+  while (!cond()) {
+    if (Date.now() >= end) return false;
+    await new Promise((r) => setTimeout(r, stepMs));
+  }
+  return true;
 }
 
 export function installSendInterceptor(deps: InterceptorDeps): () => void {
@@ -61,11 +73,28 @@ export function installSendInterceptor(deps: InterceptorDeps): () => void {
     }
   }
 
+  const buttonReady = () => {
+    const b = site.findSendButton(doc);
+    return !!b && !b.disabled;
+  };
+
+  /**
+   * Send the (rewritten) composer, then confirm it actually went out. If the composer still holds the
+   * friction block (e.g. Claude was streaming and the send was ignored), put the original text back.
+   */
+  async function sendAndConfirm(composer: HTMLElement, raw: string): Promise<boolean> {
+    await waitUntil(buttonReady, deps.settleMs ?? 300);
+    triggerSend(composer);
+    const sent = await waitUntil(() => !site.getComposerText(composer).includes(FRICTION_OPEN), deps.confirmMs ?? 600);
+    if (!sent) await site.setComposerText(doc, composer, raw).catch(() => false);
+    return sent;
+  }
+
   async function run() {
     const composer = site.findComposer(doc);
     const raw = composer ? site.getComposerText(composer).trim() : '';
-    const sleep = () => new Promise((r) => setTimeout(r, deps.settleMs ?? 30));
-    if (!composer || !raw) {
+    if (!composer || !raw || raw.includes(FRICTION_OPEN)) {
+      // Nothing to do (or already injected): behave exactly like a normal send.
       triggerSend(composer);
       return;
     }
@@ -86,14 +115,13 @@ export function installSendInterceptor(deps: InterceptorDeps): () => void {
     const ok = await site.setComposerText(doc, composer, o.response.injected_prompt).catch(() => false);
     if (!ok) {
       await site.setComposerText(doc, composer, raw).catch(() => false);
-      await sleep();
+      await waitUntil(buttonReady, deps.settleMs ?? 300);
       triggerSend(composer);
       deps.onSent?.('failed-open', result);
       return;
     }
-    await sleep();
-    triggerSend(composer);
-    deps.onSent?.('injected', result);
+    const sent = await sendAndConfirm(composer, raw);
+    deps.onSent?.(sent ? 'injected' : 'not-sent', result);
   }
 
   function hold(e: Event) {

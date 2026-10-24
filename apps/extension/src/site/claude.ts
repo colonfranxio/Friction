@@ -39,10 +39,11 @@ export function isOnSendButton(target: EventTarget | null, doc: Document): boole
 }
 
 export function getComposerText(el: HTMLElement): string {
-  return (el.innerText ?? el.textContent ?? '').replace(/ /g, ' ');
+  return (el.innerText ?? el.textContent ?? '').replace(/\u00a0/g, ' ');
 }
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
+const log = (strategy: string) => (console.debug('[friction] composer rewritten via', strategy), true);
 
 /** Did the composer end up containing `text` (whitespace-insensitive)? */
 function composerHas(el: HTMLElement, text: string): boolean {
@@ -75,7 +76,7 @@ export async function setComposerText(doc: Document, el: HTMLElement, text: stri
     dt.setData('text/plain', text);
     el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
     await settle();
-    if (composerHas(el, text)) return true;
+    if (composerHas(el, text)) return log('paste');
   } catch {
     /* DataTransfer/ClipboardEvent unsupported: next strategy */
   }
@@ -84,7 +85,7 @@ export async function setComposerText(doc: Document, el: HTMLElement, text: stri
     selectAll(doc, el);
     if (typeof doc.execCommand === 'function' && doc.execCommand('insertText', false, text)) {
       await settle();
-      if (composerHas(el, text)) return true;
+      if (composerHas(el, text)) return log('insertText');
     }
   } catch {
     /* next strategy */
@@ -100,7 +101,7 @@ export async function setComposerText(doc: Document, el: HTMLElement, text: stri
   );
   el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
   await settle();
-  return composerHas(el, text);
+  return composerHas(el, text) ? log('dom') : false;
 }
 
 export function conversationIdFromPath(pathname: string): string | null {

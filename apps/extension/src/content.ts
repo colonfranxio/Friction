@@ -18,6 +18,7 @@ function send<T>(msg: RuntimeRequest): Promise<T> {
 const badge = mountBadge(document);
 
 function badgeFor(mode: SendMode, r: InterceptRuntimeResult | null): BadgeState {
+  if (mode === 'not-sent') return { kind: 'ready' }; // send was ignored (e.g. Claude still replying); original text restored
   if (mode === 'failed-open' || !r) return { kind: 'offline' };
   const o = r.outcome;
   if (!o.passthrough && o.response.level) return { kind: 'active', level: o.response.level, concept: r.concept_name };
