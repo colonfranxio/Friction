@@ -254,6 +254,16 @@ describe('bypass', () => {
     expect(r.body).toEqual({ error: { code: 'quota_exhausted', message: expect.any(String) } });
   });
 
+  it('current concept-level behavior: the node stays paused for every later prompt, and a repeat bypass is not rejected', async () => {
+    // Characterizes today's semantics so the planned explicit one-prompt bypass can't regress them silently.
+    const t = makeApp();
+    await t.call('POST', '/bypass', { student_id: S, node_id: N.context });
+    for (const id of ['c4', 'c5']) expect((await intercept(t, DEMO_PROMPTS.bypassQuestion, id)).body.level).toBe(4);
+    const again = await t.call('POST', '/bypass', { student_id: S, node_id: N.context });
+    expect(again.status).toBe(200);
+    expect(again.body).toEqual({ remaining_quota: 1 });
+  });
+
   it('shows up in the educator activity feed', async () => {
     const t = makeApp();
     await t.call('POST', '/bypass', { student_id: S, node_id: N.context });
@@ -478,6 +488,20 @@ describe('chat (sandbox)', () => {
       await sleep(20);
       expect([name, t.store.db.logs[0].quiz_pending]).toEqual([name, false]);
     }
+  });
+
+  it('current behavior: a mid-stream model failure ends as a normal 200 with the partial text, keeps it, closes the quiz', async () => {
+    // Known gap (status file, "Mid-stream failure"): a client cannot tell this from a complete reply.
+    // This pins today's wire behavior until E's contract handoff defines an observable failure signal.
+    const t = makeApp({
+      intel: { ...fakeIntelligence, chat: () => (async function* () { yield 'partial reply '; throw new Error('cut'); })() },
+    });
+    const res = await chat(t, DEMO_PROMPTS.question);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('partial reply ');
+    await sleep(20);
+    expect(t.store.db.logs[0].llm_response).toBe('partial reply ');
+    expect(t.store.db.logs[0].quiz_pending).toBe(false);
   });
 
   it('client cancels mid-reply while the model ends quietly on abort (like B): partial kept, quiz closed', async () => {
