@@ -327,7 +327,10 @@ describe('prompt-scoped bypass (contract v4)', () => {
     expect(t.store.db.logs[0].quiz_pending).toBe(false);
     expect(t.events.map((e) => e.type)).toEqual(['student_state', 'bypass']);
     const feed = await t.call('GET', `/trees/${SEED_IDS.tree}/activity`);
-    expect(feed.body.items[0]).toMatchObject({ kind: 'bypass', student_name: 'Alex Chen', concept_name: 'React useEffect' });
+    // The intercept and the bypass can share a created_at tick, so don't assume the feed's order.
+    const bypassItem = feed.body.items.find((i: { kind: string }) => i.kind === 'bypass');
+    expect(bypassItem).toMatchObject({ kind: 'bypass', student_name: 'Alex Chen', concept_name: 'React useEffect' });
+    expect(feed.body.items.filter((i: { kind: string }) => i.kind === 'bypass')).toHaveLength(1);
   });
 
   it('prompt scope does not undo an existing concept pause', async () => {
