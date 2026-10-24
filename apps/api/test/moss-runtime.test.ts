@@ -122,6 +122,20 @@ describe('Moss runtime wiring', () => {
 });
 
 describe('Moss freshness, capacity and failures', () => {
+  it('checks the authoritative store when an edit occurs during a snapshotted query', async () => {
+    const t = setup();
+    await t.runtime.refresh();
+    const snapshot = structuredClone(t.store.db.nodes);
+    let finish!: (ids: string[]) => void;
+    t.created[0].retrieve.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const query = t.runtime.retrieve('question', snapshot);
+    await Promise.resolve();
+    t.store.db.nodes[0].mastery_criteria = 'New authoritative objective';
+    finish([snapshot[0].id]);
+    expect(await query).toEqual([]);
+    expect(t.traces.at(-1)?.reason).toBe('cold_or_stale');
+    await t.runtime.close();
+  });
   it('rejects edited/deleted nodes immediately and rebuilds from actual educator routes', async () => {
     const t = setup();
     const app = makeApp({ store: t.store });
@@ -270,5 +284,49 @@ describe('Moss freshness, capacity and failures', () => {
     expect(other.traces.at(-1)?.reason).toBe('unavailable');
     expect(JSON.stringify(other.traces)).not.toContain('private provider payload');
     await other.runtime.close();
+  });
+
+  it('retries the latest revision after native preparation refuses an active query', async () => {
+    let now = 0;
+    const sessions: { addDocs: ReturnType<typeof vi.fn>; query: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> }[] = [];
+    const adapter = new intelligence.MossCurriculumRetriever(async () => {
+      const s = { addDocs: vi.fn(async () => ({})), query: vi.fn(async () => ({ docs: [] as { id: string }[] })), close: vi.fn(async () => {}) };
+      sessions.push(s);
+      return s;
+    });
+    const t = setup({ createIndex: () => adapter, now: () => now });
+    await t.runtime.refresh();
+    let finish!: (v: { docs: { id: string }[] }) => void;
+    sessions[0].query.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const query = t.runtime.retrieve('in flight', t.store.db.nodes);
+    await Promise.resolve();
+    t.store.db.nodes[0].mastery_criteria = 'Latest revision';
+    await t.runtime.refresh(); // adapter.prepare refuses while native query is active
+    expect(t.traces.at(-1)?.reason).toBe('unavailable');
+    finish({ docs: [] });
+    await query;
+    now = 1001;
+    await t.runtime.refresh();
+    expect(sessions).toHaveLength(2);
+    expect(sessions[1].addDocs.mock.calls[0][0][0].text).toContain('Latest revision');
+    expect(t.traces.at(-1)?.state).toBe('ready');
+    await t.runtime.close();
+  });
+
+  it('stops polling immediately but waits for pending warmup before closing handles', async () => {
+    vi.useFakeTimers();
+    const i = index();
+    let finish!: (ready: boolean) => void;
+    i.prepare.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const t = setup({ createIndex: () => i });
+    t.runtime.start();
+    const closing = t.runtime.close();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(i.close).not.toHaveBeenCalled();
+    finish(true);
+    await closing;
+    expect(i.close).toHaveBeenCalledTimes(1);
+    expect(t.traces.some((e) => e.state === 'ready')).toBe(false);
+    expect(t.traces.at(-1)?.state).toBe('closed');
   });
 });

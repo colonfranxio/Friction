@@ -45,6 +45,10 @@ export class MossRuntime implements CurriculumRetriever {
     try { this.opts.trace(event); } catch { /* diagnostics must not break requests */ }
   }
 
+  private currentRevision(tree: string): string {
+    return this.opts.fingerprint(this.opts.store.db.nodes.filter((n) => n.tree_id === tree));
+  }
+
   start(): void {
     if (this.stopped || this.timer) return;
     void this.refresh();
@@ -115,7 +119,8 @@ export class MossRuntime implements CurriculumRetriever {
     const revision = this.opts.fingerprint(nodes);
     const tree = nodes[0]?.tree_id;
     const entry = tree ? this.entries.get(tree) : undefined;
-    if (this.stopped || !entry || !this.wanted.has(tree!) || nodes.some((n) => n.tree_id !== tree) || entry.revision !== revision) {
+    if (this.stopped || !entry || !this.wanted.has(tree!) || nodes.some((n) => n.tree_id !== tree) ||
+        entry.revision !== revision || this.currentRevision(tree!) !== revision) {
       this.emit({ state: 'fallback', reason: 'cold_or_stale', revision: revision.slice(0, 12) });
       return [];
     }
@@ -129,9 +134,10 @@ export class MossRuntime implements CurriculumRetriever {
         }),
       ]);
       const valid = new Set(nodes.map((n) => n.id));
-      const ids = this.stopped || this.entries.get(tree!) !== entry || entry.revision !== revision
+      const stale = this.stopped || this.entries.get(tree!) !== entry || entry.revision !== revision || this.currentRevision(tree!) !== revision;
+      const ids = stale
         ? [] : [...new Set(result.ids.filter((id) => valid.has(id)))].slice(0, 3);
-      this.emit({ state: ids.length ? 'retrieved' : 'fallback', reason: ids.length ? undefined : result.reason ?? 'empty',
+      this.emit({ state: ids.length ? 'retrieved' : 'fallback', reason: ids.length ? undefined : stale ? 'cold_or_stale' : result.reason ?? 'empty',
         revision: revision.slice(0, 12), candidates: ids.length, ms: this.now() - started });
       return ids;
     } finally { clearTimeout(timer); }
