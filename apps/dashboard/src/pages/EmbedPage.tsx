@@ -35,10 +35,11 @@ export function EmbedPage() {
   })[0];
   const upcoming = data.bundle ? nextUp(data.bundle, statuses, learning?.id) : [];
   const retry = () => { void profile.refresh(); void data.refresh(); };
-  if (error) return <main className="embed embed-state" role="alert"><p>We couldn’t reach your learning map. {error}</p><button onClick={retry}>Try again</button></main>;
+  if (error && !data.bundle) return <main className="embed embed-state" role="alert"><p>We couldn’t reach your learning map. {error}</p><button onClick={retry}>Try again</button></main>;
   if (profile.student && !profile.student.tree_id) return <main className="embed embed-state"><p>No learning tree assigned yet.</p></main>;
   if (!data.bundle) return <main className="embed embed-state" role="status"><span className="loading-orbit" /><p>Connecting the dots…</p></main>;
   return <main className="embed">
+    {error && <div className="error-banner" role="alert"><span>Reconnecting… {error}</span><button onClick={retry}>Try again</button></div>}
     <header className="embed-summary"><span className="eyebrow">YOUR PROGRESS · {data.live ? 'LIVE' : 'RECONNECTING'}</span><h1>{current?.user.name ?? profile.student?.user.name ?? 'Your journey'}</h1>
       <p><strong>{mastered}</strong> of {total} concepts mastered</p><div className="progress-track"><span style={{ width: `${mastered / Math.max(1, total) * 100}%` }} /></div></header>
     <section className="embed-card"><span className="eyebrow">NOW LEARNING</span><h2>{learning?.concept_name ?? 'You’re all caught up!'}</h2>
