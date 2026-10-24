@@ -1,5 +1,7 @@
 # CONTRACT READY — v4
 
+Contract commit: **`a11c16a1e7ead6f657ee71b9f627a4c3195ce3b6`**. Merge current `main` (which includes that commit and this handoff reference); confirm v4 in your own status file before wiring new fields.
+
 This is the pre-freeze coordination checkpoint requested by A's PR #2 and the remaining-work briefs. **Shared types, reference mock, regression tools and specification are ready. The real API is NOT yet API READY for v4.** Merge the published contract commit/main before implementing the owner checklist below. The version shown by `/health` does not establish feature readiness.
 
 ## Integrated builder work
