@@ -37,8 +37,14 @@ describe('claudeAdapter', () => {
     expect(claudeAdapter.parseStream(fixtureText('response-messages.sse.txt'))).toBe('Hello there, friend!');
   });
 
-  it('parses the legacy completion stream (CRLF)', () => {
+  it('parses the legacy completion stream', () => {
     expect(claudeAdapter.parseStream(fixtureText('response-legacy.sse.txt'))).toBe('Hello there, friend!');
+  });
+
+  it('parses CRLF streams (fixtures are stored LF by .gitattributes, so convert here)', () => {
+    const crlf = fixtureText('response-messages.sse.txt').replace(/\n/g, '\r\n');
+    expect(crlf).toContain('\r\n');
+    expect(claudeAdapter.parseStream(crlf)).toBe('Hello there, friend!');
   });
 
   it('returns empty text for garbage', () => {
