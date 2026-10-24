@@ -2,7 +2,7 @@ import { LEVEL_LABELS, wrapInjected, type BloomLevel, type FrictionPromptInput, 
 
 const INSTRUCTION: Record<BloomLevel, string> = {
   1: 'Do not give the answer or any code. Ask the student to explain the core idea in their own words, and offer one hint.',
-  2: 'Give only an outline or pseudocode with blanks for the student to fill in. No exact syntax or runnable code.',
+  2: 'Give only an outline or pseudocode with blanks (____) for the student to fill in. No exact syntax or runnable code.',
   3: 'Give a full solution that contains exactly one subtle, deliberate bug. Tell the student there is one bug to find, but not where.',
   4: 'Help fully and directly.',
 };
@@ -27,7 +27,7 @@ export function buildFrictionPrompt({ raw_prompt, level, node, includeQuiz, feed
   const fb = feedback && FEEDBACK[feedback.verdict];
   if (fb) lines.push(`Feedback: ${fb}`);
   if (includeQuiz && level < 4) {
-    lines.push(`End with one short, natural question that checks their understanding of ${node.concept_name}. Don't call it a quiz.`);
+    lines.push(`End with one short question (a single sentence, no "and" follow-up) asking them to explain the core idea of ${node.concept_name}. Don't call it a quiz.`);
   }
   return wrapInjected(raw_prompt, lines.join('\n'));
 }

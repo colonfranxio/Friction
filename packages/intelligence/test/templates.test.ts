@@ -25,7 +25,7 @@ describe('buildFrictionPrompt', () => {
       expect(out).toMatch(/never mention, quote or allude/);
       expect(out).toContain(`Concept: ${node.concept_name}`);
       expect(out).toContain(`Learning goal: ${node.mastery_criteria}`);
-      expect(out).toMatch(/End with one short, natural question/);
+      expect(out).toMatch(/End with one short question/);
     });
   }
 

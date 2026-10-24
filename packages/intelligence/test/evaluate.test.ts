@@ -29,6 +29,7 @@ describe('evaluateExchange', () => {
     expect(content).toContain(node.mastery_criteria);
     expect(content).toContain(QUIZ);
     expect(content).toContain(DEMO_PROMPTS.correctAnswer);
+    expect(content).toMatch(/level: 1 of 4 \(Remember \/ Understand\)/);
     expect(opts.signal).toBe(signal);
   });
 
