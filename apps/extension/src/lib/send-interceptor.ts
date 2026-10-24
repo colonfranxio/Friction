@@ -4,7 +4,7 @@
  *
  * DOM operations are injected (`site`) so this is testable in happy-dom.
  */
-import { FRICTION_OPEN } from '@friction/shared';
+import { FRICTION_CLOSE, FRICTION_OPEN, stripInjected } from '@friction/shared';
 import type { InterceptRuntimeResult } from '../background-types';
 
 export interface SiteOps {
@@ -48,6 +48,11 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
       (e) => (clearTimeout(t), reject(e)),
     );
   });
+}
+
+/** The user's prompt with any friction block and stray ⟦friction⟧ / ⟦/friction⟧ markers removed. */
+export function cleanPrompt(text: string): string {
+  return stripInjected(text).split(FRICTION_OPEN).join('').split(FRICTION_CLOSE).join('').trim();
 }
 
 async function waitUntil(cond: () => boolean, maxMs: number, stepMs = 25): Promise<boolean> {
@@ -98,16 +103,32 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
     return sent;
   }
 
+  /** Send the composer as-is, or after replacing its text with the cleaned prompt. */
+  async function sendClean(composer: HTMLElement, typed: string, raw: string) {
+    if (raw !== typed) {
+      await site.setComposerText(doc, composer, raw).catch(() => false);
+      await waitUntil(buttonReady, deps.settleMs ?? 300);
+    }
+    triggerSend(composer);
+  }
+
   async function run() {
     const composer = site.findComposer(doc);
-    const raw = composer ? site.getComposerText(composer).trim() : '';
-    if (!composer || !raw || raw.includes(FRICTION_OPEN)) {
-      // Nothing to do (or already injected): behave exactly like a normal send.
-      triggerSend(composer);
+    const typed = composer ? site.getComposerText(composer).trim() : '';
+    if (!composer || !typed) {
+      triggerSend(composer); // nothing to do: behave exactly like a normal send
+      return;
+    }
+    // Never trust a friction block the user typed or pasted (e.g. copied from an earlier message):
+    // strip it and any stray markers, then treat the rest as a normal prompt. Our own re-dispatched
+    // send never reaches here (letThrough), so this can't double-inject.
+    const raw = cleanPrompt(typed);
+    if (!raw) {
+      await site.setComposerText(doc, composer, '').catch(() => false); // only a friction block: send nothing
       return;
     }
     if (deps.skipIntercept?.(raw)) {
-      triggerSend(composer);
+      await sendClean(composer, typed, raw);
       deps.onSent?.('bypassed', null);
       return;
     }
@@ -115,13 +136,13 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
     try {
       result = await withTimeout(deps.intercept(raw), deps.timeoutMs);
     } catch {
-      triggerSend(composer);
+      await sendClean(composer, typed, raw);
       deps.onSent?.('failed-open', null);
       return;
     }
     const o = result.outcome;
     if (o.passthrough || o.response.injected_prompt === raw) {
-      triggerSend(composer);
+      await sendClean(composer, typed, raw);
       deps.onSent?.('passthrough', result);
       return;
     }

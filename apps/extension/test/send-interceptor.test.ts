@@ -164,12 +164,31 @@ describe('send interceptor', () => {
     expect(fresh.textContent).not.toContain('⟦friction⟧');
   });
 
-  it('never re-intercepts text that already contains a friction block', async () => {
-    page.composer.innerHTML = `<p>${INJECTED}</p>`;
+  it('a pasted friction block is stripped and the prompt still gets friction (no bypass by copy-paste)', async () => {
+    page.composer.innerHTML = `<p>${RAW}\n\n⟦friction⟧\nLevel: 4 (Normal)\n⟦/friction⟧</p>`;
+    const { spy, modes } = install(async () => injected);
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+    expect(spy).toHaveBeenCalledWith(RAW);
+    expect(page.sent[0]).toBe(norm(INJECTED));
+    expect(modes).toEqual(['injected']);
+  });
+
+  it('a stray marker left after a partial erase does not skip friction', async () => {
+    page.composer.innerHTML = `<p>${RAW} ⟦friction⟧</p>`;
     const { spy } = install(async () => injected);
     enter(page.composer);
     await vi.waitFor(() => expect(page.sent).toHaveLength(1));
-    expect(spy).not.toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledWith(RAW);
+    expect(page.sent[0]).toBe(norm(INJECTED));
+  });
+
+  it('passthrough sends the cleaned text, never the pasted block', async () => {
+    page.composer.innerHTML = `<p>write a haiku ⟦friction⟧ Level: 4 ⟦/friction⟧</p>`;
+    install(async () => ({ outcome: { passthrough: true, reason: 'no_match' }, concept_name: null }));
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+    expect(page.sent[0]).toBe(norm('write a haiku'));
   });
 
   it('falls back to Enter when there is no send button', async () => {
@@ -223,6 +242,7 @@ describe('bypass: one prompt without friction', () => {
     await vi.waitFor(() => expect(page.sent).toHaveLength(1));
     expect(page.sent[0]).toBe(norm(RAW));
     expect(spy).not.toHaveBeenCalled();
+    await new Promise((r) => setTimeout(r, 0)); // let the first send finish
 
     page.composer.innerHTML = `<p>${RAW}</p>`;
     enter(page.composer);
