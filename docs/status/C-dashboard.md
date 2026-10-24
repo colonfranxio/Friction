@@ -7,6 +7,15 @@
 - Current checkpoint: C READY v4, mock-backed correctness/acceptance complete; real API READY and E's exclusive live acceptance still pending
 - Last updated: 2026-10-24
 
+## CP3 visual sign-off (dashboard only)
+- User requested a final UI check. Reviewed educator, student, and sandbox screenshots at 1440x1000, 1280x800, and 390x844, plus mobile upload. Browser checks confirm no horizontal overflow; the sandbox fits the 1280x800 demo screen without page scrolling.
+- Improved readable supporting text and contrast, safe formatted streaming code blocks/inline code/bold, responsive error actions and touch controls. Raw HTML is never rendered.
+- Pillar titles now track graph viewport positions, and shorter edge offsets keep connectors out of two-line labels. Sandbox includes a legend and zoom buttons at the top right, clear of the bottom-right node label.
+- Independent `verify_ui_finish` reviewed desktop/laptop/mobile evidence and source; no blocking UI issue. Its small-map feedback led to visible zoom controls; its overlap feedback led to moving them out of the node area.
+- Typecheck, dashboard 9-test suite, build, visual route checks, full editing and CP3 animation/reduced-motion regressions pass. V4 chat and full demo regressions are retained.
+- Evidence: `apps/dashboard/test/artifacts/ui-review/` (nine route/size screenshots and mobile upload). Run `pnpm --filter @friction/dashboard test:browser:visual` only on C's private mock/dashboard; it resets C's demo fixture.
+- Dashboard UI/polish is complete. This does not close E's integrated real-model acceptance, human rehearsals, recording, or final CP3 freeze.
+
 ## CP1 (v5): verified
 - [x] Shell, three routes, and working Live indicator.
 - [x] Educator/student seed views: 3 pillars, 8 nodes, 8 edges, shared status rules, locks, and badges.

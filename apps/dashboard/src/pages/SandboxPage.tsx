@@ -8,6 +8,7 @@ import { useStudentData } from '../lib/useStudentData';
 import { levelLabel } from '../lib/format';
 import { TopBar } from '../panels/TopBar';
 import { SkillTreeCanvas } from '../tree/SkillTreeCanvas';
+import { ChatContent } from '../panels/ChatContent';
 
 export function SandboxPage() {
   const [studentId, setStudentId] = useState<string>(SEED_IDS.demoStudent);
@@ -192,7 +193,7 @@ export function SandboxPage() {
             {!messages.length && <div className="chat-welcome"><span className="welcome-icon"><MessageCircle size={30} /></span><h2>Start with a little curiosity.</h2><p>A question is a good place to begin.</p><button onClick={() => writeDraft('How do I stop my useEffect from running in an infinite loop?')}>How do I fix an infinite useEffect loop? ↗</button></div>}
             {messages.map((message) => <article key={message.id} className={`chat-bubble ${message.role}`} data-reply-status={message.status}>
               <span className="bubble-author">{message.role === 'user' ? 'You' : 'Friction'}</span>
-              <div>{message.content || (message.status === 'interrupted' ? 'No reply delivered.' : 'Thinking…')}</div>
+              <ChatContent text={message.content || (message.status === 'interrupted' ? 'No reply delivered.' : 'Thinking…')} />
               {message.role === 'assistant' && <>
                 <span className="reply-outcome">{message.status === 'streaming' ? 'Replying…' : message.status === 'interrupted' ? 'Interrupted · partial reply' : message.status === 'superseded' ? 'Replaced by prompt bypass' : 'Reply complete'}</span>
                 <button className="turn-details" disabled={bypassBusy} onClick={() => setSelectedTurn(message.id)}>{message.level ? levelLabel(message.level) : 'No matched concept'} · View this turn</button>
