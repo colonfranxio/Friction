@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview --port 5173",
     "typecheck": "tsc --noEmit -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:browser": "tsx test/demo.browser.ts",
+    "test:browser:resilience": "tsx test/resilience.browser.ts"
   },
   "dependencies": {
     "@friction/shared": "workspace:^",
@@ -26,6 +28,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "playwright": "^1.64.1",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.5"
   }

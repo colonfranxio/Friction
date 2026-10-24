@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { Background, Controls, ReactFlow, useNodesState, type Connection, type Edge, type NodeMouseHandler } from '@xyflow/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Background, Controls, ReactFlow, useNodesState, type Connection, type Edge, type NodeMouseHandler, type ReactFlowInstance } from '@xyflow/react';
 import type { BloomLevel, StudentSummary, TreeBundle } from '@friction/shared';
 import { SkillNode, type SkillFlowNode } from './SkillNode';
 import { SkillEdge } from './edges';
@@ -25,6 +25,19 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
       onRequired: (level: BloomLevel) => actions?.required(concept.id, level) },
   })), [bundle, presentation, editing, actions]);
   const [nodes, setNodes, onNodesChange] = useNodesState<SkillFlowNode>(initialNodes);
+  const container = useRef<HTMLDivElement>(null);
+  const [flow, setFlow] = useState<ReactFlowInstance<SkillFlowNode>>();
+  useEffect(() => {
+    const element = container.current;
+    if (!element || !flow) return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => { void flow.fitView({ padding: 0.1 }); });
+    });
+    observer.observe(element);
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [flow]);
   useEffect(() => { setNodes(initialNodes); }, [initialNodes, setNodes]);
   const edges: Edge[] = bundle.edges.map((edge) => {
     const status = presentation.statuses[edge.child_node_id];
@@ -32,9 +45,9 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
       type: 'skill', style: { stroke: `var(--${status === 'locked' ? 'border' : status})`, strokeWidth: 2.5 }, deletable: editing };
   });
   const select: NodeMouseHandler<SkillFlowNode> = (_event, node) => onSelect?.(node.id);
-  return <div className="canvas-wrap">
+  return <div className="canvas-wrap" ref={container}>
     <div className="pillar-strip">{[...bundle.pillars].sort((a, b) => a.order - b.order).map((pillar, index) => <PillarHeader key={pillar.id} index={index} name={pillar.name} editing={editing} rename={(name) => actions?.rename(pillar.id, name)} />)}</div>
-    {bundle.nodes.length === 0 ? <div className="center-state"><h2>Your canvas is ready</h2><p>Turn on edit mode and add your first concept.</p></div> : <ReactFlow<SkillFlowNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+    {bundle.nodes.length === 0 ? <div className="center-state"><h2>Your canvas is ready</h2><p>Turn on edit mode and add your first concept.</p></div> : <ReactFlow<SkillFlowNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={setFlow}
       onNodesChange={onNodesChange} onNodeClick={select} onPaneClick={() => onSelect?.(undefined)}
       nodesDraggable={editing} nodesConnectable={editing} edgesReconnectable={false}
       deleteKeyCode={editing ? ['Backspace', 'Delete'] : null} nodesFocusable edgesFocusable={editing}
