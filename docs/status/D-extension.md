@@ -8,7 +8,7 @@
 
 ## CP1 exit criteria
 - [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
-- [x] Unit tests pass (34 at CP1; 64 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
+- [x] Unit tests pass (34 at CP1; 66 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
 - [x] Background tests against the real mock (in-process HTTP) pass: status, L1 intercept, correct answer graded via `previous_assistant_text` → L4, passthrough, bypass + paused, concept kept after off-topic, consent off (zero fetches), offline fail-open.
 - [x] **Human live try → GO.** On real claude.ai with the mock (8789), the useEffect question got a Socratic L1 reply: no code, asked the student to explain, one hint about the dependency array, ended with a check question. So the composer rewrite + send work on the live page.
 - (moved to CP2) Full loop on claude.ai: answer → L4, new chat → full answer, badge text, block hidden in the user bubble.
@@ -55,11 +55,13 @@ Responds to FINAL-INTEGRATION-CHECK "Required completion order" item 2.
 **Evidence, by kind:**
 | Kind | Result |
 |---|---|
-| Simulated (unit, happy-dom) | `pnpm --filter @friction/extension test`: **64/64** (6 files; incl. 5 gate rules and send-interceptor/site/hide/badge/conversation) |
+| Simulated (unit, happy-dom) | `pnpm --filter @friction/extension test`: **66/66** (8 files; incl. 5 gate rules, health-failure fallback, badge tooltip honesty, and send-interceptor/site/hide/badge/conversation) |
 | In-process real HTTP vs reference mock | included above: 15 service-worker integration cases, incl. two gate cases that make the mock answer as `server:'api'` and inspect the actual `/bypass` body (no SHA → no `scope` field; valid SHA → `scope:'prompt'`, no binding fields) |
 | Fake-backed API (separate process) | `test:api` vs D's v4 mock on 8789: **15/15** |
 | Typecheck / build | extension typecheck clean; `pnpm build:ext` OK |
 | Real API + real Claude (human laptop, earlier today) | extension on claude.ai against 8787: L1 friction confirmed by the human (CP1 GO); sandbox/real-Claude smoke 3/3 run by the human |
+
+**D READY verification (independent, Sonnet 5.5, fresh clone): PASS.** Gate logic identical to C's; no `scope` key ever sent to an uncertified server (checked in code and via the body-inspecting test); guards preserved. Fixed from its findings: the claude.ai badge's Bypass tooltip now uses the gate (`status.prompt_bypass`) and defaults to the cautious concept-pause wording; the popup's pre-load wording is neutral; the `/health` timeout timer is cleared; a test pins the health-failure → legacy fallback.
 
 **Pending live checks (not claimed):** v4 prompt-scoped bypass against A's merged real API (needs A's corrected API READY + E's approval, then set the SHA in the popup); the human claude.ai bypass check after that; Windows Chrome load check.
 
@@ -96,7 +98,7 @@ Responds to FINAL-INTEGRATION-CHECK "Required completion order" item 2.
 
 ## How to run and verify my part
 ```
-pnpm --filter @friction/extension test        # 64 tests
+pnpm --filter @friction/extension test        # 66 tests
 pnpm --filter @friction/extension test:api    # integration tests vs a running API (default :8787)
 pnpm --filter @friction/extension typecheck
 pnpm build:ext                                # → apps/extension/dist

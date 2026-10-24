@@ -42,10 +42,13 @@ function conceptName(client: FrictionClient, studentId: string, nodeId: UUID | n
 
 /** GET /health, or null if it fails or takes longer than `ms`. */
 async function healthWithin(client: FrictionClient, ms: number): Promise<HealthResponse | null> {
+  let t: ReturnType<typeof setTimeout> | undefined;
   try {
-    return await Promise.race([client.health(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+    return await Promise.race([client.health(), new Promise<never>((_, rej) => (t = setTimeout(() => rej(new Error('timeout')), ms)))]);
   } catch {
     return null;
+  } finally {
+    clearTimeout(t);
   }
 }
 

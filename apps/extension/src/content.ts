@@ -171,6 +171,7 @@ startHidingInjected(document);
 
 send<StatusResponse>({ type: 'friction:status' })
   .then((s) => {
+    badge.setPromptBypass(!!s.prompt_bypass);
     if (!s.enabled) badge.set({ kind: 'disabled' });
     else if (!s.online) badge.set({ kind: 'offline' });
   })

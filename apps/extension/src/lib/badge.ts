@@ -55,7 +55,7 @@ export interface BadgeOptions {
 export function mountBadge(
   doc: Document,
   opts: BadgeOptions = {},
-): { set(state: BadgeState): void; setBusy(busy: boolean): void; host: HTMLElement } {
+): { set(state: BadgeState): void; setBusy(busy: boolean): void; setPromptBypass(on: boolean): void; host: HTMLElement } {
   const host = doc.createElement('friction-badge');
   host.setAttribute('data-friction', 'badge');
   const root = host.attachShadow({ mode: 'open' });
@@ -75,7 +75,7 @@ export function mountBadge(
       .bypass[hidden] { display: none; }
     </style>
     <div class="pill"><span class="dot"></span><span class="logo">◆</span><span class="text"></span>
-      <button class="bypass" type="button" title="Re-send this message without friction (uses one bypass; your teacher is notified)" hidden>Bypass</button></div>`;
+      <button class="bypass" type="button" title="Re-send this message without friction. On this server it also pauses friction on this concept until reset. Uses one bypass; your teacher is notified." hidden>Bypass</button></div>`;
   const dot = root.querySelector('.dot') as HTMLElement;
   const text = root.querySelector('.text') as HTMLElement;
   const btn = root.querySelector('.bypass') as HTMLButtonElement;
@@ -96,5 +96,11 @@ export function mountBadge(
   };
   set({ kind: 'ready' });
   (doc.body ?? doc.documentElement).appendChild(host);
-  return { set, setBusy, host };
+  /** Tooltip honesty: per-prompt only when the bypass gate is on (status.prompt_bypass); cautious wording by default. */
+  const setPromptBypass = (on: boolean) => {
+    btn.title = on
+      ? 'Re-send this message without friction (uses one bypass; your teacher is notified).'
+      : 'Re-send this message without friction. On this server it also pauses friction on this concept until reset. Uses one bypass; your teacher is notified.';
+  };
+  return { set, setBusy, setPromptBypass, host };
 }

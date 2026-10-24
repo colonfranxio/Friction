@@ -216,6 +216,26 @@ describe('background ⇄ mock API', () => {
     }
   });
 
+  it('gate: if /health fails, the bypass falls back to the legacy payload (no scope) → concept', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    const realFetch = globalThis.fetch;
+    const bodies: Array<Record<string, unknown>> = [];
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/health')) throw new TypeError('health down');
+      if (url.endsWith('/bypass') && init?.body) bodies.push(JSON.parse(String(init.body)));
+      return realFetch(input, init);
+    }) as typeof fetch;
+    try {
+      const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
+      expect(b.ok && b.scope_applied).toBe('concept');
+      expect(bodies).toHaveLength(1);
+      expect('scope' in bodies[0]).toBe(false);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
   it('bypass makes no API call when consent is off', async () => {
     store.enabled = false;
     const realFetch = globalThis.fetch;
