@@ -34,7 +34,7 @@ Ownership check: B touched only `packages/intelligence/**` and `docs/status/B-in
 | `pnpm exec tsx scripts/verify-chat-abort.ts` | PASS |
 | `pnpm exec tsx scripts/verify-stream-failure.ts` | **FAIL**: "Upstream failure ended as clean EOF". **Pre-existing:** fails identically on main `d23cb63`. A v4 blocker, not a Moss regression; not weakened or xfailed. |
 | `pnpm smoke --url http://127.0.0.1:8797`, real Claude, Moss **off** (private API, clone's own db.json) | SMOKE PASSED |
-| Same, Moss **on** (after `ready`) | SMOKE PASSED. Moss was queried on the off-topic step (Props, Custom Hooks, Data Fetching) and Claude still passed the prompt through. |
+| Same, Moss **on** (after `ready`) | SMOKE PASSED. The private API log (not committed) showed Moss queried on the off-topic step (Props, Custom Hooks, Data Fetching), and the prompt still passed through. |
 | Theme prompt via `/intercept` on fresh private API, Moss on | `retrieved` [Props, **Context API**, React useEffect] in 5ms, then Claude picked Context API, L2, quiz attached |
 
 `--require-v4` was not run: this base lacks corrected v4 API support (known main blocker).
@@ -49,7 +49,7 @@ Artifact: [`apps/api/harness/results/2026-10-24T23-43-16-013Z-adabab0/moss-live.
 | | Keyword control (`DEMO_PROMPTS.question`) | React useEffect, **0 Moss queries** |
 | | Theme prompt, fresh chat via `/chat` | Moss [Props, **Context API**, React useEffect] 5ms. Claude chose Context API, L2 scaffold reply with quiz; mastery and quota unchanged |
 | | Answer turn, same chat | Pending quiz kept Context API with **0 Moss queries**; graded `correct`; L2 → L4 (DEMO_MODE) |
-| | Unrelated prompt (banana bread) | Moss returned 3 candidates; **Claude abstained** (prompt unchanged) |
+| | Unrelated prompt (banana bread) | Moss returned 3 candidates; no concept selected, prompt unchanged (see verifier note 1) |
 | injected (Moss doubles, real Claude) | Init failure | fallback `unavailable`; baseline chose Context API; policy applied |
 | | Query timeout | fallback `timeout`; baseline chose Context API |
 | config | `USE_MOSS_RETRIEVAL=1` without credentials | trace `disabled/credentials`; API serves normally |
@@ -71,3 +71,14 @@ Repeated runs are operational verification, not evidence of higher accuracy.
 - [ ] Sponsor-demo machine: set the flag, restart, wait for `[moss] ready`, then use the theme prompt in a **new** sandbox chat.
 
 Sponsor claim (approved wording): *"Moss connects students' everyday descriptions to the concepts in their course, helping Friction choose relevant teaching context."* Claude makes the final choice.
+
+## Independent verification (E, read-only verifier at `eb17e44`)
+
+**PASS, no blocking issues.** The verifier confirmed: ownership boundaries; native SDK isolation (`moss.ts:110` is the only runtime import); uncapped store flush (`apps/api/src/index.ts:60-62`); before-and-after freshness checks; trace `ids` limited to validated canonical node IDs; no secrets or student identifiers in the committed artifacts; cross-platform rules. It also confirmed from code that `verify-stream-failure` exercises no changed file (pre-existing).
+
+Non-blocking findings, documented as harness follow-ups (no code change after review):
+1. The unrelated-prompt check asserts `node_id === null`, which a Claude error or timeout would also produce, so "abstained" isn't proven distinct from a classifier failure. Follow-up: capture the classifier's parsed output in the harness.
+2. The unrelated step doesn't require a Moss trace. The committed artifact does show 3 candidates.
+3. The trace-count controls (keyword and pending quiz) are sound: background polls can only cause false failures, never false passes.
+4. `available_during_warmup` shows `/health` answered, not that warmup was still in progress at that instant.
+5. The smoke "on" row's Moss observation comes from an uncommitted server log (wording corrected above).
