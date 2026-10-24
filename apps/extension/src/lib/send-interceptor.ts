@@ -17,6 +17,7 @@ export interface SiteOps {
 }
 
 export type SendMode = 'injected' | 'passthrough' | 'failed-open' | 'not-sent' | 'bypassed';
+export type UnmodifiedResult = 'sent' | 'not-sent' | 'aborted';
 
 export interface InterceptorDeps {
   doc: Document;
@@ -36,8 +37,13 @@ export interface InterceptorDeps {
 
 export interface SendInterceptor {
   (): void; // uninstall
-  /** Put `text` in the composer and send it without Friction. Resolves true when it went out. */
-  sendUnmodified(text: string): Promise<boolean>;
+  /**
+   * Put `text` in the composer and send it without Friction.
+   * 'sent': it went out. 'not-sent': it is in the composer but the page didn't send it.
+   * 'aborted': nothing was sent and the composer is as the user left it (a draft or another send
+   * appeared, or `stillValid()` turned false; it is checked before writing and right before Send).
+   */
+  sendUnmodified(text: string, stillValid?: () => boolean): Promise<UnmodifiedResult>;
   /** Can `text` be re-sent right now without clobbering anything? (no send in flight, composer empty or already holding `text`) */
   canSendUnmodified(text: string): 'ok' | 'busy' | 'draft' | 'no_composer';
 }
@@ -200,16 +206,27 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
       if (current && current !== text.trim()) return 'draft' as const; // never overwrite a new draft
       return 'ok' as const;
     },
-    async sendUnmodified(text: string): Promise<boolean> {
+    async sendUnmodified(text: string, stillValid: () => boolean = () => true): Promise<UnmodifiedResult> {
       const composer = site.findComposer(doc);
-      if (!composer || busy) return false;
+      const want = text.trim();
+      if (!composer || busy || !stillValid()) return 'aborted';
+      const before = site.getComposerText(composer);
+      const current = cleanPrompt(before);
+      if (current && current !== want) return 'aborted'; // never overwrite a new draft
       busy = true;
       try {
         const ok = await site.setComposerText(doc, composer, text).catch(() => false);
-        if (!ok) return false;
+        if (!ok) return 'not-sent';
         await waitUntil(buttonReady, deps.settleMs ?? 300);
+        // Final check right before Send: the user may have typed, navigated or turned Friction off meanwhile.
+        if (cleanPrompt(site.getComposerText(composer)) !== want) return 'aborted'; // they typed: leave it
+        if (!stillValid()) {
+          await site.setComposerText(doc, composer, before).catch(() => false); // put back what was there
+          return 'aborted';
+        }
         triggerSend(composer);
-        return await waitUntil(() => site.getComposerText(composer).trim() !== text.trim(), deps.confirmMs ?? 600);
+        const sent = await waitUntil(() => site.getComposerText(composer).trim() !== want, deps.confirmMs ?? 600);
+        return sent ? 'sent' : 'not-sent';
       } finally {
         busy = false;
       }

@@ -215,17 +215,52 @@ describe('bypass: one prompt without friction', () => {
   it('sendUnmodified puts the text in the composer and sends it without calling the API', async () => {
     const { ic, spy } = installWith();
     page.composer.innerHTML = '<p></p>';
-    expect(await ic.sendUnmodified(RAW)).toBe(true);
+    expect(await ic.sendUnmodified(RAW)).toBe('sent');
     expect(page.sent).toEqual([norm(RAW)]);
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('sendUnmodified reports false when the page does not send (e.g. Claude still replying)', async () => {
+  it('sendUnmodified never overwrites a different draft', async () => {
+    const { ic } = installWith();
+    page.composer.innerHTML = '<p>my new question</p>';
+    expect(await ic.sendUnmodified(RAW)).toBe('aborted');
+    expect(page.composer.textContent).toBe('my new question');
+    expect(page.sent).toEqual([]);
+  });
+
+  it('sendUnmodified: the user types after the rewrite → not sent, their text stays', async () => {
+    const site: SiteOps = { ...realSite, setComposerText: async (d, el, t) => {
+      const ok = await realSite.setComposerText(d, el, t);
+      el.innerHTML = '<p>typed something else</p>'; // the user typed right after our write
+      return ok;
+    } };
+    const ic = installSendInterceptor({ doc: document, win: window, site, intercept: vi.fn(), timeoutMs: 300, settleMs: 20, confirmMs: 80 });
+    cleanup = ic;
+    page.composer.innerHTML = '<p></p>';
+    expect(await ic.sendUnmodified(RAW)).toBe('aborted');
+    expect(page.composer.textContent).toBe('typed something else');
+    expect(page.sent).toEqual([]);
+  });
+
+  it('sendUnmodified: stillValid turning false before Send → not sent, composer restored', async () => {
+    const { ic } = installWith();
+    page.composer.innerHTML = '<p></p>';
+    let valid = true;
+    const checks: boolean[] = [];
+    const r = ic.sendUnmodified(RAW, () => (checks.push(valid), valid));
+    valid = false; // e.g. the user switched chats while the rewrite settled
+    expect(await r).toBe('aborted');
+    expect(checks).toEqual([true, false]);
+    expect(norm(page.composer.textContent ?? '')).toBe('');
+    expect(page.sent).toEqual([]);
+  });
+
+  it('sendUnmodified reports not-sent when the page does not send (e.g. Claude still replying)', async () => {
     const { ic } = installWith();
     page.button.disabled = true;
     page.button.replaceWith(page.button.cloneNode(true)); // drop the send handler
     page.composer.replaceWith(page.composer.cloneNode(true));
-    expect(await ic.sendUnmodified(RAW)).toBe(false);
+    expect(await ic.sendUnmodified(RAW)).toBe('not-sent');
     expect(page.sent).toEqual([]);
   });
 

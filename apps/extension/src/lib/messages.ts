@@ -44,7 +44,11 @@ export type BypassResult =
   | { ok: true; remaining_quota: number; scope_applied: 'prompt' | 'concept' }
   | { ok: false; code: string; message: string };
 
-/** Content script's answer to 'friction:bypass-resend'. resent=false: quota used, text left in the composer, next send goes out unmodified. */
+/**
+ * Content script's answer to 'friction:bypass-resend'. resent=false: quota used and the text left in the composer
+ * (next send goes out unmodified), or, with not_sent_reason, quota used but nothing sent because the chat, draft,
+ * consent or send state changed meanwhile; `prompt` is the original question for the user to copy.
+ */
 export type BypassResendResult =
-  | { ok: true; remaining_quota: number; resent: boolean; scope_applied: 'prompt' | 'concept' }
+  | { ok: true; remaining_quota: number; resent: boolean; scope_applied: 'prompt' | 'concept'; not_sent_reason?: string; prompt?: string }
   | { ok: false; code: string; message: string };
