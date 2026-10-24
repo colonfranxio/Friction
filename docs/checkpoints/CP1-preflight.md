@@ -1,5 +1,7 @@
 # CP1 preparation — Agent E
 
+Historical preflight record. The completed integration is recorded in [CP1.md](CP1.md).
+
 This is a preflight record, not a completed checkpoint integration report. No builder branch has been merged. E owns `main`; builder application files and status files remain untouched.
 
 ## Branch collection
