@@ -1,0 +1,3 @@
+# The repository's general Python ignore list excludes all lib directories.
+!src/lib/
+!src/lib/**

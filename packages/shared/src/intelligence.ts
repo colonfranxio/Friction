@@ -50,6 +50,8 @@ export interface FrictionPromptInput {
 }
 
 export interface EvaluateInput {
+  /** Explicit operation cancellation; do not abort merely because an intercept's response budget elapsed. */
+  signal?: AbortSignal;
   node: SkillNode;
   level: BloomLevel;
   /** The assistant reply that contained the quiz. null if it was never captured. */

@@ -7,13 +7,15 @@
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",
     "typecheck": "tsc --noEmit -p .",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:api": "node test/run-against-api.mjs"
   },
   "dependencies": {
     "@friction/shared": "workspace:^"
   },
   "devDependencies": {
     "@types/chrome": "^0.3.6",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "happy-dom": "^21.0.4"
   }
 }

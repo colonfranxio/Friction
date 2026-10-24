@@ -1,4 +1,4 @@
-# Friction Contracts (v1)
+# Friction Contracts (v2)
 
 **Source of truth for shapes is code:** `packages/shared/src/*`. This doc explains the **behavior** those shapes must have. If this doc and the code disagree, the code wins. File a change request.
 
@@ -41,7 +41,7 @@ Input `InterceptRequest`, output `InterceptResponse`. The server finds the tree 
    - with a null `conversation_id`: the latest one created within `QUIZ_WINDOW_MS` (10 min).
 2. **Run in parallel, inside the budget:**
    - `classifyTopic(raw_prompt, nodes)`, skipped when a pending quiz exists;
-   - `evaluateExchange(...)` when a pending quiz exists **and** its node isn't paused. Quiz text = the pending log's `llm_response`, else `previous_assistant_text`, else `null`. (Sandbox: `/chat` saves `llm_response` itself. Extension: sends `previous_assistant_text` read from the page and never calls `/responses`.)
+   - `evaluateExchange(...)` when a pending quiz exists **and** its node isn't paused. Quiz text = the pending log's `llm_response`, else `previous_assistant_text`, else `null`. (Sandbox: `/chat` saves `llm_response` itself. Extension: sends `previous_assistant_text` read from the page and never calls `/responses`.) `EvaluateInput.signal?: AbortSignal` supports explicit operation cancellation. Do not abort a grade merely because the intercept response budget expired: late grading must still apply under rule 4.5. The fake grader accepts this optional field without needing network cancellation.
 3. **Resolve the node:** pending quiz's node › classification result › **conversation stickiness** (the node of the latest log in the same conversation) › none.
 4. **No node:** return `{intercept_id:null, node_id:null, level:null, injected_prompt: raw_prompt, quiz_attached:false, graded:null}`, log nothing, emit nothing.
 5. **Grade result:**

@@ -1,0 +1,61 @@
+/** Transport/error checks against the mock; deliberately resets demo data. */
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
+import { createFrictionClient, DEMO_PROMPTS, SEED_IDS } from '@friction/shared';
+
+const base = process.env.DASHBOARD_TEST_URL ?? 'http://127.0.0.1:5173';
+const api = createFrictionClient(process.env.DASHBOARD_TEST_API ?? 'http://127.0.0.1:8788');
+const browser = await chromium.launch(process.env.BROWSER_PATH ? { executablePath: process.env.BROWSER_PATH } : { channel: 'chrome' });
+try {
+  await api.demoReset({ full: true });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 960 } });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(String(error)));
+  const treeRoute = `**/trees/${SEED_IDS.tree}`;
+  await page.route(treeRoute, (route) => route.abort());
+  await page.goto(`${base}/educator/${SEED_IDS.tree}`);
+  await page.getByRole('button', { name: 'Try again', exact: true }).waitFor();
+  await page.unroute(treeRoute);
+  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await page.waitForSelector('[data-concept]');
+  await page.getByRole('button', { name: 'Upload syllabus' }).click();
+  const bytes = Buffer.from('%PDF-1.4\n% dashboard transport fixture only\n%%EOF');
+  await page.getByLabel('Syllabus PDF').setInputFiles({ name: 'transport.pdf', mimeType: 'application/pdf', buffer: bytes });
+  let pdfRequests = 0;
+  await page.route('**/trees/parse', async (route) => {
+    const body = route.request().postDataJSON();
+    assert.equal(body.kind, 'pdf'); assert.equal(body.filename, 'transport.pdf');
+    assert.equal(body.base64.startsWith('data:'), false);
+    assert.deepEqual(Buffer.from(body.base64, 'base64'), bytes);
+    pdfRequests++;
+    if (pdfRequests === 1) await route.fulfill({ status: 502, contentType: 'application/json', body: JSON.stringify({ error: { code: 'llm_error', message: 'Please retry this syllabus.' } }) });
+    else await route.continue();
+  });
+  await page.getByRole('button', { name: 'Generate tree', exact: true }).click();
+  await page.getByText('Please retry this syllabus.', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Generate tree', exact: true }).click();
+  await page.waitForSelector('.upload-dialog', { state: 'detached', timeout: 15000 });
+  assert.equal(pdfRequests, 2);
+  await page.route('**/health', (route) => route.fulfill({ json: { ok: true, contract_version: 1, mode: { demo: false, intelligence: 'fake', server: 'mock' } } }));
+  await page.reload();
+  await page.waitForSelector('[data-concept]');
+  assert.equal(await page.getByRole('button', { name: 'Reset demo', exact: true }).count(), 0);
+  await page.goto(`${base}/sandbox`);
+  await page.waitForSelector('.live-indicator.is-live');
+  await page.route('**/chat', (route) => route.fulfill({ status: 502, json: { error: { code: 'llm_error', message: 'Chat is temporarily unavailable.' } } }));
+  await page.getByRole('textbox', { name: 'Chat message' }).fill(DEMO_PROMPTS.question);
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await page.getByText('Chat is temporarily unavailable.', { exact: false }).waitFor();
+  await page.unroute('**/chat');
+  await page.getByRole('button', { name: 'New chat' }).click();
+  await page.getByRole('textbox', { name: 'Chat message' }).fill(DEMO_PROMPTS.question);
+  await page.getByRole('button', { name: 'Send message' }).click();
+  await page.waitForSelector('.chat-bubble.assistant');
+  await page.getByRole('button', { name: 'New chat' }).click();
+  await page.waitForTimeout(1500);
+  assert.equal(await page.locator('.chat-bubble').count(), 0, 'aborted stream must not resurrect old messages');
+  assert.equal(await page.getByRole('textbox', { name: 'Chat message' }).isEnabled(), true);
+  assert.deepEqual(errors, []);
+  console.log('PASS: API-down retry, PDF bytes/base64 transport, parse error retry, reset hidden outside demo, chat 502, new chat aborts an active stream.');
+} finally { await api.demoReset({ full: true }); await browser.close(); }
