@@ -25,7 +25,7 @@ The human tells you "CPn: all agents have pushed." Then:
    - After each merge: `pnpm install && pnpm typecheck`. If it breaks, `git reset --hard HEAD~1` (that merge only), skip the branch, and report the error to its owner.
 4. **Verify merged `main`:**
    - `pnpm test`
-   - Start the real API (`pnpm dev:api`, with `USE_REAL_INTELLIGENCE=0` at CP1 and `=1` from CP2) and run `pnpm smoke`. From CP3 on, run it **3 times in a row**.
+   - Start the real API (`pnpm dev:api`; set `USE_REAL_INTELLIGENCE=0` in `.env` at CP1 and `=1` from CP2) and run `pnpm smoke`. From CP3 on, run it **3 times in a row**.
    - `pnpm build:ext` and `pnpm --filter @friction/dashboard build` must succeed.
    - Write down anything you couldn't verify (the claude.ai live test needs the human).
 5. **Apply contract change requests** that are additive and needed by at least one agent:
@@ -69,7 +69,10 @@ Builds: dashboard ✅ extension ✅
 ## 5. Demo readiness (after CP3)
 Own the demo runbook: `docs/demo-runbook.md` (startup commands, the reset step, the exact prompts from `DEMO_PROMPTS` and B's tested prompts, the fallback to `/sandbox`, and the pre-stage checklist from `PLAN.md` §7). Run a full rehearsal with the human at CP3 and CP4.
 
-## 6. Rules
+## 6. Cross-platform gate
+Some branches are developed on Windows. At each merge, reject (send back) changes that add POSIX-only package scripts (env-var prefixes, `rm -rf`, `cp`, `&`), or hardcoded `/` path joins in Node code. If any teammate runs Windows, ask the human to run `pnpm install && pnpm typecheck && pnpm smoke:mock` on a Windows machine at CP1 and CP3.
+
+## 7. Rules
 - Never weaken a check to make a merge pass. A red smoke test is information. Report it.
 - Never force-push `main`. Never rewrite builders' branches.
 - Never commit `.env`, keys, cookies or tokens.

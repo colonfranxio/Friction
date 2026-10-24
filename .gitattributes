@@ -1,0 +1,7 @@
+# Same bytes on every OS (Windows checkouts must not convert to CRLF).
+# Keeps the demo-syllabus hash stable and avoids whitespace-only diffs between Mac/Linux/Windows branches.
+* text=auto eol=lf
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary

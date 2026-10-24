@@ -9,12 +9,14 @@ An extension plus dashboard that makes AI tools teach instead of tell. It adjust
 
 ## Quickstart
 ```bash
-corepack enable          # or: npm i -g pnpm@9
+npm i -g pnpm@9          # or: corepack enable (macOS/Linux)
 pnpm install
-cp .env.example .env     # add ANTHROPIC_API_KEY
+cp .env.example .env     # Windows: copy .env.example .env   (then add ANTHROPIC_API_KEY)
 pnpm dev:mock            # mock API on :8788 (full contract, fake AI)
-API_URL=http://localhost:8788 pnpm smoke
+pnpm smoke:mock          # in a second terminal
 ```
+
+Works on **Windows, macOS and Linux** (Node ≥ 22.9). All commands are `pnpm` scripts, with no shell-specific syntax. See the Windows notes in [AGENTS.md](AGENTS.md).
 
 | Path | What | Owner |
 |---|---|---|

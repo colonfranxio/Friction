@@ -26,13 +26,26 @@ You are one of four agents building Friction in parallel. Your personal brief is
 9. **Model IDs** come only from `MODEL_*` env vars. Don't send `temperature`/`top_p`/`top_k`, don't use assistant prefill, don't use forced `tool_choice`.
 10. When E has merged a checkpoint, you'll get a message (from E or relayed by the human), and the report is in `docs/checkpoints/CPn.md`. If your branch was skipped, fix the reported error first. Then merge `main` into your branch, read `docs/contracts-CHANGELOG.md`, confirm it in your status file, and continue.
 
-## Commands
+## Commands (identical on Windows, macOS, Linux)
 ```
-corepack enable            # once, if `pnpm` isn't found (or: npm i -g pnpm@9)
+npm i -g pnpm@9            # once (or `corepack enable` on macOS/Linux)
 pnpm install
-pnpm dev:mock              # mock API :8788 (Agent D uses MOCK_PORT=8789 so it doesn't share state with C)
+pnpm dev:mock              # mock API :8788 (C uses this one)
+pnpm dev:mock:ext          # mock API :8789 (D's private one, so C's smoke runs don't reset it)
 pnpm dev:api               # real API :8787 (Agent A's)
-pnpm dev:dash              # dashboard :5173
+pnpm dev:dash              # dashboard :5173 → real API (VITE_API_URL from .env)
+pnpm dev:dash:mock         # dashboard :5173 → mock API (reads committed .env.mock)
 pnpm build:ext             # extension → apps/extension/dist
-pnpm typecheck  |  pnpm test  |  pnpm smoke   (API_URL=http://localhost:8788 pnpm smoke for the mock)
+pnpm typecheck  |  pnpm test
+pnpm smoke                 # demo flow vs real API :8787
+pnpm smoke:mock            # demo flow vs mock :8788   (any URL: pnpm smoke --url http://127.0.0.1:XXXX)
+pnpm setup:worktrees       # optional: one worktree per agent on this machine
 ```
+
+## Cross-platform rules (some teammates run Windows)
+- **package.json scripts must work in cmd/PowerShell:** no `VAR=value cmd` prefixes, no `rm -rf`/`cp`/`mv`/`&` backgrounding, no bash-only syntax. Use CLI flags, `.env` files, or a small Node script (`node scripts/x.mjs`) instead.
+- **Paths in code:** build them with `node:path` (`join`, `resolve`) and `fileURLToPath(new URL('…', import.meta.url))`. Never concatenate with `/` or assume a POSIX root.
+- **URLs:** use `http://127.0.0.1:<port>` for our servers, not `localhost` (Node on Windows may try IPv6 `::1` first and get refused).
+- **Line endings:** `.gitattributes` forces LF. Don't commit CRLF; don't change editor settings to override it.
+- **Windows shell tips:** in PowerShell, `curl` is an alias for something else, so use `curl.exe`. Copy files with `copy` (cmd) or `Copy-Item`, or use your editor. To kill a stuck dev server, close its terminal or run `npx kill-port 8787`.
+- **Windows install tips:** if `corepack enable` fails with a permissions error, use `npm i -g pnpm@9`. If `pnpm install` fails on long paths, run `git config --global core.longpaths true` once.

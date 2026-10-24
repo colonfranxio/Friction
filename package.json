@@ -8,11 +8,15 @@
   },
   "scripts": {
     "dev:mock": "tsx scripts/mock-api.ts",
+    "dev:mock:ext": "tsx scripts/mock-api.ts --port 8789",
     "dev:api": "pnpm --filter @friction/api dev",
     "dev:dash": "pnpm --filter @friction/dashboard dev",
+    "dev:dash:mock": "pnpm --filter @friction/dashboard dev --mode mock",
     "build:ext": "pnpm --filter @friction/extension build",
     "harness": "pnpm --filter @friction/intelligence harness",
     "smoke": "tsx scripts/smoke.ts",
+    "smoke:mock": "tsx scripts/smoke.ts --url http://127.0.0.1:8788",
+    "setup:worktrees": "node scripts/setup-worktrees.mjs",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p scripts",
     "test": "pnpm -r --if-present test"
   },

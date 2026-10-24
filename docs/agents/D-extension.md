@@ -75,7 +75,7 @@ apps/extension/
   ]
 }
 ```
-Settings defaults: `studentId = SEED_IDS.demoStudent`, `apiUrl = DEFAULT_API_URL` (8787; use `http://localhost:8789` while developing against **your own** mock: `MOCK_PORT=8789 pnpm dev:mock`. Agent C uses the mock on 8788, and its smoke runs reset that mock's state), `enabled = true`.
+Settings defaults: `studentId = SEED_IDS.demoStudent`, `apiUrl = DEFAULT_API_URL` (8787; use `http://127.0.0.1:8789` while developing against **your own** mock: `pnpm dev:mock:ext`. Agent C uses the mock on 8788, and its smoke runs reset that mock's state), `enabled = true`.
 For concept names (badge/popup), the background fetches `client.getStudent(id)` → `client.getTree(tree_id)` once and caches `node_id → concept_name`. Refresh it when the intercept returns an unknown `node_id`.
 
 ## 6. First hour: capture real traffic (blocks everything else)
@@ -111,9 +111,11 @@ You need the real request and response shapes. **Don't rely on memory**; claude.
 ```
 pnpm --filter @friction/extension test
 pnpm build:ext                 # → apps/extension/dist (human: Load unpacked / reload)
-MOCK_PORT=8789 pnpm dev:mock   # your own mock for live testing (popup API URL: http://localhost:8789)
+pnpm dev:mock:ext              # your own mock on 8789 for live testing (popup API URL: http://127.0.0.1:8789)
 pnpm typecheck
 ```
+
+Windows: identical steps. Load unpacked from `apps\extension\dist`. `build.mjs` must use `node:path`/`node:fs` (no shell `cp`), so the build works in PowerShell.
 
 ## 9. Interfaces with the other agents
 - You depend only on the HTTP API (A) via the shared client. The mock behaves exactly like the real API.

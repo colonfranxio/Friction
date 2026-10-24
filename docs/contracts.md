@@ -22,7 +22,7 @@ Packages are consumed as TypeScript source (no build step). Vite, tsx and esbuil
 
 ## 2. Ports and environment
 
-API **8787** · mock **8788** · dashboard **5173**. All env vars are listed in `.env.example`. Model IDs are **only** read from `MODEL_*` env vars.
+API **8787** · mock **8788** (D's private mock **8789**) · dashboard **5173**. Clients use `http://127.0.0.1:<port>`, not `localhost` (Windows IPv6 quirk); `DEFAULT_API_URL` already does. All env vars are listed in `.env.example`. Model IDs are **only** read from `MODEL_*` env vars.
 
 ## 3. Entities and node status
 

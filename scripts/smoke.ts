@@ -2,8 +2,9 @@
  * Smoke test (lead-owned): the PRD §4 demo, played at the API level (this script acts as the extension).
  * claude.ai itself is covered by the human test in Chrome at each checkpoint.
  *
- *   pnpm smoke                                   # against the real API on 8787
- *   API_URL=http://localhost:8788 pnpm smoke     # against the mock
+ *   pnpm smoke              # against the real API on 8787
+ *   pnpm smoke:mock         # against the mock on 8788
+ *   pnpm smoke --url <url>  # anything else (works in PowerShell/cmd too; API_URL env also honored)
  *
  * Exits non-zero on the first failed step.
  */
@@ -17,7 +18,8 @@ import {
   createFrictionClient,
 } from '@friction/shared';
 
-const api = createFrictionClient(process.env.API_URL ?? DEFAULT_API_URL);
+const urlFlag = process.argv.indexOf('--url');
+const api = createFrictionClient((urlFlag >= 0 ? process.argv[urlFlag + 1] : undefined) ?? process.env.API_URL ?? DEFAULT_API_URL);
 const student = SEED_IDS.demoStudent;
 let step = 0;
 

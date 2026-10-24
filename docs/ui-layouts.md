@@ -208,7 +208,7 @@ While parsing: the dialog shows empty pillar columns filling with grey ghost cir
 ├──────────────────────────────────┤
 │ ▸ Settings                       │
 │   Student ID [2222…2222       ]  │
-│   API URL    [http://localhost:8787] │
+│   API URL    [http://127.0.0.1:8787] │
 │                    v0.1 · CP1    │
 └──────────────────────────────────┘
 ```

@@ -5,9 +5,10 @@
  * Who uses it:
  *  - C (dashboard) and D (extension) develop against it until A's real API is merged.
  *  - A uses it as a READABLE REFERENCE for the /intercept algorithm (docs/contracts.md §4).
- *  - scripts/smoke.ts can run against it: API_URL=http://localhost:8788 pnpm smoke
+ *  - scripts/smoke.ts can run against it: pnpm smoke:mock
  *
- * Run: pnpm dev:mock
+ * Run: pnpm dev:mock          (port 8788, used by C)
+ *      pnpm dev:mock:ext      (port 8789, Agent D's private instance)
  */
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -47,7 +48,12 @@ import {
   type RenamePillarRequest,
 } from '@friction/shared';
 
-const PORT = Number(process.env.MOCK_PORT ?? PORTS.mock);
+function argValue(flag: string): string | undefined {
+  const i = process.argv.indexOf(flag);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+}
+// Port: --port flag (cross-platform) > MOCK_PORT env > 8788
+const PORT = Number(argValue('--port') ?? process.env.MOCK_PORT ?? PORTS.mock);
 const DEMO = (process.env.DEMO_MODE ?? '1') === '1';
 const intel = fakeIntelligence;
 
@@ -483,5 +489,5 @@ createServer(async (req, res) => {
     res.end(JSON.stringify({ error: { code: err.code, message: err.message } }));
   }
 }).listen(PORT, () => {
-  console.log(`[mock-api] contract v${CONTRACT_VERSION} on http://localhost:${PORT} (DEMO_MODE=${DEMO ? 1 : 0})`);
+  console.log(`[mock-api] contract v${CONTRACT_VERSION} on http://127.0.0.1:${PORT} (DEMO_MODE=${DEMO ? 1 : 0})`);
 });

@@ -68,6 +68,11 @@ apps/api/
 - **`/chat`:** intercept the last user message (`app_source:'sandbox'`), swap in `injected_prompt`, stream `intel.chat()` as `text/plain` with Hono's `stream()`, set the `CHAT_HEADERS`, and save the full text into the log's `llm_response` when done.
 - **`/demo/reset`:** returns 404 `demo_only` unless DEMO_MODE. With `full` (or no `student_id`): rebuild everything from the seed. With `student_id`: restore that student's seed states and quota and delete their logs. Emit `tree_updated`.
 - **Background "secondary evaluation" is cut.** Don't build it.
+- **Windows-safe (teammates run Windows):**
+  - Build file paths with `node:path` + `fileURLToPath(import.meta.url)`; find the repo root by walking up to `pnpm-workspace.yaml`.
+  - The atomic write (`db.json.tmp` → rename) can hit a transient `EPERM`/`EBUSY` on Windows (antivirus, indexer). Retry the rename 3× with a 50ms backoff before failing.
+  - Don't bind the server to `'localhost'`. Leave `hostname` unset (or `'::'`) so `http://127.0.0.1:8787` works.
+  - Package scripts: no env-var prefixes or shell builtins.
 
 ## 6. Tasks and exit criteria
 
@@ -99,7 +104,7 @@ apps/api/
 ```
 pnpm dev:api                      # terminal 1
 pnpm smoke                        # terminal 2, must print SMOKE PASSED
-curl -N "localhost:8787/events?tree_id=33333333-3333-4333-8333-333333333333"   # watch events while smoke runs
+curl.exe -N "http://127.0.0.1:8787/events?tree_id=33333333-3333-4333-8333-333333333333"   # watch events while smoke runs (plain `curl` on macOS/Linux)
 pnpm --filter @friction/api test
 pnpm typecheck
 ```

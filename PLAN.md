@@ -78,7 +78,7 @@ A student uses claude.ai normally. A Chrome extension catches each prompt just b
 Friction/
 ├── PLAN.md  PRD.md  design.md  README.md  AGENTS.md  CLAUDE.md          🔒 ✅
 ├── package.json  pnpm-workspace.yaml  tsconfig.base.json  .env.example  🔒 ✅
-├── .gitignore                                                           🔒 ✅
+├── .gitignore  .gitattributes (forces LF)  .env.mock (mock API URL)   🔒 ✅
 ├── pnpm-lock.yaml                 shared; regenerate on conflict (§7)      ✅
 │
 ├── docs/
@@ -103,7 +103,7 @@ Friction/
 ├── scripts/
 │   ├── mock-api.ts                full contract on :8788 (reference)   🔒 ✅
 │   ├── smoke.ts                   PRD demo at API level                🔒 ✅
-│   ├── setup-worktrees.sh         optional one-machine setup           🔒 ✅
+│   ├── setup-worktrees.mjs        optional one-machine setup (any OS)  🔒 ✅
 │   └── tsconfig.json                                                   🔒 ✅
 │
 ├── packages/
@@ -201,8 +201,8 @@ Everyone can start immediately and in parallel. C and D develop against the mock
 
 ### Kickoff
 1. Commit and push this state to `main`.
-2. Each agent gets its own branch, either on one machine (`scripts/setup-worktrees.sh` creates `../Friction-<agent>` worktrees and copies `.env`) or on separate machines (`git checkout -b agent/<name>`).
-3. Everyone: `corepack enable` (or `npm i -g pnpm@9`), then `pnpm install`, then `cp .env.example .env` and fill in `ANTHROPIC_API_KEY` (needed by A and B).
+2. Each agent gets its own branch, either on one machine (`pnpm setup:worktrees [platform dashboard …]` creates `../Friction-<agent>` worktrees, copies `.env`, installs; works on Windows too) or on separate machines (`git checkout -b agent/<name>`).
+3. Everyone (Windows, macOS or Linux, Node ≥ 22.9): `npm i -g pnpm@9`, then `pnpm install`, then copy `.env.example` to `.env` and fill in `ANTHROPIC_API_KEY` (needed by A and B). Windows notes: [AGENTS.md](AGENTS.md) "Cross-platform rules".
 4. Open Claude Code in that folder and send: **"Read docs/agents/<X>.md and execute it. Start now."**
 5. Open a **fifth** Claude Code session in the main checkout for **Agent E**: **"Read docs/agents/E-integrator.md. You are the integrator. Wait for checkpoints; meanwhile run hourly preview merges."**
 

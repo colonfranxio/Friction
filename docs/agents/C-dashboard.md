@@ -21,7 +21,7 @@ Build `apps/dashboard`: a **Vite + React 19 SPA** on port 5173 with three routes
 ## 3. What's already there
 - `package.json` with react, react-dom, react-router-dom, @xyflow/react, framer-motion, canvas-confetti, lucide-react, @friction/shared, plus vite, @vitejs/plugin-react, tailwindcss + @tailwindcss/vite (Tailwind v4, so `@import "tailwindcss";` in CSS; no config file needed).
 - `vite.config.ts` (React + Tailwind plugins, `envDir: '../../'` so it reads the root `.env`/`.env.local`, port 5173 strict). `index.html` loads Nunito. `src/main.tsx` is a placeholder.
-- **API base URL:** `import.meta.env.VITE_API_URL` (`.env.example` sets 8787). For development against the mock, create a **root** `.env.local` with `VITE_API_URL=http://localhost:8788` (gitignored). Don't commit it.
+- **API base URL:** `import.meta.env.VITE_API_URL` (`.env.example` sets 8787). For development against the mock, run **`pnpm dev:dash:mock`**, which uses Vite's `--mode mock` to load the committed root `.env.mock` (`VITE_API_URL=http://127.0.0.1:8788`). This works the same on Windows. Don't hand-write env files with `echo` (PowerShell writes UTF-16, which Vite can't read).
 
 ## 4. Target file layout (create these)
 ```
@@ -80,7 +80,7 @@ apps/dashboard/src/
 - [ ] App shell + router + TopBar with a working Live indicator
 - [ ] `/educator/<seed tree>` renders 3 pillars, 8 nodes, 8 edges in the pillar layout, with locked/active/mastered colors, lock icons and badges, matching ui-layouts §2/§2a
 - [ ] `/student/<demo student>` shows the same tree in that student's state
-- [ ] Live: running `API_URL=http://localhost:8788 pnpm smoke` in a terminal visibly changes useEffect to mastered **without a page reload**
+- [ ] Live: running `pnpm smoke:mock` in a terminal visibly changes useEffect to mastered **without a page reload**
 
 ### CP2 (target T+8h): educator features + sandbox
 - [ ] Edit mode: drag + persist, connect, delete edge (with cycle toast), add/delete node, inspector edits, required-level override, pillar rename
@@ -92,7 +92,7 @@ apps/dashboard/src/
 ### CP3 (target T+14h): demo-grade polish
 - [ ] Student page right panel ("Now learning", bypass dots), designed for a side-by-side split with claude.ai at ~900px wide
 - [ ] Empty, loading and error states (API down → a friendly banner with a retry)
-- [ ] Works against the real API (`VITE_API_URL=http://localhost:8787`) on merged `main`
+- [ ] Works against the real API (`pnpm dev:dash`, which uses `VITE_API_URL=http://127.0.0.1:8787` from `.env`) on merged `main`
 
 ### CP4 (target T+20h): design.md micro-animations, in this priority
 - [ ] Unlock: padlock dissolves with a spring; the node fill pulses; the new edge draws outward (stroke-dashoffset)
@@ -105,9 +105,8 @@ apps/dashboard/src/
 ## 7. How to verify
 ```
 pnpm dev:mock                         # terminal 1 (fake API on 8788)
-echo "VITE_API_URL=http://localhost:8788" > ../../.env.local   # once, from apps/dashboard (root .env.local)
-pnpm dev:dash                         # terminal 2 → http://localhost:5173
-API_URL=http://localhost:8788 pnpm smoke   # terminal 3: watch the tree update live
+pnpm dev:dash:mock                    # terminal 2 → http://localhost:5173 (talks to the mock)
+pnpm smoke:mock                       # terminal 3: watch the tree update live
 pnpm typecheck && pnpm --filter @friction/dashboard build
 ```
 Also check it in a real browser (Claude in Chrome, if you have it) and attach screenshots or GIFs of each checkpoint's state to your status file notes.
