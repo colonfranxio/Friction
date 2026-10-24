@@ -2,6 +2,12 @@
 
 Additive changes only. Each entry: version, date, what changed, who asked.
 
+## v1 verification amendment (E, pre-CP1, 2026-10-24): no shape changes
+- Fixed the reference mock's parse path to emit the already-required `tree_updated` SSE event after restoring the seed tree (contracts §8–9).
+- Extended the smoke gate to observe parse, mastery and bypass SSE events, exercise the sandbox's three-turn chat flow, check chat metadata/CORS, and check educator HTTP/SSE privacy.
+- Added shared regression tests for progression boundaries, graph/mastery rules, independent seed stores, prompt delimiters, demo fakes, and client errors/streaming/cancellation forwarding.
+- Requested by E's gate preparation; contract version remains 1. B's optional grading signal and C's exact quiz-header requests remain pending checkpoint review.
+
 ## v1 (CP0, 2026-10-24)
 - Initial freeze: `packages/shared` (constants, types, api, intelligence, rules, client, seed, fakes), `scripts/mock-api.ts`, `scripts/smoke.ts`, `docs/contracts.md`, `docs/ui-layouts.md`.
 
