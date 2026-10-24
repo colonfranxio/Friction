@@ -14,6 +14,20 @@ You are one of four agents building Friction in parallel. Your personal brief is
 **Read-only for builders A–D (owned by E, the integrator):** `packages/shared/**`, `scripts/**`, `fixtures/**`, `docs/**` (except your own status file), root config (`package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.env.example`, `.gitignore`), `PLAN.md`, `PRD.md`, `design.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`.
 
 ## Working rules
+
+### Claude skill tree feature isolation (human instruction, 2026-10-24)
+
+For learning-map work, the human's latest reassignment supersedes the normal ownership table and the former C/D split:
+
+- **B owns full development of the extension learning map end to end**, on `feature/learning-map`: compact dashboard embed, extension panel/settings/consent behavior, tests and integration fixes required to ship the feature safely.
+- B may modify feature-related dashboard/extension files, including the pending draft/chat/conversation safety blockers in `content.ts`, `lib/send-interceptor.ts`, `lib/conversation.ts` and related tests. This is scoped to learning-map delivery and its required safety dependencies; unrelated C/D work stays with its owner. API/shared/root contracts and other agents' status files remain read-only.
+- **Latest permission expansion from the human:** B has full repository edit permissions for learning-map completion on `feature/learning-map`, including D's code and any supporting API/shared/root/config/docs changes actually required. This supersedes the narrower permission sentence above and path limits in older briefs. Coordinate overlapping work, keep the scope focused and disclose contract changes for E's review. E still controls release/main integration; secrets and others' unfinished work remain protected. See B's authoritative fix handoff in `docs/agents/B-intelligence.md`.
+- **C and D stop learning-map implementation and fixes.** Coordinate any shared-file work with B; do not race B on popup/storage/routing/content/conversation changes. Previous `agent/claude-skill-tree-*` branches are superseded for this feature.
+- E reviews/integrates on **`claude-skill-tree`**, preserving main and the separate Moss branches. The human's D → B history order remains: reuse D's `agent/extension` shell first, then B's `feature/learning-map`. B may merge the reviewed D source into its feature branch and fix the documented blockers there, rather than waiting for D to develop them.
+- E can assemble D → B on an unpublished review candidate, then publish the feature target only once the combined changes pass review and required checks. Never publish D's unsafe intermediate state alone. No main merge without the human's release instruction.
+- B publishes a fresh **PANEL READY** SHA with regressions for all documented blockers, narrow-screen/live-update evidence, tests/typecheck/build and remaining human checks. E independently verifies the combined candidate.
+- Preserve unfinished work and use existing separate checkouts. No shared-directory branch switches, data resets, new worktrees or unreviewed bulk merges. Existing port/store isolation, consent and acceptance rules continue to apply.
+
 1. **Contracts are frozen** (`packages/shared`, `docs/contracts.md`). Import types, rules, the client, seed and fakes from `@friction/shared`. Never redefine them.
 2. If a contract is wrong or missing something: work around it inside your own folder (for example, extend a type locally), add a **Change request** to your status file, and keep going. Contracts change only at checkpoints, additive only.
 3. **Dependencies:** add them only to your own package (`pnpm add --filter @friction/<yours> <pkg>`). Never edit the root `package.json`. Lockfile conflicts are resolved at merge time.
