@@ -8,7 +8,7 @@ import { createFrictionClient, DEMO_PROMPTS, SEED_IDS } from '@friction/shared';
 
 const base = process.env.DASHBOARD_TEST_URL ?? 'http://127.0.0.1:5173';
 const api = createFrictionClient(process.env.DASHBOARD_TEST_API ?? 'http://127.0.0.1:8788');
-const artifacts = fileURLToPath(new URL('./artifacts/', import.meta.url));
+const artifacts = process.env.DASHBOARD_EVIDENCE_DIR ?? fileURLToPath(new URL('./artifacts/v4-polish/', import.meta.url));
 const browser = await chromium.launch(process.env.BROWSER_PATH ? { executablePath: process.env.BROWSER_PATH } : { channel: 'chrome' });
 const concept = (id: string) => `[data-concept="${id}"]`;
 const promote = async () => {
@@ -19,6 +19,7 @@ const promote = async () => {
   await api.intercept({ student_id: SEED_IDS.demoStudent, raw_prompt: DEMO_PROMPTS.correctAnswer, app_source: 'sandbox', conversation_id: conversation });
 };
 try {
+  assert.ok((await api.health()).mode.server === 'mock' || process.env.DASHBOARD_TEST_EXCLUSIVE === '1', 'Schedule an exclusive API window before resetting its store.');
   await mkdir(artifacts, { recursive: true });
   await api.demoReset({ full: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'no-preference' });

@@ -27,6 +27,7 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
   const [nodes, setNodes, onNodesChange] = useNodesState<SkillFlowNode>(initialNodes);
   const container = useRef<HTMLDivElement>(null);
   const [flow, setFlow] = useState<ReactFlowInstance<SkillFlowNode>>();
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     const element = container.current;
     if (!element || !flow) return;
@@ -47,14 +48,20 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
   }, [initialNodes, setNodes]);
   const edges: Edge[] = bundle.edges.map((edge) => {
     const status = presentation.statuses[edge.child_node_id];
+    const selected = selectedEdgeIds.has(`${edge.parent_node_id}:${edge.child_node_id}`);
     return { id: `${edge.parent_node_id}:${edge.child_node_id}`, source: edge.parent_node_id, target: edge.child_node_id,
-      type: 'skill', data: { status, viewKey: `${bundle.tree.id}:${studentId ?? 'class'}` }, style: { stroke: `var(--${status === 'locked' ? 'border' : status})`, strokeWidth: 2.5 }, deletable: editing };
+      type: 'skill', selected, data: { status, viewKey: `${bundle.tree.id}:${studentId ?? 'class'}` }, style: { stroke: selected ? 'var(--text)' : `var(--${status === 'locked' ? 'border' : status})`, strokeWidth: selected ? 3.5 : 2.5 }, deletable: editing };
   });
   const select: NodeMouseHandler<SkillFlowNode> = (_event, node) => onSelect?.(node.id);
   return <div className="canvas-wrap" ref={container}>
     <div className="pillar-strip">{[...bundle.pillars].sort((a, b) => a.order - b.order).map((pillar, index) => <PillarHeader key={pillar.id} index={index} name={pillar.name} editing={editing} rename={(name) => actions?.rename(pillar.id, name)} />)}</div>
     {bundle.nodes.length === 0 ? <div className="center-state"><h2>Your canvas is ready</h2><p>Turn on edit mode and add your first concept.</p></div> : <ReactFlow<SkillFlowNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={setFlow}
-      onNodesChange={onNodesChange} onNodeClick={select} onPaneClick={() => onSelect?.(undefined)}
+      onNodesChange={onNodesChange} onNodeClick={select} onPaneClick={() => { onSelect?.(undefined); setSelectedEdgeIds(new Set()); }}
+      onEdgesChange={(changes) => setSelectedEdgeIds((current) => {
+        const next = new Set(current);
+        for (const change of changes) if (change.type === 'select') { if (change.selected) next.add(change.id); else next.delete(change.id); }
+        return next;
+      })}
       nodesDraggable={editing} nodesConnectable={editing} edgesReconnectable={false}
       deleteKeyCode={editing ? ['Backspace', 'Delete'] : null} nodesFocusable edgesFocusable={editing}
       onBeforeDelete={async ({ edges: deletedEdges }) => { for (const edge of deletedEdges) actions?.deleteEdge(edge.source, edge.target); return false; }}

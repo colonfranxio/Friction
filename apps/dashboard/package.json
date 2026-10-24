@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:browser": "tsx test/demo.browser.ts",
     "test:browser:resilience": "tsx test/resilience.browser.ts",
-    "test:browser:polish": "tsx test/polish.browser.ts"
+    "test:browser:polish": "tsx test/polish.browser.ts",
+    "test:browser:v4": "tsx test/v4.browser.ts",
+    "test:browser:editing": "tsx test/editing.browser.ts"
   },
   "dependencies": {
     "@friction/shared": "workspace:^",
