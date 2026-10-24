@@ -136,3 +136,29 @@ This section updates the remaining-work assignment after CP2. Own only `apps/das
 - Your mock is 8788 and dashboard 5173. D uses 8789; E uses private mock 8790 and dashboard 5174 if sharing a host. Check the configured API URL, not just the dashboard port: two UIs can still mutate the same backend.
 - Browser scripts and smoke reset demo data and overwrite screenshots. Serialize them per backend/store, use your own fixtures/session, and never reset another agent's rehearsal. E schedules the exclusive final API/browser test window. Keep generated evidence attributable to the run and preserve existing user files.
 - Deliver dashboard tests, typecheck/build and browser regressions; validate exact quiz display, interruption/retry, upload, live progression, new chat, bypass/toast, quota/reset, responsive/reduced-motion behavior. If retaining optional educator editing, verify the complete edit/persist/cycle-error flow; otherwise defer it. Update stale status text claiming A/B are placeholders.
+
+## Requested addition: learning map beside claude.ai (human request, 2026-10-24)
+
+**Why:** in a real test the human found that, on claude.ai, students can't see their skill tree, so they don't know which concept to steer the conversation toward next. The Sandbox solves this with its mini tree; claude.ai has only D's level badge. D will show the student's map in a Chrome side panel (see D's brief, same heading). C supplies the page it shows.
+
+**Priority:** nice-to-have, after must-haves and the open acceptance gates (PLAN.md rule). E schedules it. **No contract change:** it uses only the existing endpoints (`GET /students/:id`, `GET /trees/:id` bundle, students and SSE).
+
+**C's task: an embeddable compact Student view**
+- `/student/:studentId?embed=1` renders the existing Student view without the TopBar or route switcher, for a narrow panel (360–420px wide, full height, user-resizable). Without `embed=1`, nothing changes.
+- Layout, top to bottom:
+  1. Name and "N of M mastered" bar.
+  2. **Now learning** card (as today).
+  3. **Next up:** 2–3 active (unlocked, not mastered) nodes, shallowest depth first. Each shows `level/required` and the mastery criteria as a one-line hint, plus a "Try asking:" starter built on the client from `concept_name` (no new API call).
+  4. The map, fitted to the width, read-only. If the map can't be legible at that width, show it collapsed behind a "Show map" toggle.
+- Stays live via SSE exactly like the Student page. Mastery animations stay; reduced motion is respected.
+- **Must render inside an iframe from a `chrome-extension://` page:** no frame-busting, and no `X-Frame-Options`/`frame-ancestors` that blocks it in dev or preview.
+- Unknown student or API down: show the existing error/retry state in compact form, with no blank panel.
+- Keep this surface read-only: no educator controls, upload/reset actions or raw chat content. "Try asking" is a visible suggestion, not an automatic send to claude.ai. Use shared status/depth rules with a stable tie-break for Next up; handle no active nodes without inventing a recommendation.
+- Coordinate iframe readiness/error diagnostics with D. An iframe `load` event alone does not prove the dashboard or its API loaded successfully. If using `postMessage`, agree a small UI-only message shape and validate sender origin/source on both sides; no backend/shared contract change is needed.
+- For integrated live updates, the dashboard's `VITE_API_URL` and D's stored API URL must target the **same intended backend/store**. The iframe inherits the dashboard's API configuration, not D's setting. Coordinate an isolated test window instead of resetting C's 8788 data from D's 8789 tests; changing Dashboard URL alone does not select its API.
+- **Verify:**
+  - browser check at 360px and 420px: no horizontal overflow, Next up lists only active nodes, and a correct answer graded elsewhere turns the node green live in the embed;
+  - the full-width Student page is unchanged;
+  - typecheck, build and existing browser suites still pass.
+
+**Execution order and parallel safety (E review):** this request is accepted for the backlog; it does not close the open acceptance gates or authorize bypassing their priority. Once E schedules it, C's embed page and D's side-panel shell/settings/tests can proceed in parallel in their existing isolated checkouts and owned paths. C publishes **EMBED READY** with SHA, route, narrow-screen/error/live-update evidence and any agreed iframe signal. D's final panel integration depends on that handoff; the full Student-page fallback is temporary development scaffolding. Use C's reserved mock/dashboard ports, not D's backend. E merges C before D for this feature, then runs integrated iframe/consent checks and requests the human live-panel check. Preserve the existing API READY dependencies for bypass work; this read-only panel needs no new A/B API work.

@@ -7,6 +7,7 @@ const base = process.env.DASHBOARD_TEST_URL ?? 'http://127.0.0.1:5173';
 const api = createFrictionClient(process.env.DASHBOARD_TEST_API ?? 'http://127.0.0.1:8788');
 const browser = await chromium.launch(process.env.BROWSER_PATH ? { executablePath: process.env.BROWSER_PATH } : { channel: 'chrome' });
 try {
+  assert.equal((await api.health()).mode.server, 'mock', 'Synthetic PDF/error fixtures are intended only for Agent C mock.');
   await api.demoReset({ full: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 960 } });
   const page = await context.newPage();
