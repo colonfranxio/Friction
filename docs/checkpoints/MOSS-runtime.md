@@ -18,9 +18,16 @@ Scope: user-authorized, opt-in sponsor integration; no accuracy improvement clai
 
 ## CP2 — freshness and failure verification
 
-In progress. Tests exercise actual educator PATCH/add/delete, parse/new-course assignment, full reset,
+PASS. Tests exercise actual educator PATCH/add/delete, parse/new-course assignment, full reset,
 polling, snapshots during warmup, hung-close capacity, query timeouts and missing native runtime.
+- authoritative-store fingerprint is rechecked before and after each query (`fcce521`).
+  Workspace typecheck PASS; 218 tests PASS (API 75, intelligence 61).
 
 ## CP3 — authenticated API demonstration
 
-Pending. Use private ephemeral HTTP server and memory-only store. Do not reset shared services.
+`pnpm --filter @friction/api moss:live` (2026-10-24): real Moss + Claude on a private ephemeral port with a memory-only store.
+
+- /health served 200 during warmup; Moss index ready in 1515ms.
+- Paraphrased prompt with no keyword match: Moss returned 3 candidates in 5ms. Claude chose "Context API"; L2 scaffold reply with an attached quiz; mastery unchanged.
+- Injected Moss init failure: /intercept still resolved "Context API" via the baseline classifier, and the policy prompt was applied.
+- Evidence: `apps/api/harness/results/moss-live.json` (scanned; no credentials).
