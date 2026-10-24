@@ -1,6 +1,6 @@
 /** Popup UI (ui-layouts §5). All data comes from the service worker. */
 import { LEVEL_LABELS } from '@friction/shared';
-import type { BypassResult, RuntimeRequest, StatusResponse } from './lib/messages';
+import type { BypassResendResult, RuntimeRequest, StatusResponse, TabRequest } from './lib/messages';
 import { getSettings, saveSettings } from './lib/storage';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -36,7 +36,7 @@ async function render() {
 
   const btn = $<HTMLButtonElement>('bypass');
   const quota = s.bypass_quota;
-  btn.textContent = quota === null ? 'Use a bypass' : `Use a bypass (${quota} left)`;
+  btn.textContent = quota === null ? 'Bypass this message' : `Bypass this message (${quota} left)`;
   btn.disabled = !s.online || !s.enabled || !last?.node_id || s.paused || quota === 0;
 }
 
@@ -56,10 +56,17 @@ async function init() {
     btn.disabled = true; // no double bypass on double-click
     $('msg').textContent = '';
     try {
-      const r = await send<BypassResult>({ type: 'friction:bypass' });
-      $('msg').textContent = r.ok ? `Bypass used. ${r.remaining_quota} left. Your teacher has been notified.` : r.message;
+      // The claude.ai tab does the bypass itself: it knows the prompt to re-send.
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id === undefined) throw new Error('no tab');
+      const r = (await chrome.tabs.sendMessage(tab.id, { type: 'friction:bypass-resend' } satisfies TabRequest)) as BypassResendResult;
+      $('msg').textContent = !r.ok
+        ? r.message
+        : r.resent
+          ? `Re-sent without friction. ${r.remaining_quota} left. Your teacher has been notified.`
+          : `Bypass used (${r.remaining_quota} left). Your message is in the box; press Send and it goes out without friction.`;
     } catch {
-      $('msg').textContent = 'Friction is unavailable. Reload the extension.';
+      $('msg').textContent = 'Open your claude.ai tab (reload it if needed), then click Bypass.';
     }
     await render();
   });

@@ -108,12 +108,12 @@ async function handleStatus(): Promise<StatusResponse> {
   return { online, enabled: s.enabled, studentId: s.studentId, apiUrl: s.apiUrl, bypass_quota: quota, last, paused };
 }
 
-async function handleBypass(): Promise<BypassResult> {
+async function handleBypass(m: Extract<RuntimeRequest, { type: 'friction:bypass' }>): Promise<BypassResult> {
   const s = await getSettings();
-  const last = await getLastIntercept();
-  if (!last?.node_id) return { ok: false, code: 'no_concept', message: 'Ask Claude something first so Friction knows the concept.' };
+  const nodeId = m.node_id ?? (await getLastIntercept())?.node_id;
+  if (!nodeId) return { ok: false, code: 'no_concept', message: 'Ask Claude something first so Friction knows the concept.' };
   try {
-    const r = await createFrictionClient(s.apiUrl).bypass({ student_id: s.studentId, node_id: last.node_id });
+    const r = await createFrictionClient(s.apiUrl).bypass({ student_id: s.studentId, node_id: nodeId });
     return { ok: true, remaining_quota: r.remaining_quota };
   } catch (err) {
     if (err instanceof ApiError) return { ok: false, code: err.code, message: err.code === 'quota_exhausted' ? 'No bypasses left.' : err.message };
@@ -129,7 +129,7 @@ chrome.runtime.onMessage.addListener((msg: RuntimeRequest, _sender, sendResponse
       case 'friction:status':
         return handleStatus();
       case 'friction:bypass':
-        return handleBypass();
+        return handleBypass(msg);
       default:
         return Promise.resolve(undefined);
     }

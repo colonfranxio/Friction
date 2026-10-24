@@ -121,6 +121,12 @@ describe('background ⇄ mock API', () => {
     expect(s.bypass_quota).toBe(2);
   });
 
+  it('bypass targets the node the content script names', async () => {
+    const before = await call<StatusResponse>({ type: 'friction:status' });
+    const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect });
+    expect(b).toEqual({ ok: true, remaining_quota: (before.bypass_quota ?? 0) - 1 });
+  });
+
   it('off-topic prompts keep the last concept for the bypass button', async () => {
     const before = await call<StatusResponse>({ type: 'friction:status' });
     await call({ type: 'friction:intercept', raw_prompt: 'tell me a joke', conversation_id: 'conv-bg-5', previous_assistant_text: null });

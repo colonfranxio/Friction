@@ -180,3 +180,54 @@ describe('send interceptor', () => {
     expect(page.sent[0]).toBe(norm(INJECTED));
   });
 });
+
+describe('bypass: one prompt without friction', () => {
+  let page: ReturnType<typeof fakeClaude>;
+  beforeEach(() => (page = fakeClaude()));
+
+  function installWith(extra: { skipIntercept?: (raw: string) => boolean } = {}) {
+    const modes: SendMode[] = [];
+    const spy = vi.fn(async () => injected);
+    const ic = installSendInterceptor({ doc: document, win: window, site: realSite, intercept: spy, timeoutMs: 300, settleMs: 20, confirmMs: 80, onSent: (m) => modes.push(m), ...extra });
+    cleanup = ic;
+    return { ic, modes, spy };
+  }
+
+  it('sendUnmodified puts the text in the composer and sends it without calling the API', async () => {
+    const { ic, spy } = installWith();
+    page.composer.innerHTML = '<p></p>';
+    expect(await ic.sendUnmodified(RAW)).toBe(true);
+    expect(page.sent).toEqual([norm(RAW)]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('sendUnmodified reports false when the page does not send (e.g. Claude still replying)', async () => {
+    const { ic } = installWith();
+    page.button.disabled = true;
+    page.button.replaceWith(page.button.cloneNode(true)); // drop the send handler
+    page.composer.replaceWith(page.composer.cloneNode(true));
+    expect(await ic.sendUnmodified(RAW)).toBe(false);
+    expect(page.sent).toEqual([]);
+  });
+
+  it('skipIntercept: an armed prompt goes out unmodified once, later sends get friction again', async () => {
+    let armed: string | null = RAW;
+    const { modes, spy } = installWith({
+      skipIntercept: (raw) => {
+        if (raw !== armed) return false;
+        armed = null;
+        return true;
+      },
+    });
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+    expect(page.sent[0]).toBe(norm(RAW));
+    expect(spy).not.toHaveBeenCalled();
+
+    page.composer.innerHTML = `<p>${RAW}</p>`;
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(2));
+    expect(page.sent[1]).toBe(norm(INJECTED));
+    expect(modes).toEqual(['bypassed', 'injected']);
+  });
+});

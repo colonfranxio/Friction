@@ -16,7 +16,7 @@ export interface SiteOps {
   setComposerText(doc: Document, el: HTMLElement, text: string): Promise<boolean>;
 }
 
-export type SendMode = 'injected' | 'passthrough' | 'failed-open' | 'not-sent';
+export type SendMode = 'injected' | 'passthrough' | 'failed-open' | 'not-sent' | 'bypassed';
 
 export interface InterceptorDeps {
   doc: Document;
@@ -30,6 +30,14 @@ export interface InterceptorDeps {
   /** Max wait for the composer to empty after sending; if it doesn't, the original text is restored. */
   confirmMs?: number;
   onSent?(mode: SendMode, result: InterceptRuntimeResult | null): void;
+  /** Called with the trimmed text before intercepting; true = send it unmodified (a bypassed prompt). */
+  skipIntercept?(raw: string): boolean;
+}
+
+export interface SendInterceptor {
+  (): void; // uninstall
+  /** Put `text` in the composer and send it without Friction. Resolves true when it went out. */
+  sendUnmodified(text: string): Promise<boolean>;
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -51,7 +59,7 @@ async function waitUntil(cond: () => boolean, maxMs: number, stepMs = 25): Promi
   return true;
 }
 
-export function installSendInterceptor(deps: InterceptorDeps): () => void {
+export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
   const { doc, win, site } = deps;
   let busy = false; // a send is being processed; swallow extra Enters/clicks
   let letThrough = false; // our own re-dispatched send must not be intercepted
@@ -96,6 +104,11 @@ export function installSendInterceptor(deps: InterceptorDeps): () => void {
     if (!composer || !raw || raw.includes(FRICTION_OPEN)) {
       // Nothing to do (or already injected): behave exactly like a normal send.
       triggerSend(composer);
+      return;
+    }
+    if (deps.skipIntercept?.(raw)) {
+      triggerSend(composer);
+      deps.onSent?.('bypassed', null);
       return;
     }
     let result: InterceptRuntimeResult;
@@ -144,8 +157,24 @@ export function installSendInterceptor(deps: InterceptorDeps): () => void {
   // Window capture phase runs before claude.ai's own handlers (ProseMirror keymap, React root).
   win.addEventListener('keydown', onKeyDown, true);
   win.addEventListener('click', onClick, true);
-  return () => {
+  const uninstall = () => {
     win.removeEventListener('keydown', onKeyDown, true);
     win.removeEventListener('click', onClick, true);
   };
+  return Object.assign(uninstall, {
+    async sendUnmodified(text: string): Promise<boolean> {
+      const composer = site.findComposer(doc);
+      if (!composer || busy) return false;
+      busy = true;
+      try {
+        const ok = await site.setComposerText(doc, composer, text).catch(() => false);
+        if (!ok) return false;
+        await waitUntil(buttonReady, deps.settleMs ?? 300);
+        triggerSend(composer);
+        return await waitUntil(() => site.getComposerText(composer).trim() !== text.trim(), deps.confirmMs ?? 600);
+      } finally {
+        busy = false;
+      }
+    },
+  });
 }

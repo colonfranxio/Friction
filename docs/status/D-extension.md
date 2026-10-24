@@ -40,7 +40,10 @@ Page-level fetch patch, postMessage bridge, SSE parser, network fixtures, `/resp
 The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/*/src/lib/` would never be committed. That hit A, C and me. The Python patterns are now anchored to the repo root. My earlier pushes were missing `src/lib/*`; this push includes them.
 
 ## Change requests (contract)
-None.
+1. **Per-prompt bypass (human/product decision, 2026-10-24).** A bypass should skip friction for **that one prompt only**, still use one quota and still notify the educator (with the concept). Today §7 sets `paused = true`, so every later intercept on the node returns L4 until `/demo/reset`.
+   - Ask (A + E, additive): `POST /bypass` stops setting `paused` (or takes an optional `scope: 'prompt' | 'concept'`, default `'prompt'`). Keep: quota −1, 409 at 0, close the pending quiz, `BypassEvent`, `bypass` SSE event with `student_name` + `concept_name`.
+   - Extension side is done: the badge's **Bypass** button (and the popup's **Bypass this message**) calls `/bypass` for the node of the last friction-ed message, then re-sends that exact prompt unmodified (no `/intercept` call). If the page doesn't take the re-send, the text stays in the composer and the next Send goes out unmodified once.
+   - Until the API changes, the concept also stays paused server-side (later prompts on it get L4). Sandbox (C) should switch its bypass button to the same per-prompt behavior.
 
 ## Dependency changes
 - `happy-dom` (dev, extension only).
