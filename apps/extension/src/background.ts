@@ -7,7 +7,7 @@ import type { InterceptRuntimeResult } from './background-types';
 import type { BypassResult, LastIntercept, RuntimeRequest, StatusResponse } from './lib/messages';
 import { getLastIntercept, getSettings, setLastIntercept } from './lib/storage';
 
-const API_BUDGET_MS = EXTENSION_TIMEOUT_MS - 500; // leave room for the page ⇄ content hops
+const API_BUDGET_MS = EXTENSION_TIMEOUT_MS - 500; // leave room for the content ⇄ worker hop
 
 // ---- concept names (node_id → concept_name), refreshed lazily ----
 let concepts = new Map<UUID, string>();
@@ -72,17 +72,6 @@ async function handleIntercept(m: Extract<RuntimeRequest, { type: 'friction:inte
   }
 }
 
-async function handleResponses(m: Extract<RuntimeRequest, { type: 'friction:responses' }>): Promise<{ ok: boolean }> {
-  const s = await getSettings();
-  if (!s.enabled) return { ok: false };
-  try {
-    await createFrictionClient(s.apiUrl).responses({ intercept_id: m.intercept_id, llm_response: m.llm_response });
-    return { ok: true };
-  } catch {
-    return { ok: false };
-  }
-}
-
 async function handleStatus(): Promise<StatusResponse> {
   const s = await getSettings();
   if (!s.enabled) {
@@ -132,8 +121,6 @@ chrome.runtime.onMessage.addListener((msg: RuntimeRequest, _sender, sendResponse
     switch (msg?.type) {
       case 'friction:intercept':
         return handleIntercept(msg);
-      case 'friction:responses':
-        return handleResponses(msg);
       case 'friction:status':
         return handleStatus();
       case 'friction:bypass':

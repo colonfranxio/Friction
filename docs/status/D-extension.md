@@ -1,53 +1,36 @@
-# Status: Agent D (extension)
+# Status: Agent D (extension, bonus surface)
 
 **Owned by Agent D. Only this agent edits this file.**
 
-- Contract version confirmed: 1 (incl. Windows amendment)
-- Current checkpoint: CP1 (code complete; waiting on human for the live claude.ai test)
-- Last updated: 2026-10-24 00:20
+- Contract version confirmed: 1 (plan v5)
+- Current checkpoint: CP1 (code complete; waiting on the human's live try → GO/NO-GO)
+- Last updated: 2026-10-24
 
-## Exit criteria for CP1
-- [ ] **Fixtures captured and sanitized.** BLOCKED: Claude in Chrome is disconnected in my session. Synthetic fixtures (best-known shapes, clearly labeled) are in `apps/extension/test/fixtures/claude/`. The human capture steps (≈2 min) are in `apps/extension/NOTES.md`.
-- [x] `adapters/claude.ts` + `lib/sse.ts` unit tests pass against the fixtures (URL match, conversation id, prompt read/write, both stream formats, CRLF). *Verified:* `pnpm --filter @friction/extension test`.
-- [x] Bridge with nonce + timeout, unit tested (round trip, wrong nonce → timeout, error reply).
-- [ ] **Live test on claude.ai → GO / NO-GO.** Needs the human: load `apps/extension/dist`, run `pnpm dev:mock:ext`, popup API URL `http://127.0.0.1:8789`, ask the useEffect question.
-- [ ] Text-box fallback: only needed if the live test is NO-GO.
+## CP1 exit criteria
+- [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
+- [x] Unit tests pass (32): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
+- [x] Background tests against the real mock (in-process HTTP) pass: status, L1 intercept, correct answer graded via `previous_assistant_text` → L4, passthrough, bypass + paused, concept kept after off-topic, consent off (zero fetches), offline fail-open.
+- [ ] **Human live try → GO / NO-GO.** Steps in `apps/extension/NOTES.md` ("Live test").
 
-## Done ahead of schedule (CP2/CP3 items)
-- [x] Popup (ui-layouts §5): online status, consent toggle, concept + level chip, bypass with quota and 409 message, settings.
-- [x] On-page badge (ui-layouts §6): ready / L1–L3 / no friction / offline / paused. Shadow DOM, `pointer-events: none`.
-- [x] Service worker ⇄ API verified end to end against the real mock in-process (`test/background.integration.test.ts`, 7 cases: status, L1 intercept + `/responses`, correct answer → L4, passthrough, bypass + paused, consent off, offline fail-open).
-- [x] `hide-injected.ts`: strips the friction block from rendered messages (single node, split across nodes, multiple, skips the composer, ignores incomplete blocks). Unit tested with happy-dom. Selectors unconfirmed.
-- [x] Fail-open everywhere: bridge timeout (4.5s), SW API timeout (4.0s), non-JSON bodies, extension reloaded mid-session, network errors re-thrown without retry (no double sends).
+## Removed (per plan v5)
+Page-level fetch patch, postMessage bridge, SSE parser, network fixtures, `/responses` calls.
 
-## CP1 verification (independent agent, Sonnet 5.5)
-Verdict: **CP1 code-complete PASS.** No bug that drops or double-sends a message; ownership clean; Windows-safe build; status claims confirmed.
-Fixed from its findings:
-- Status ping no longer calls the API when consent is off (contract §11).
-- Badge no longer says "active" if the result arrives after the page already sent the original prompt.
-- Page-side bridge ignores replies not posted on the same window.
-- Off-topic prompts no longer wipe the last concept (the bypass button's target).
-- New: console warning for unmatched completion-like POSTs, so a claude.ai URL change is visible immediately.
-- Added tests: hanging intercept → original sent, adapter-drift detector, foreign-window replies ignored, consent-off status makes zero fetches, concept kept after off-topic prompt.
+## Lead-level fix made along the way (on main, commit 688d316)
+The root `.gitignore` (a Python template) ignored every `lib/` folder, so `apps/*/src/lib/` would never be committed. That hit A, C and me. The Python patterns are now anchored to the repo root. My earlier pushes were missing `src/lib/*`; this push includes them.
 
 ## Change requests (contract)
 None.
 
 ## Dependency changes
-- `happy-dom` (dev, `@friction/extension` only) for DOM unit tests.
-
-## Assumptions
-- claude.ai shapes per `apps/extension/NOTES.md` table (all unconfirmed until capture).
-- Concept names in the badge load lazily (first intercept may show only the level).
+- `happy-dom` (dev, extension only).
 
 ## Blockers / needs from the human
-1. **Capture claude.ai traffic** (NOTES.md "How to capture"), or reconnect Claude in Chrome so I can do it.
-2. **Live test:** load the extension and try the useEffect question against `pnpm dev:mock:ext`.
+1. Live try on claude.ai (≈5 min, NOTES.md). If it fails, run the console snippet in NOTES.md and paste the output.
 
 ## How to run and verify my part
 ```
-pnpm --filter @friction/extension test        # 42 tests
+pnpm --filter @friction/extension test        # 32 tests
 pnpm --filter @friction/extension typecheck
-pnpm --filter @friction/extension build       # → apps/extension/dist (load unpacked)
-pnpm dev:mock:ext                             # mock API on 8789 for live testing
+pnpm build:ext                                # → apps/extension/dist
+pnpm dev:mock:ext                             # mock API on 8789
 ```

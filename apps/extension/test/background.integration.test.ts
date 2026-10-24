@@ -56,7 +56,7 @@ describe('background ⇄ mock API', () => {
     expect(s.enabled).toBe(true);
   });
 
-  it('intercepts a course question with L1 friction, then logs the reply', async () => {
+  it('intercepts a course question with L1 friction', async () => {
     const r = await call<InterceptRuntimeResult>({
       type: 'friction:intercept',
       raw_prompt: DEMO_PROMPTS.question,
@@ -69,24 +69,17 @@ describe('background ⇄ mock API', () => {
     expect(r.outcome.response.node_id).toBe(SEED_IDS.nodes.useEffect);
     expect(r.outcome.response.injected_prompt.startsWith(DEMO_PROMPTS.question)).toBe(true);
 
-    const ok = await call<{ ok: boolean }>({
-      type: 'friction:responses',
-      intercept_id: r.outcome.response.intercept_id!,
-      llm_response: 'Quick check: what does the dependency array tell React?',
-    });
-    expect(ok.ok).toBe(true);
-
     // Concept names load lazily; the status call fills them in.
     const s = await call<StatusResponse>({ type: 'friction:status' });
     expect(s.last?.concept_name).toBe('React useEffect');
   });
 
-  it('a correct answer in the same conversation moves the student to L4', async () => {
+  it('a correct answer (quiz text read from the page) moves the student to L4', async () => {
     const r = await call<InterceptRuntimeResult>({
       type: 'friction:intercept',
       raw_prompt: DEMO_PROMPTS.correctAnswer,
       conversation_id: 'conv-bg-1',
-      previous_assistant_text: null,
+      previous_assistant_text: 'Quick check: what does the dependency array tell React?',
     });
     expect(r.outcome.passthrough).toBe(false);
     if (!r.outcome.passthrough) expect(r.outcome.response.graded?.verdict).toBe('correct');

@@ -11,7 +11,7 @@ const watch = process.argv.includes('--watch');
 if (!watch) rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 
-const entries = ['main-world', 'content', 'background', 'popup'];
+const entries = ['content', 'background', 'popup'];
 const missing = entries.filter((e) => !existsSync(join(here, 'src', `${e}.ts`)));
 if (missing.length) throw new Error(`missing entries: ${missing.join(', ')}`);
 

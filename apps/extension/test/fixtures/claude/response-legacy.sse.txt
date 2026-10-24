@@ -1,9 +1,0 @@
-event: completion
-data: {"type":"completion","completion":"Hello there, ","stop_reason":null}
-
-event: ping
-data: {"type": "ping"}
-
-event: completion
-data: {"type":"completion","completion":"friend!","stop_reason":"stop_sequence"}
-
