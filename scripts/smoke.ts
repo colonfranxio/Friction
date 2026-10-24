@@ -9,13 +9,17 @@
  * Exits non-zero on the first failed step.
  */
 import { readFileSync } from 'node:fs';
+import { observeEvents } from './smoke-events';
 import {
   ApiError,
+  CHAT_HEADERS,
+  CONTRACT_VERSION,
   DEFAULT_API_URL,
   DEMO_PROMPTS,
   FRICTION_OPEN,
   SEED_IDS,
   createFrictionClient,
+  type ChatMessage,
 } from '@friction/shared';
 
 const urlFlag = process.argv.indexOf('--url');
@@ -50,11 +54,14 @@ await run('health', async () => {
   const h = await api.health();
   console.log(`   server=${h.mode.server} intelligence=${h.mode.intelligence} demo=${h.mode.demo}`);
   check(h.mode.demo, 'smoke needs DEMO_MODE=1');
+  check(h.ok && h.contract_version === CONTRACT_VERSION, 'health must report the current contract');
 });
 
 await run('full demo reset', async () => {
   await api.demoReset({ full: true });
 });
+
+const live = await observeEvents(api.eventsUrl(SEED_IDS.tree));
 
 await run('parse demo syllabus → tree contains "React useEffect"', async () => {
   const text = readFileSync(new URL('../fixtures/demo-syllabus.md', import.meta.url), 'utf8');
@@ -69,6 +76,7 @@ await run('parse demo syllabus → tree contains "React useEffect"', async () =>
   const s = await api.getStudent(student);
   check(s.tree_id === treeId, 'demo student should be on the parsed tree');
   check(s.states.find((x) => x.node_id === useEffectId)?.current_blooms_level === 1, 'useEffect should start at L1');
+  await live.waitFor(e => e.type === 'tree_updated' && e.data.tree_id === treeId, 'parse tree_updated');
 });
 
 await run('L1: question gets friction + quiz', async () => {
@@ -99,6 +107,8 @@ await run('correct answer → L4 (DEMO_MODE jump)', async () => {
   check(r.graded?.verdict === 'correct', `expected correct, got ${r.graded?.verdict}`);
   const s = await api.getStudent(student);
   check(s.states.find((x) => x.node_id === useEffectId)?.current_blooms_level === 4, 'useEffect should now be L4');
+  await live.waitFor(e => e.type === 'student_state' && e.data.student_id === student &&
+    e.data.node_id === useEffectId && e.data.current_blooms_level === 4, 'live mastery promotion');
 });
 
 await run('same question in a new chat → no friction', async () => {
@@ -116,6 +126,8 @@ await run('bypass: quota 3→2, node paused, intercept returns L4', async () => 
     student_id: student, raw_prompt: DEMO_PROMPTS.bypassQuestion, app_source: 'claude_web', conversation_id: 'smoke-conv-3',
   });
   check(r.node_id === contextId && r.level === 4, `expected Context API at L4, got ${r.node_id} L${r.level}`);
+  await live.waitFor(e => e.type === 'bypass' && e.data.student_id === student &&
+    e.data.node_id === contextId && e.data.remaining_quota === 2, 'educator bypass toast');
 });
 
 await run('bypass quota exhausted → 409', async () => {
@@ -137,6 +149,66 @@ await run('off-topic prompt passes through', async () => {
 });
 
 await run('reset demo student', async () => {
+  await api.demoReset({ student_id: student });
+});
+
+// The sandbox is the main demo surface. Do not call /responses here. This
+// checks progression through /chat; A's endpoint tests must separately verify
+// saved llm_response, since the fake grader also accepts quiz_text=null.
+let history: ChatMessage[] = [{ role: 'user', content: DEMO_PROMPTS.question }];
+let conversation = 'smoke-sandbox-1';
+let lastChatInterceptId = '';
+
+async function chatTurn(expectedLevel: number) {
+  const response = await api.chat({ student_id: student, conversation_id: conversation, messages: history },
+    AbortSignal.timeout(90_000));
+  check(response.ok, `chat HTTP ${response.status}`);
+  check(response.headers.get('content-type')?.includes('text/plain'), 'chat must stream text/plain');
+  check(response.headers.get(CHAT_HEADERS.nodeId) === useEffectId, 'chat must identify the useEffect node');
+  check(response.headers.get(CHAT_HEADERS.level) === String(expectedLevel), `chat must report L${expectedLevel}`);
+  check(response.headers.get(CHAT_HEADERS.interceptId), 'chat must identify its intercept');
+  lastChatInterceptId = response.headers.get(CHAT_HEADERS.interceptId)!;
+  const exposed = (response.headers.get('access-control-expose-headers') ?? '').toLowerCase().split(',').map(h => h.trim());
+  for (const header of Object.values(CHAT_HEADERS)) check(exposed.includes(header.toLowerCase()), `${header} must be exposed to the dashboard`);
+  check(response.body, 'chat must have a response stream');
+  let reply = '';
+  const decoder = new TextDecoder();
+  for await (const chunk of response.body) reply += decoder.decode(chunk, { stream: true });
+  reply += decoder.decode();
+  check(reply.trim(), 'chat stream must contain an assistant reply');
+  check(!reply.includes(FRICTION_OPEN), 'chat must not expose the hidden prompt block');
+  history.push({ role: 'assistant', content: reply });
+}
+
+await run('sandbox L1: reply stream + metadata + CORS', async () => {
+  await chatTurn(1);
+});
+
+await run('sandbox answer without /responses → L4', async () => {
+  history.push({ role: 'user', content: DEMO_PROMPTS.correctAnswer });
+  await chatTurn(4);
+  const s = await api.getStudent(student);
+  check(s.states.find(x => x.node_id === useEffectId)?.current_blooms_level === 4, 'sandbox answer must promote useEffect');
+});
+
+await run('sandbox new chat: same question at L4', async () => {
+  conversation = 'smoke-sandbox-2';
+  history = [{ role: 'user', content: DEMO_PROMPTS.question }];
+  await chatTurn(4);
+});
+
+await run('educator HTTP + SSE privacy', async () => {
+  await live.waitFor(e => e.type === 'activity' && e.data.id === lastChatInterceptId, 'sandbox intercept activity');
+  await live.close();
+  const students = await api.treeStudents(treeId);
+  const activity = await api.treeActivity(treeId);
+  check(students.students.length > 0 && activity.items.length > 0, 'privacy check needs populated educator data');
+  for (const data of [students, activity, live.events]) {
+    check(!/"(?:raw_prompt|injected_prompt|llm_response)"\s*:/.test(JSON.stringify(data)), 'educator data must not expose chat text fields');
+  }
+});
+
+await run('restore demo after sandbox verification', async () => {
   await api.demoReset({ student_id: student });
 });
 

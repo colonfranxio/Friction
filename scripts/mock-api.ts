@@ -246,6 +246,7 @@ route('POST', '/trees/parse', async ({ body }) => {
   // Mock behaves like DEMO_MODE cache hit for any input: reset demo state and return the seed tree.
   await new Promise((r) => setTimeout(r, DEMO_PARSE_DELAY_MS));
   db = fresh();
+  emit(db.trees[0].id, { type: 'tree_updated', data: { tree_id: db.trees[0].id } });
   return { tree_id: db.trees[0].id, cached: true };
 });
 
