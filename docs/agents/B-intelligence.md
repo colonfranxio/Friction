@@ -4,7 +4,7 @@ You are **Agent B**, one of four Claude Code agents building **Friction** in par
 
 ## 0. Read first (in this order)
 1. `AGENTS.md`: ownership and working rules (binding).
-2. `PLAN.md`: the whole plan; your row in §5 and §6.
+2. `PLAN.md`: the whole plan; your column in §5 (v5, simplified).
 3. `docs/contracts.md`: §4 (how A calls you), **§5 (prompt format)**, §6 (progression), §8 (parse).
 4. `packages/shared/src/intelligence.ts`: **the interface you implement.** Also `rules.ts` (`wrapInjected`, `computeNextLevel`), `constants.ts` (`ICON_KEYWORDS`, `LEVEL_LABELS`), `seed.ts` (`DEMO_PROMPTS`, the seed tree).
 5. `packages/shared/src/fakes.ts`: deterministic versions of everything you build. Your real versions must be drop-in replacements with the same output formats.
@@ -89,34 +89,24 @@ packages/intelligence/
 ### `chat(messages, {signal})`
 - Streams the assistant's text deltas from `MODEL_CHAT`. The last user message already contains the friction block. Add a short system prompt: "You are a helpful programming assistant." Never strip or reveal the block.
 
-## 6. Tasks and exit criteria
+## 6. Tasks and exit criteria (PLAN.md v5: 3 checkpoints)
+The main demo is the **sandbox chat**, so your `chat()` + templates are what judges see. Priority: L1 Socratic pushback and correct grading of the demo answer first, everything else after.
 
-### CP1 (target T+3h)
-- [ ] `templates.ts` done for all 4 levels, with feedback and quiz variants; unit tests check the format (delimiters, the `Level:` line, the L4 passthrough, the raw prompt first)
-- [ ] Keyword classifier, with unit tests on the seed nodes (all 4 `DEMO_PROMPTS` route correctly; "write a haiku" → null)
-- [ ] Real `evaluateExchange`; unit tests with a mocked client; **latency measured and reported**
-- [ ] `createIntelligence()` wired up (unfinished functions may fall back to the fakes) and `pnpm typecheck` passes
+### CP1 (T+3h)
+- [ ] `templates.ts` for all 4 levels, with feedback and quiz variants; unit tests check the format (delimiters, the `Level:` line, the L4 passthrough, the raw prompt first)
+- [ ] Keyword classifier, unit-tested on the seed nodes (all `DEMO_PROMPTS` route correctly; "write a haiku" → null)
+- [ ] Real `evaluateExchange` (mocked client in unit tests); **grade latency p50/p95 reported** in your status file
+- [ ] `createIntelligence()` wired up (unfinished parts may fall back to fakes); `pnpm typecheck` passes
 
-### CP2 (target T+8h)
-- [ ] Real `parseSyllabus` (text + PDF) with validation; tested on the demo syllabus
-- [ ] LLM classify fallback + cache
+### CP2 (T+9h)
 - [ ] Streaming `chat()`
-- [ ] **Harness v1** (`pnpm harness`): for each level 1–4, run `DEMO_PROMPTS.question` through `buildFrictionPrompt` + `chat` 5 times and score it:
-  - L1: no code fences, ends with a question;
-  - L2: no complete runnable code (blanks or pseudocode allowed);
-  - L3: contains code and says there's a bug;
-  - L4: contains a code fence;
-  - all levels: never mention the instructions or "friction".
+- [ ] Real `parseSyllabus` (text + PDF) with validation, tested on `fixtures/demo-syllabus.md`
+- [ ] LLM classify fallback + cache
+- [ ] Harness (`pnpm harness`): L1, L2 and L4 ≥ 4/5 on `DEMO_PROMPTS.question`; grading cases match (correctAnswer → correct, lazyAnswer at L3 → lazy, plus partial / incorrect / not_an_answer); a full 3-turn sandbox-style exchange reads naturally. Results in `harness/results/latest.md`
 
-  Plus grading cases: `DEMO_PROMPTS.correctAnswer` → correct, `lazyAnswer` at L3 → lazy, plus your own partial, incorrect and not_an_answer cases. Write the pass rates to `harness/results/latest.md`.
-
-### CP3 (target T+14h)
-- [ ] Harness ≥ 4/5 on L1, L2 and L4; grading cases match the expected verdicts
-- [ ] The answer-turn feedback reads naturally (check a full 3-turn exchange in the harness)
-
-### CP4 (target T+20h)
+### CP3 (T+16h)
 - [ ] L3 "find the bug" ≥ 4/5
-- [ ] Final prompt text frozen; the status file lists the exact demo prompts that are known to work
+- [ ] Final prompts frozen; the status file lists the exact demo prompts known to work
 
 ## 7. Claude API rules (from the `claude-api` skill; verify there)
 - Use `@anthropic-ai/sdk`. Get JSON via structured outputs (`output_config.format` / the SDK's parse helper with zod). Don't use regex-parsing of free text for structured fields.
