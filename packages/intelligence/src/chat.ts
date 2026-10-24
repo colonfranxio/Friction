@@ -13,8 +13,11 @@ export async function* chat(cfg: Config, messages: ChatMessage[], opts: { signal
     for await (const ev of stream) {
       if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') yield ev.delta.text;
     }
-    const final = await stream.finalMessage();
-    if (final.stop_reason === 'refusal') throw new Error('chat: model refused');
+    // Anything but a natural finish (max_tokens, refusal, ...) means the reply is incomplete: throw, so A
+    // doesn't treat the text already streamed as a full answer whose check question the student saw.
+    const { stop_reason } = await stream.finalMessage();
+    if (stop_reason === 'refusal') throw new Error('chat: model refused');
+    if (stop_reason !== 'end_turn' && stop_reason !== 'stop_sequence') throw new Error(`chat: incomplete reply (stop_reason=${stop_reason})`);
   } catch (err) {
     if (opts.signal?.aborted) return; // caller cancelled: end quietly, like the fake
     throw err;

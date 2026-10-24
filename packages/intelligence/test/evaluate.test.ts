@@ -52,6 +52,16 @@ describe('evaluateExchange', () => {
     expect(parse.mock.calls[0][0].messages[0].content).toMatch(/not captured/);
   });
 
+  it('a repeated or rephrased original question never earns a level, even in demo mode', async () => {
+    const { client, parse } = fakeClient({ parsed_output: { verdict: 'not_an_answer', confidence: 0.95, rationale: 'Asked again.' } });
+    for (const student_message of [DEMO_PROMPTS.question, 'Why does my useEffect keep re-running, and what goes in the dependency array?']) {
+      const r = await intel(client).evaluateExchange({ ...base, student_message, demoMode: true });
+      expect(r.new_level).toBe(1);
+    }
+    // The student's message is sent as its own labelled section, separate from the question it answers.
+    expect(parse.mock.calls[0][0].messages[0].content).toMatch(/Question asked: [^\n]+\n\nStudent's message:\nHow do I stop my useEffect/);
+  });
+
   it('clamps confidence to 0..1', async () => {
     const { client } = fakeClient({ parsed_output: { verdict: 'partial', confidence: 7, rationale: 'ok' } });
     expect((await intel(client).evaluateExchange(base)).confidence).toBe(1);

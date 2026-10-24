@@ -3,11 +3,49 @@
 **Owned by Agent B. Only this agent edits this file.**
 
 - Contract version confirmed: **3** (merged main after E's CP2 report. v3 only adds the optional `CHAT_HEADERS.quizAttached`, which A emits and C reads. It doesn't affect B. v2's `EvaluateInput.signal` is still in use.)
-- Current checkpoint: CP3 (done, pushed). PLAN v5 has no CP4; what's left are E's gate checks and the human's rehearsals.
-- CP2 report follow-up (A↔B cancellation): B's behaviour is unchanged on purpose. When the caller aborts, `chat()` ends **quietly** with no throw, like the fake (`src/chat.ts:19`, tested in `test/chat.test.ts` "forwards the signal and ends quietly when aborted"). So A's `/chat` route has to decide completion with `!abort.signal.aborted`, not from the iterator finishing. `scripts/verify-chat-abort.ts` still FAILS on this branch, as expected, until A's fix lands. Nothing in B needs to change.
+- Current checkpoint: post-CP2 "work left to do", **B READY** (see below).
+- Cancellation: A's fix (`complete = !abort.signal.aborted`, PR #1) is merged, and `scripts/verify-chat-abort.ts` **PASSES** on this branch with B's real factory. B's quiet abort is unchanged.
 - Last updated: 2026-10-24
 
-## Exit criteria: CP3
+## B READY
+- **Source:** branch `agent/intelligence`; the exact SHA is in the "B READY" commit and the human handoff. It has `main` @ `ff25700` merged in, contract **v3** confirmed.
+- **Prompts:** unchanged and still frozen. The live grader already passes every new repeat/rephrase case, so no prompt fix was needed.
+- **Code change:** `chat()` now throws when the stream ends with any `stop_reason` other than `end_turn`/`stop_sequence`: `max_tokens`, `pause_turn`, a missing value, and also `refusal`, as before. A truncated reply is therefore never returned as a normal, complete stream.
+- **New tests (42 in total, all with an injected SDK and no key):**
+  - truncated reply → throws after the partial text
+  - upstream stream error with no caller abort → throws, not a quiet end
+  - repeated or rephrased original question → `not_an_answer`, which keeps the level even in demo mode, with the student's message sent as its own labelled section
+- **Live harness** (`pnpm harness`, run 2026-10-24T19:45Z on the human's credentialed Windows machine; models chat/grade/parse=`claude-opus-5-5`, classify=`claude-haiku-5-5` from `MODEL_*`):
+
+  | Check | Result |
+  |---|---|
+  | L1 / L2 / L3 / L4 | 5/5 each |
+  | Demo answer vs the real L1 quizzes | 5/5 |
+  | Grading | **11/11** |
+  | Classify | 3/3 |
+  | Parse | text pass in 14.3s; PDF pass in 11.3s |
+  | 3-turn exchange | pass |
+
+  The 11 grading cases include:
+  - not credited: repeated original question, rephrased question, echoed check question → `not_an_answer`; keyword list → `partial`
+  - still credited: short genuine answer and question-shaped answer → `correct`
+
+  Full output: `packages/intelligence/harness/results/latest.md`.
+- **Latency:**
+  - Grade (`pnpm latency`, n=10, effort low): p50 2581ms · p95 5229ms. The p95 is over the 4s budget, so the late-grade path still matters.
+  - Chat time to first token: L1 1.1–1.4s · L2 1.2–2.0s · **L3 5.7–8.4s** · L4 1.1–3.0s.
+- **Failure vs cancellation (for A and E):**
+  1. **Cancelled** (the caller's signal is aborted): `chat()` returns quietly. The text already yielded is all there is, and A's `!abort.signal.aborted` check counts it as incomplete.
+  2. **Failed** (API error, dropped connection, refusal, `max_tokens` or any other non-natural stop, with the signal *not* aborted): `chat()` **throws**, possibly after yielding some text. A should treat this as incomplete: save the partial text if wanted, and close the quiz, because the check question may be missing. Today the client still receives a partial HTTP 200 body. Making that visible to the client is E's Phase 2 transport decision, and B needs no change for it.
+  3. **Complete:** the iterator ends normally with no abort, which means `stop_reason` was `end_turn`/`stop_sequence`.
+  - `evaluateExchange`: throws on any `stop_reason` ≠ `end_turn` or unparsed output (unchanged), and honours `signal`. `classifyTopic` never throws (failure → no match).
+- **Commands:** `pnpm --filter @friction/intelligence test`, `pnpm typecheck`, `pnpm exec tsx scripts/verify-chat-abort.ts`, `pnpm harness` and `pnpm latency` (from `packages/intelligence`; these need `.env`).
+- **Limitations:**
+  - L3 takes about 6–8s to the first token.
+  - The grade p95 is occasionally over 4s.
+  - The harness results are builder evidence from one machine, not E's real-Claude smoke ×3 or a rehearsal.
+
+## Exit criteria: CP3 (done; numbers below are historical, current ones are in B READY)
 - [x] L3 "find the bug" ≥4/5: **5/5** (it was 5/5 at CP2 and is 5/5 again after the CP1 merge). Each reply explains the causes, gives a full example with one planted loop bug (for example, an object built inside the component body and listed as a dependency), says there's exactly one bug to find without saying where, and ends with the check question.
 - [x] **Prompts frozen** as of this commit: `src/templates.ts` (friction block and all 4 levels, feedback lines, quiz line), `src/evaluate.ts` (grader system prompt and level line), `src/classify.ts` (fallback prompt), `src/parse.ts` (parse instruction), `src/chat.ts` (system prompt). From now on I change them only to fix a bug found in rehearsal, and I re-run the full harness after any change.
 - [x] Final full harness run on the frozen prompts (after merging main): **L1 5/5 · L2 5/5 · L3 5/5 · L4 5/5 · demo answer vs real L1 quizzes 5/5 · grading 5/5 · classify 3/3 · parse text + PDF pass · 3-turn pass** (`harness/results/latest.md`).
@@ -70,7 +108,7 @@ None.
 
 ## How to run and verify my part
 ```
-pnpm --filter @friction/intelligence test       # 39 tests: templates, classify (+LLM fallback/cache), evaluate, chat, parse, validate
+pnpm --filter @friction/intelligence test       # 42 tests: templates, classify (+LLM fallback/cache), evaluate, chat, parse, validate
 pnpm typecheck
 pnpm harness                                    # needs .env key; ~45 calls, ~2 min; sections: levels grading classify parse exchange
 pnpm --filter @friction/intelligence latency    # 10 graded rows + p50/p95
