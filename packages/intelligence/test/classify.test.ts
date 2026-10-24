@@ -1,5 +1,6 @@
+import type Anthropic from '@anthropic-ai/sdk';
 import { buildSeed, DEMO_PROMPTS } from '@friction/shared';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { keywordClassify } from '../src/classify';
 import { createIntelligence } from '../src/index';
 
@@ -41,5 +42,54 @@ describe('keywordClassify', () => {
   it('createIntelligence().classifyTopic uses it', async () => {
     const r = await createIntelligence({ models: {} }).classifyTopic(DEMO_PROMPTS.question, nodes);
     expect(r.node_id).toBe(idOf('React useEffect'));
+  });
+});
+
+
+function fakeClient(impl: () => Promise<object>) {
+  const parse = vi.fn().mockImplementation(impl);
+  const intel = createIntelligence({ client: { messages: { parse } } as unknown as Anthropic, models: { classify: 'test-classify-model' } });
+  return { intel, parse };
+}
+const reply = (concept: number | null, confidence: number) => async () => ({ stop_reason: 'end_turn', parsed_output: { concept, confidence } });
+
+describe('classifyTopic LLM fallback', () => {
+  it('skips the LLM when keywords hit', async () => {
+    const { intel, parse } = fakeClient(reply(1, 0.9));
+    expect((await intel.classifyTopic(DEMO_PROMPTS.question, nodes)).method).toBe('keyword');
+    expect(parse).not.toHaveBeenCalled();
+  });
+
+  it('maps the numbered answer to a node id, low effort, with a timeout', async () => {
+    const i = nodes.findIndex((n) => n.concept_name === 'Context API');
+    const { intel, parse } = fakeClient(reply(i + 1, 0.8));
+    const r = await intel.classifyTopic('how do I share a theme across deeply nested parts of my app', nodes);
+    expect(r).toEqual({ node_id: idOf('Context API'), confidence: 0.8, method: 'llm' });
+    const [params, opts] = parse.mock.calls[0];
+    expect(params.model).toBe('test-classify-model');
+    expect(params.output_config.effort).toBe('low');
+    expect(params.messages[0].content).toContain('1. ' + nodes[0].concept_name);
+    expect(opts.timeout).toBeLessThanOrEqual(3000);
+  });
+
+  it('null below 0.5 confidence, for null, or for an out-of-range number', async () => {
+    for (const [c, conf] of [[1, 0.4], [null, 0.9], [99, 0.9]] as const) {
+      const { intel } = fakeClient(reply(c, conf));
+      expect(await intel.classifyTopic(`unmatched prompt ${c} ${conf}`, nodes)).toEqual({ node_id: null, confidence: 0, method: 'none' });
+    }
+  });
+
+  it('caches by prompt + node ids; errors count as no match and are not cached', async () => {
+    const { intel, parse } = fakeClient(reply(1, 0.9));
+    await intel.classifyTopic('cache me please', nodes);
+    await intel.classifyTopic('cache me please', [...nodes].reverse());
+    expect(parse).toHaveBeenCalledTimes(1);
+    await intel.classifyTopic('cache me please', nodes.slice(1));
+    expect(parse).toHaveBeenCalledTimes(2);
+
+    const failing = fakeClient(async () => { throw new Error('timeout'); });
+    expect((await failing.intel.classifyTopic('flaky prompt', nodes)).node_id).toBeNull();
+    await failing.intel.classifyTopic('flaky prompt', nodes);
+    expect(failing.parse).toHaveBeenCalledTimes(2);
   });
 });
