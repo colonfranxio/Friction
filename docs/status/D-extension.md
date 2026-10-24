@@ -8,7 +8,7 @@
 
 ## CP1 exit criteria
 - [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
-- [x] Unit tests pass (34 at CP1; 79 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
+- [x] Unit tests pass (34 at CP1; 82 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.
 - [x] Background tests against the real mock (in-process HTTP) pass: status, L1 intercept, correct answer graded via `previous_assistant_text` → L4, passthrough, bypass + paused, concept kept after off-topic, consent off (zero fetches), offline fail-open.
 - [x] **Human live try → GO.** On real claude.ai with the mock (8789), the useEffect question got a Socratic L1 reply: no code, asked the student to explain, one hint about the dependency array, ended with a check question. So the composer rewrite + send work on the live page.
 - (moved to CP2) Full loop on claude.ai: answer → L4, new chat → full answer, badge text, block hidden in the user bubble.
@@ -53,7 +53,8 @@ Started ahead of E's scheduling because the human (lead) asked for it directly; 
 - [x] Panel (`src/sidepanel.ts`, logic in `src/lib/learning-map.ts`): full-size iframe to `${dashboardUrl}/student/<encoded id>?embed=1` built with URL APIs; only localhost/127.0.0.1 (existing host access), with an explanation for other origins; no prompts/tokens/keys in the URL.
 - [x] Consent: off → "Friction is off", no iframe and no request. Revoked while open → iframe removed immediately (stops its dashboard/API/SSE work), pending checks aborted, stale callbacks ignored. Storage changes (student/URL/consent) reload the panel.
 - [x] Unreachable dashboard → short message + **Retry** (bounded no-cors readiness probe, 2.5s per address) instead of a broken frame. A live dashboard whose API is down shows C's own in-frame error/retry.
-- [x] Tests: `test/learning-map.test.ts` (13): URL building/encoding, invalid/unsupported URLs, consent-off no-load, storage-change reload, consent revoked while open, stale check after revoke, unreachable → retry, loopback fallback, timeout, dispose. Extension total **79/79**; typecheck/build OK.
+- [x] Verified by an independent agent (Sonnet 5.5, fresh clone): PASS. Fixed from its findings: http-only dashboard URLs (matches the manifest's host access), credentials stripped from the frame URL, dot-only student ids rejected, Open learning map button disabled until the window is known (no click-before-ready error).
+- [x] Tests: `test/learning-map.test.ts` (16): URL building/encoding, invalid/unsupported URLs, consent-off no-load, storage-change reload, consent revoked while open, stale check after revoke, unreachable → retry, loopback fallback, timeout, dispose. Extension total **82/82**; typecheck/build OK.
 - [x] Visual check (simulated, headless at 400px with storage stubbed): the panel frames the live Student page from the running dashboard (iframe allowed by Vite; mastered/learning/locked render).
 - [ ] **Depends on C's EMBED READY** for the compact `?embed=1` view; until then the full Student page is shown (development scaffolding per the brief).
 - [ ] **Human check:** reload the extension, open the panel on claude.ai, answer a check question → the node turns green live in the panel. Also confirm the dashboard's `VITE_API_URL` and the extension's API URL point at the same API (8787), or mastery won't update in the panel.
@@ -111,7 +112,7 @@ Responds to FINAL-INTEGRATION-CHECK "Required completion order" item 2.
 
 ## How to run and verify my part
 ```
-pnpm --filter @friction/extension test        # 79 tests
+pnpm --filter @friction/extension test        # 82 tests
 pnpm --filter @friction/extension test:api    # integration tests vs a running API (default :8787)
 pnpm --filter @friction/extension typecheck
 pnpm build:ext                                # → apps/extension/dist

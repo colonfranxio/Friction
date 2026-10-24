@@ -19,6 +19,20 @@ describe('buildMapUrl', () => {
     expect(buildMapUrl('not a url', STUDENT).ok).toBe(false);
     expect(buildMapUrl('http://localhost:5173', '  ').ok).toBe(false);
   });
+  it('only plain http (the manifest grants http:// loopback access only)', () => {
+    const r = buildMapUrl('https://localhost:5173', STUDENT);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/http:\/\//);
+  });
+  it('strips credentials and rejects dot-only student ids', () => {
+    expect(buildMapUrl('http://user:pw@localhost:5173', 's')).toEqual({ ok: true, url: 'http://localhost:5173/student/s?embed=1' });
+    expect(buildMapUrl('http://localhost:5173', '..').ok).toBe(false);
+    expect(buildMapUrl('http://localhost:5173', '.').ok).toBe(false);
+  });
+  it('rejects look-alike hosts', () => {
+    expect(buildMapUrl('http://localhost@evil.com', STUDENT).ok).toBe(false);
+    expect(buildMapUrl('http://127.0.0.1.evil.com', STUDENT).ok).toBe(false);
+  });
   it('swaps localhost and 127.0.0.1', () => {
     expect(alternateLoopback('http://127.0.0.1:5173/student/x?embed=1')).toBe('http://localhost:5173/student/x?embed=1');
     expect(alternateLoopback('http://localhost:5173/')).toBe('http://127.0.0.1:5173/');

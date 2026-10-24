@@ -55,7 +55,14 @@ async function init() {
   // Learning map: chrome.sidePanel.open needs the click's user gesture, so resolve the window first
   // and call open() synchronously from the handler (no await before it).
   let windowId: number | undefined;
-  chrome.windows?.getCurrent?.().then((w) => (windowId = w.id)).catch(() => {});
+  const openBtn = $<HTMLButtonElement>('open-map');
+  openBtn.disabled = true; // enabled once the window is known, so the click can open the panel directly
+  chrome.windows?.getCurrent?.()
+    .then((w) => {
+      windowId = w.id;
+      openBtn.disabled = windowId === undefined;
+    })
+    .catch(() => ($('map-msg').textContent = 'Couldn’t find this window. Close and reopen the popup.'));
   $('open-map').addEventListener('click', () => {
     $('map-msg').textContent = '';
     if (!chrome.sidePanel?.open) {

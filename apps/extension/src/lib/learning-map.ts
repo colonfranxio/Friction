@@ -25,8 +25,9 @@ export function buildMapUrl(dashboardUrl: string, studentId: string): MapUrl {
   } catch {
     return { ok: false, reason: 'The Dashboard URL in Friction settings is not a valid address.' };
   }
-  if (base.protocol !== 'http:' && base.protocol !== 'https:') {
-    return { ok: false, reason: 'The Dashboard URL must start with http:// or https://.' };
+  if (base.protocol !== 'http:') {
+    // The manifest grants http://localhost/* and http://127.0.0.1/* only; we don't request more access.
+    return { ok: false, reason: 'The Dashboard URL must start with http:// (the local dashboard runs on plain http).' };
   }
   if (!ALLOWED_DASHBOARD_HOSTS.includes(base.hostname)) {
     return {
@@ -34,9 +35,13 @@ export function buildMapUrl(dashboardUrl: string, studentId: string): MapUrl {
       reason: `Friction can only show a dashboard on localhost or 127.0.0.1 (the extension has no access to ${base.hostname}).`,
     };
   }
-  if (!studentId.trim()) return { ok: false, reason: 'No student is set in Friction settings.' };
+  const id = studentId.trim();
+  if (!id) return { ok: false, reason: 'No student is set in Friction settings.' };
+  if (/^\.+$/.test(id)) return { ok: false, reason: 'The student ID in Friction settings is not valid.' };
   const url = new URL(base.toString());
-  url.pathname = `${url.pathname.replace(/\/+$/, '')}/student/${encodeURIComponent(studentId.trim())}`;
+  url.username = ''; // never carry credentials into the frame
+  url.password = '';
+  url.pathname = `${url.pathname.replace(/\/+$/, '')}/student/${encodeURIComponent(id)}`;
   url.search = '';
   url.hash = '';
   url.searchParams.set('embed', '1');
