@@ -82,3 +82,24 @@ Non-blocking findings, documented as harness follow-ups (no code change after re
 3. The trace-count controls (keyword and pending quiz) are sound: background polls can only cause false failures, never false passes.
 4. `available_during_warmup` shows `/health` answered, not that warmup was still in progress at that instant.
 5. The smoke "on" row's Moss observation comes from an uncommitted server log (wording corrected above).
+
+## Next steps (by owner)
+
+**Human (decides):**
+1. **Release decision.** Either (a) demo Moss from `moss-integration` for the sponsor judging only (recommended; zero risk to main), or (b) direct E to merge `moss-integration` into main with Moss off by default.
+2. **Recording.** In a **new** sandbox chat with Moss on, ask the theme question and capture the `[moss] retrieved` log line next to the teaching reply.
+3. **Demo machine.** Set `USE_REAL_INTELLIGENCE=1` and `USE_MOSS_RETRIEVAL=1` with credentials, restart, and wait for `[moss] ready`. Roll back with `USE_MOSS_RETRIEVAL=0` and a restart.
+4. **Devpost text.** Use the approved claim above. No accuracy, token-saving, student-memory or "fully local" claims.
+
+**A (Platform):**
+- The pre-existing `verify-stream-failure` and `--require-v4` blockers on main remain the priority for full-product acceptance. This is separate from Moss.
+- Optional harness follow-ups (verifier notes 1–2): capture the classifier's parsed output so abstention is distinguished from a Claude failure, and require a Moss trace on the unrelated step. Re-run `moss:live` into a new results folder afterwards.
+
+**B (Intelligence):** none required. Optionally expose `method`/parse status to callers if A's harness follow-up needs it (no shared contract change).
+
+**C / D:** no Moss work. Continue the learning-map assignment. Any combined demo must point the dashboard and extension at the same backend.
+
+**E (Integrator):**
+- On the human's merge decision: merge `moss-integration` → main (or a release candidate), then rerun the checklist above at the merge SHA. That's frozen install, typecheck, tests, both builds, both verify scripts, and smoke with Moss off and then on.
+- If combining with `claude-skill-tree`, reconcile on a dedicated candidate branch first.
+- Keep `experiment/moss-retrieval` as the historical reference only. Do not merge it.
