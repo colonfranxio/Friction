@@ -159,6 +159,8 @@ This section updates the remaining-work assignment after CP2. Own only `packages
 
 ## Reassigned: learning-map panel (human decision, 2026-10-24)
 
+**Combined Moss/main review follow-up:** see [MOSS-LEARNING-MAP-CANDIDATE](../checkpoints/MOSS-LEARNING-MAP-CANDIDATE.md). Your original three fixes are present, but two new deterministic cases remain: consent revoked during awaited health still permits a quota POST; composer remount during rewrite can send a replacement draft. Fix both with deferred-health/remount regressions, and correct external-API test setup so approved-SHA versus legacy scope is explicit. You retain full feature permissions on `feature/learning-map`; push a fresh PANEL READY. E's `release/moss-learning-map` is an unpublished-to-main review candidate, not accepted release code.
+
 ### Authoritative handoff: full permissions and fixes to complete
 
 **The human has granted B full repository edit permissions to complete the learning-map feature.** On `feature/learning-map`, edit any files required for this work: dashboard, extension (including D's existing source), tests, build/config, API/shared code or documentation if actually necessary. Older narrow path lists/read-only ownership restrictions are superseded for this assignment. Keep changes focused, explain any supporting API/contract/config changes in your handoff and coordinate overlapping edits with their owners. You do not need D to implement or approve the fixes. This grants feature-development authority, not permission to push/merge main, expose secrets or discard others' work. E retains release integration/review.

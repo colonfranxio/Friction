@@ -113,6 +113,8 @@ If an issue is outside your folder (shared types, scripts), write it in your sta
 
 ## work left to do
 
+**Combined release reset fix:** [MOSS-LEARNING-MAP-CANDIDATE](../checkpoints/MOSS-LEARNING-MAP-CANDIDATE.md) reproduces the uploaded-course per-student reset defect (0/8 active-course states afterward). Fix in your API-owned branch, retaining the active tree, resetting its states correctly, preserving other students and existing seed/full-reset behavior; add parse→reset→intercept and isolation regressions. Push the correction for E's combined candidate. Moss/main v4 stream checks now pass; do not reopen the resolved timestamp or stream failures.
+
 ### Moss sponsor-track handoff
 
 Read [the detailed execution plan](../moss-implementation-handoff.md). Use `agent/moss-platform` for this feature. Review runtime code from experiment `8f8fe63` now; runnable implementation waits for E's B-ready base and lockfile. Own API lifecycle, freshness, bounded resource handling, sanitized traces and the live harness. Keep the existing v4 correction separate. Publish MOSS API READY; never merge directly to main.
