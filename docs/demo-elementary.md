@@ -7,7 +7,7 @@ Branch `moss-integration`. Syllabus: [fixtures/elementary-syllabus.md](../fixtur
 1. `.env`: `USE_REAL_INTELLIGENCE=1`, `USE_MOSS_RETRIEVAL=1`, `DEMO_MODE=1`, Claude and Moss credentials.
 2. `pnpm dev:api`, then `pnpm dev:dash`. Wait for `[moss] {"state":"ready",...}` in the API terminal.
 3. Dashboard **Reset** (a full reset removes earlier uploads).
-4. Upload the syllabus: paste the `.md` text, or a PDF printed from it. The live parse takes **15–18s**, so cut that in the edit.
+4. Upload the syllabus: drag in [fixtures/elementary-syllabus.pdf](../fixtures/elementary-syllabus.pdf) (or paste the `.md` text). The live parse takes **12–18s**, so cut that in the edit.
 5. Wait about 3s after the tree appears. The API log shows a new `warming` then `ready` revision for the uploaded course.
 
 Don't use the API's student-only reset (`POST /demo/reset {student_id}`) after an upload. It drops the uploaded course's progress (known A bug). The dashboard's Reset is a full reset and is safe.
@@ -29,7 +29,7 @@ Other child-worded questions that Moss routed correctly at L1 (API probe): "My t
 ## Caveats
 
 - Real model output varies. Rehearse the exact ask/answer pair. In an earlier session one fixed answer was graded `partial` (no promotion), so rerun the take if that happens.
-- Only one question per concept per chat gets a check question. Don't pre-ask the demo question in another chat before recording.
+- A concept only gets a new check question when it has no open one, even from a different chat. Don't ask the demo question anywhere before recording (start with a fresh upload).
 - DEMO_MODE promotes L1 → L4 on one correct answer (a demo shortcut; normal mode moves one level).
 - The uploaded course has only the demo student (no classmates in the teacher's class panel).
 - On screen: a mastered badge reads level/required (for example "4/3"). Claude sometimes draws pictures in a code block, which the dashboard labels "CODE".
