@@ -7,6 +7,22 @@
 - Current checkpoint: C READY v4, mock-backed correctness/acceptance complete; real API READY and E's exclusive live acceptance still pending
 - Last updated: 2026-10-24
 
+## DASHBOARD DEMO READY (demo-readiness task C, 2026-10-24): tested SHA main `655f42d`, at the human's direct request
+- **Branch and mode:** `agent/dashboard` fast-forwarded to main `655f42d`; no dashboard source changes. Private mock (:8788) and private dashboard (:5174) in mock mode, run serially.
+- **Results:**
+  - dashboard typecheck PASS
+  - 9 unit tests PASS
+  - build PASS
+  - demo, editing, polish, v4, resilience and visual browser suites all PASS
+- **Coverage:** the suites cover upload to the concept-card tree, inspector edits, required levels, prerequisite connect/delete and the cycle toast, Activity, viewer switching, the frontier button, live mastery, reduced motion and page errors.
+- **Intentional removals kept:** module rename on the canvas, saved-position drag and canvas zoom.
+- **Narrow fitting, checked by real card bounds** (five-card level fixture: three extra concepts on the root):
+  - Every card stays inside the window at 390px (student and educator) and in the sandbox map at 1280px; there is no page overflow and there are no page errors.
+  - **Readability defect on main:** the whole level scales down, so cards are 46px wide at 390px and 84px in the 1280 sandbox map.
+  - **Fix:** `proposal/narrow-wrap` (`42f4b4f`, on top of B's PANEL READY FINAL) wraps wide levels onto full-size lines. Same check there: 127, 132 and 127px. All six suites plus B's embed suite pass on it.
+  - It touches the shared canvas/layout, so it is left to B/E per the ownership rules.
+- **Open:** real-API teacher upload and live acceptance are Phase 3 (D/E/human). Walkthrough screenshots are deferred until UI acceptance.
+
 ## Concept-card redesign (2026-10-24, at the human's direct request): supersedes the CP3 visual sign-off below
 - Branch `design/concept-cards`. Full spec, changed behaviour and handoff: [docs/design/CONCEPT-CARDS.md](../design/CONCEPT-CARDS.md).
 - **Looks:** nodes are concept cards (gold mastered, violet learning, hatched locked); the deck palette and Fraunces headings are used on every screen; bypass is a teal ticket; the logo is a gold card.
