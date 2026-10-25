@@ -18,6 +18,8 @@ try {
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(String(error)));
   await page.goto(`${base}/educator/${SEED_IDS.tree}`); await page.waitForSelector('.live-indicator.is-live');
   await page.getByRole('button', { name: 'Edit mode' }).click();
+  // The tree opens scrolled to the learning frontier; it scrolls vertically like a page (no zoom or pan).
+  const scrollTreeTo = (top: number) => page.locator('.tree-scroll').evaluate((element, y) => element.scrollTo({ top: y }), top);
   await page.getByRole('button', { name: 'Node', exact: true }).click();
   await page.getByLabel('Concept', { exact: true }).fill('Editing acceptance concept');
   await page.getByLabel('Mastery criteria', { exact: true }).fill('Explain persistence in your own words.');
@@ -27,22 +29,18 @@ try {
   const node = page.locator(`[data-concept="${added.id}"]`);
   await node.getByRole('combobox', { name: 'Required mastery level' }).selectOption('2');
   await eventually(async () => (await tree()).nodes.find((n) => n.id === added.id)?.required_blooms_level === 2);
-  await page.getByRole('button', { name: 'Rename Foundations' }).click();
-  await page.getByRole('textbox', { name: 'Pillar name' }).fill('Foundations revised');
-  await page.getByRole('textbox', { name: 'Pillar name' }).press('Enter');
-  await eventually(async () => (await tree()).pillars[0].name === 'Foundations revised');
   await node.locator('.node-circle').click();
   await page.getByLabel('Concept', { exact: true }).fill('Edited concept');
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await eventually(async () => (await tree()).nodes.find((n) => n.id === added.id)?.concept_name === 'Edited concept');
+  // The tree is a standard layout (prerequisite rows, syllabus order), so dragging never moves or saves a card.
   const bounds = await node.locator('.node-circle').boundingBox(); assert.ok(bounds);
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
   await page.mouse.move(bounds.x + bounds.width / 2 + 55, bounds.y + bounds.height / 2 + 25, { steps: 12 }); await page.mouse.up();
-  await eventually(async () => (await tree()).nodes.find((n) => n.id === added.id)?.position !== null);
-  const position = (await tree()).nodes.find((n) => n.id === added.id)!.position;
-  await page.reload(); await page.waitForSelector('.live-indicator.is-live');
-  assert.deepEqual((await tree()).nodes.find((n) => n.id === added.id)!.position, position);
-  await page.getByRole('button', { name: 'Edit mode' }).click();
+  await new Promise((done) => setTimeout(done, 300));
+  assert.equal((await tree()).nodes.find((n) => n.id === added.id)!.position, null, 'tree cards are not draggable');
+  await page.keyboard.press('Escape');
+  await scrollTreeTo(0);
   const connect = async (source: string, target: string) => {
     const sourceHandle = page.locator(`[data-concept="${source}"] .react-flow__handle.source`);
     const targetHandle = page.locator(`[data-concept="${target}"] .react-flow__handle.target`);
@@ -63,5 +61,5 @@ try {
   await page.getByRole('button', { name: 'Delete node', exact: true }).click();
   await eventually(async () => (await tree()).nodes.length === 8);
   assert.deepEqual(errors, []);
-  console.log('PASS: create, required badge, pillar rename, inspector save, drag/reload persist, connect, cycle toast, keyboard edge delete, node delete.');
+  console.log('PASS: create, required badge, inspector save, fixed layout (no drag), connect, cycle toast, keyboard edge delete, node delete.');
 } finally { await api.demoReset({ full: true }); await browser.close(); }

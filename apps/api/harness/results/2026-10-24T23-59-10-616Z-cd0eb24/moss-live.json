@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-10-24T23:59:10.616Z",
+  "sha": "cd0eb24fdb7309fbe39927df4e0780acc55d5fd8",
+  "dirtyWorkingTree": false,
+  "models": {
+    "classify": "claude-haiku-5-5",
+    "chat": "claude-opus-5-5",
+    "grade": "claude-opus-5-5"
+  },
+  "live": [
+    {
+      "step": "available_during_warmup",
+      "http": 200
+    },
+    {
+      "step": "ready",
+      "state": "ready",
+      "revision": "3fc20bf603a5",
+      "ms": 2315
+    },
+    {
+      "step": "keyword_control_pass",
+      "concept": "React useEffect",
+      "mossQueries": 0
+    },
+    {
+      "step": "retrieval_chat_pass",
+      "candidates": [
+        "Props",
+        "Context API",
+        "React useEffect"
+      ],
+      "retrievalMs": 5,
+      "selected": "Context API",
+      "level": "2",
+      "quizAttached": "true",
+      "masteryUnchanged": true,
+      "replyCharacters": 2122,
+      "replyExcerpt": "This is the classic **prop drilling** problem, and React's **Context API** solves it. Instead of handing the theme down through every component, you put it in a \"broadcast channel\" that any descendant can tune into directly.\n\n## The three-step pattern\n\n**Step 1: Create the context (once, in its own file)**\n```\nThemeContext = ____(defaultValue)      // which React function creates a context?\nexport"
+    },
+    {
+      "step": "pending_quiz_pass",
+      "concept": "Context API",
+      "mossQueries": 0,
+      "verdict": "correct",
+      "levelBefore": 2,
+      "levelAfter": 4
+    },
+    {
+      "step": "unrelated_abstain_pass",
+      "mossCandidates": [
+        "Custom Hooks",
+        "React useEffect",
+        "Performance & Memoization"
+      ],
+      "selected": null
+    }
+  ],
+  "injected": [
+    {
+      "step": "init_failure_fallback_pass",
+      "fallbackReason": "unavailable",
+      "selected": "Context API",
+      "claude": "real"
+    },
+    {
+      "step": "query_timeout_fallback_pass",
+      "fallbackReason": "timeout",
+      "selected": "Context API",
+      "claude": "real"
+    }
+  ],
+  "config": [
+    {
+      "step": "missing_credentials_pass",
+      "trace": "disabled/credentials",
+      "apiServing": true
+    }
+  ],
+  "status": "complete"
+}

@@ -1,6 +1,6 @@
 # Friction UI Layouts (what the finished product looks like)
 
-Every screen in the MVP, who owns it, and what's on it. Visual language comes from [design.md](../design.md): warm light mode, rounded geometry, Nunito.
+Every screen in the MVP, who owns it, and what's on it. Visual language comes from [design.md](../design.md): lavender ground, concept cards, Fraunces headings and Nunito UI. [Concept Cards](design/CONCEPT-CARDS.md) is the current visual handoff. The primary demo starts with teacher tree creation, then student views and the extension; the sandbox is a secondary surface.
 
 | Screen | Route / surface | Owner |
 |---|---|---|
@@ -8,7 +8,7 @@ Every screen in the MVP, who owns it, and what's on it. Visual language comes fr
 | Student view | dashboard `/student/:studentId` | C |
 | Sandbox chat | dashboard `/sandbox` | C |
 | Upload dialog, inspector, class panel, activity, toasts | dashboard overlays/panels | C |
-| Extension popup (bonus) | `chrome-extension://…/popup.html` | D |
+| Extension popup (primary student workflow) | `chrome-extension://…/popup.html` | D |
 | On-page badge on claude.ai | injected shadow-DOM pill | D |
 
 Default route `/` redirects to `/educator/33333333-3333-4333-8333-333333333333` (`SEED_IDS.tree`).
@@ -19,17 +19,18 @@ Default route `/` redirects to `/educator/33333333-3333-4333-8333-333333333333` 
 
 | Token | Value | Use |
 |---|---|---|
-| `--bg` | `#FDFBF7` | canvas / page |
-| `--surface` | `#FFFFFF` | cards, panels |
-| `--border` | `#E5E7EB` | panel borders, locked edges |
-| `--text` | `#1F2937` | primary text |
-| `--muted` | `#6B7280` | secondary text |
-| `--locked` | `#9CA3AF` | locked nodes |
-| `--active` | `#F59E0B` | in-progress nodes and edges, L1–L3 chips |
-| `--mastered` | `#10B981` | mastered nodes and edges, L4 chip |
-| `--alert` | `#F97316` | bypass toast accent (warm orange, not red) |
-| radius | 8px lines, 12px cards, full pills | |
-| font | Nunito 400/600/700/800 (loaded in `index.html`) | |
+| `--bg` | `#F4F1FA` | page/canvas ground |
+| `--surface` | `#FFFFFF` | cards and panels |
+| `--border` | `#E2DCEC` | borders |
+| `--text` | `#231B3A` | primary ink |
+| `--muted` | `#5E5675` | supporting text |
+| `--locked` | `#8F86A8` | hatched slate locked cards |
+| `--active` | `#6D4AFF` | violet learning cards |
+| `--mastered` | `#E0A100` | gold mastered cards |
+| `--alert` / bypass | `#0E7A7A` | teal tickets and teacher notification accents |
+| font | Fraunces / Nunito | titles and logo / UI |
+
+Errors keep their distinct warm treatment. Status text, hatching, borders and padlocks reinforce colour.
 
 Level chip text comes from `LEVEL_LABELS` in shared: `L1 · Socratic`, `L2 · Scaffolder`, `L3 · Challenger`, `L4 · Normal`.
 
@@ -47,98 +48,32 @@ Level chip text comes from `LEVEL_LABELS` in shared: `L1 · Socratic`, `L2 · Sc
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 - The segmented control switches routes: Student goes to `/student/<SEED_IDS.demoStudent>`.
-- `● Live` is green while the SSE connection is open and grey with "Reconnecting…" otherwise.
+- `● Live` is violet while the SSE connection is open and grey with "Reconnecting…" otherwise.
 
 ## 2. Educator canvas: `/educator/:treeId`
 
-```
-┌────────────────────────────────────────────────────────────────────────────────┐
-│ TopBar                                                                         │
-├────────────────────────────────────────────────────────────────────────────────┤
-│ [⇪ Upload syllabus] [+ Node] [✎ Edit mode ◯]   Viewing as: [Class ▾]   [↺ Reset demo] │ ← toolbar 48px
-├──────────────────────────────────────────────────────────────┬─────────────────┤
-│   FOUNDATIONS ✎       EFFECTS & DATA ✎      BUILDING APPS ✎  │ [Class|Activity]│
-│                                                              │                 │
-│      (◉) JSX & Comp.                                         │ Alex Chen   ●   │
-│      [3/3]  ⓹                                                │ ▓▓▓▓▓░░░ 3/8    │
-│      ╭──┴─────╮                                              │ bypass 3 left   │
-│   (○) Props  (◉) useState                                    │ ─────────────── │
-│   [3/3]      [4/4]  ─────────────╮                           │ Priya       ●   │
-│                 │                │                           │ ▓▓▓▓▓▓▓░ 6/8    │
-│                 ╰──────► (◉) React useEffect   (○) Context   │ …               │
-│                           [1/4] ⓬            [2/3]          │                 │
-│                          ╭──┴────────╮          │            │                 │
-│                    (🔒) Data      (🔒) Custom   │            │                 │
-│                     Fetching       Hooks ──────►(🔒) Perf.  │                 │
-│                     [1/3]          [1/4]        [1/4]        │                 │
-│                                                              │                 │
-├──────────────────────────────────────────────────────────────┴─────────────────┤
-│ legend:  ● mastered   ● active   ● locked                       zoom − ▢ +    │
-└────────────────────────────────────────────────────────────────────────────────┘
-```
-- **Layout** (`src/tree/layout.ts`): one column per pillar (ordered by `Pillar.order`), column width 280px, gap 40px. `y = computeDepths()[node] × 150px + 80px`. Nodes in the same pillar at the same depth sit side by side, 100px apart. If `node.position` is set, use it.
-- **Pillar header:** uppercase label pill at the top of each column. In edit mode, clicking ✎ renames it inline (`PATCH /pillars/:id`).
-- **Viewing as:**
-  - `Class` (default): node colors show the **class majority** status; the ⓹ chip is the number of students whose current focus is that node (heatmap).
-  - Picking a student: colors and badges show that student's state.
-- **Right panel (320px)**, tabs:
-  - **Class:** students sorted by progress. Each row: name, last-seen dot (green < 2 min, grey otherwise, `○ Friction off` when the heartbeat says disabled), mastered/total bar, bypasses left. Clicking a row sets "Viewing as".
-  - **Activity:** `ActivityItem` feed, newest first. `Alex Chen · React useEffect · ✓ correct (0.92) → L4`, expand for the rationale. Bypass items have an orange left border.
-  - **Inspector:** replaces the tabs when a node is selected (§2b).
-- **Edit mode** on: nodes draggable (save on drag end with `PATCH position`), connect handle → `POST /edges` (a 409 shows a toast "That would create a loop"), select an edge + Backspace → `DELETE`, `+ Node` opens the inspector blank.
-- **Reset demo:** only shown when `/health` reports `demo: true`.
+The teacher opens this view first to upload a syllabus and create the tree. The toolbar retains Upload syllabus, + Node, Edit mode, Viewing as and demo-only Reset. The right panel retains Class/Activity tabs or the selected concept's inspector.
 
-### 2a. Node anatomy
-```
-        ⓬            ← class count chip (educator, Class view only)
-      ╭─────╮
-      │  ⟳  │        ← circle: major 72px / minor 52px, icon from ICON_KEYWORDS (lucide), white glyph
-      ╰─────╯           fill: locked #9CA3AF + small 🔒 overlay · active #F59E0B · mastered #10B981
-      [ 1/4 ]        ← pill badge: current/required (click in edit mode → required-level picker 1–4)
-   React useEffect   ← label, 13px 700, max 2 lines
-```
-Hover: scale 1.06, a 2px float, and a tooltip with the mastery criteria and the student's level chip.
+### 2a. Concept cards and prerequisite rows
 
-### 2b. Inspector (right panel)
-```
-┌ React useEffect ───────────────── ✕ ┐
-│ Concept    [React useEffect       ] │
-│ Pillar     [Effects & Data ▾]       │
-│ Mastery    [Identify and prevent  ] │
-│            [an infinite render…   ] │
-│ Required   (1)(2)(3)(●4)            │
-│ Size       (● major)(○ minor)       │
-│ Icon       [refresh ▾]              │
-│ Keywords   useeffect × dependency…  │
-│ ─────────────────────────────────── │
-│ Recent checks on this node          │
-│ Alex  ✓ correct 0.92  2m ago        │
-│ Priya ~ partial 0.55  9m ago        │
-│ [Delete node]            [Save]     │
-└─────────────────────────────────────┘
-```
+- Each concept is a 132 × 172px card: state kicker, emblem/icon, title (two lines), progress meter and current/required badge. Layout reserves 178px including the shadow edge. Major/minor metadata no longer changes the visible card size.
+- Mastered is gold with MASTERED ★; learning is violet with a slight tilt; locked is hatched slate with a padlock. Hover/focus exposes mastery criteria. Educator Class view retains the focus count.
+- One centred, evenly spaced row per prerequisite depth. Order follows syllabus module order and API concept order, adjusted beneath prerequisites. Rounded prerequisite edges remain; module columns/banners are removed.
+- Saved positions are ignored. Cards cannot be dragged; no canvas pan/zoom. The tree scrolls vertically, starts at the learning frontier, and returns there on viewer changes without jumping on live updates or edits.
+- Scale is at most 1 and shrinks as needed to fit every card, including below 0.5 on narrow canvases (human-approved integration correction). Verify card bounds, not merely page overflow.
+- “Back to what you're learning” appears only when the frontier leaves view. Ctrl+scroll zooms the browser page, not the tree.
 
-### 2c. Upload dialog
-```
-┌ Generate a skill tree ─────────────────────── ✕ ┐
-│  ┌───────────────────────────────────────────┐  │
-│  │      ⇪  Drop a syllabus PDF here          │  │
-│  │         or click to choose                │  │
-│  └───────────────────────────────────────────┘  │
-│  — or paste text —                              │
-│  [                                          ]   │
-│                               [Generate tree]   │
-└─────────────────────────────────────────────────┘
-```
-While parsing: the dialog shows empty pillar columns filling with grey ghost circles one by one, with the line "Reading syllabus… finding concepts… linking prerequisites…". On success, it closes and navigates to `/educator/<tree_id>`; nodes animate in pillar by pillar.
+### 2b. Viewing, editing and inspector
 
-### 2d. Bypass toast (top-right, stacks, auto-hides after 8s)
-```
-┌──────────────────────────────────────────┐
-│ ▍⚠  Alex Chen used a bypass              │
-│ ▍   on Context API · 2 left              │
-└──────────────────────────────────────────┘
-```
+Class view uses shared majority status and focus counts; selecting a student uses that student's mastery. Class rows show progress, last seen and bypass tickets. Activity shows educator-safe verdict/confidence/rationale and teal bypass notifications; no raw questions or replies.
+
+Edit mode supports creating/deleting concepts, editing name/module/criteria/required level/size/icon/keywords, connecting prerequisites and keyboard deletion of selected edges. A cycle returns the existing loop toast. Clicking the required-level badge still changes the required level. **Drag positioning and inline module renaming are removed intentionally.** Module assignment remains in the inspector; modules still exist in the API.
+
+### 2c. Upload and live progress
+
+The upload dialog accepts PDF or text and shows parsing/loading/error/retry states, then navigates to the returned tree. The populated canvas uses concept cards, not pillar columns or circles. Reset is shown only when health reports demo mode.
+
+Mastery flips to gold with confined confetti, and unlocked children turn face up. Reduced motion skips decorative transitions, preserving live updates. Bypass toast uses a teal ticket, student/concept and remaining ×N count and auto-dismisses as before.
 
 ## 3. Student view: `/student/:studentId`
 
@@ -155,16 +90,16 @@ While parsing: the dialog shows empty pillar columns filling with grey ghost cir
 │                                                              │ L1 · Socratic   │
 │                                                              │ "Identify and…" │
 │                                                              │                 │
-│                                                              │ Bypasses  ●●●   │
+│                                                              │ Tickets  ×3     │
 ├──────────────────────────────────────────────────────────────┴─────────────────┤
 │ legend                                                                         │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 - "Now learning" = the most recently updated active node.
-- Live via SSE. When a node becomes mastered: the padlock dissolves on the children, the node pulses, particles burst inside the node radius, the badge ticks 1/4 → 4/4, and newly unlocked edges draw outward.
+- Live via SSE. When a concept becomes mastered: the card flips gold with contained confetti and unlocked children turn face up. Reduced motion skips decorative effects while retaining live state.
 - **This is the screen shown side by side with claude.ai in the demo.**
 
-## 4. Sandbox: `/sandbox` (MAIN DEMO SURFACE)
+## 4. Sandbox: `/sandbox` (secondary testing/fallback surface)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────┐
@@ -190,45 +125,29 @@ While parsing: the dialog shows empty pillar columns filling with grey ghost cir
 - Streams `POST /chat`. Reads `X-Friction-*` headers for the right panel. "Show hidden prompt" displays what was injected (rebuilt client-side is fine: show the level and node; the exact text is optional).
 - "New chat" generates a new `conversation_id` (uuid).
 - **Use bypass** → `POST /bypass` for the current turn's node; shows the remaining quota, or "No bypasses left" on 409.
-- The mini tree is the student view (same live SSE data), so the demo works on one screen: ask → push back → answer → node turns green.
+- The mini tree is the student view (same live SSE data), so the demo works on one screen: ask → push back → answer → card turns gold.
 
-## 5. Extension popup (D, bonus), 360 × ~460px
+## 5. Extension popup (primary student workflow)
 
-```
-┌──────────────────────────────────┐
-│ ◆ Friction              ● Online │   ← ● grey "Offline" when /health fails
-├──────────────────────────────────┤
-│ Friction enabled          [ ●━ ] │   ← consent toggle; off = no API calls at all
-│                                  │
-│ Current concept                  │
-│ ⟳ React useEffect                │
-│ ┌────────────────┐               │
-│ │ L1 · Socratic  │  Max friction │
-│ └────────────────┘               │
-│                                  │
-│ [ Use a bypass (3 left) ]        │   ← POST /bypass for the current node; 409 → "No bypasses left"
-│ Bypass skips friction for this   │
-│ concept and notifies your teacher│
-├──────────────────────────────────┤
-│ ▸ Settings                       │
-│   Student ID [2222…2222       ]  │
-│   API URL    [http://127.0.0.1:8787] │
-│                    v0.1 · CP1    │
-└──────────────────────────────────┘
-```
+- Gold-card logo and Fraunces brand heading on lavender ground, with Nunito controls and supporting text. Toolbar icons at 16/32/48/128px use the same tilted card mark; `build.mjs` copies them.
+- Online/offline indicator and consent toggle remain. Consent off must prevent new API actions and unload an open learning-map iframe.
+- Current concept is presented as a card with the existing level chip and assistance wording. Empty/locked treatment uses hatched slate; violet denotes learning and gold normal/mastered assistance.
+- Bypass is a teal ticket: label plus separate ×N stub, remaining quota and teacher-notification text. The readiness gate selects honest prompt-only versus pause-until-reset wording. Preserve 409 and offline errors.
+- Copy question is available when a paid bypass cannot safely resend because the user changed chat/draft/consent/send state. Do not claim successful delivery; never overwrite their new draft.
+- Open learning map opens Chrome's side panel directly from the click gesture; the toolbar popup stays the default action. Settings retain Student ID, API URL, approved API READY SHA and separate Dashboard URL. The dashboard and extension must use the same backend/store for live mastery.
+- The panel shell inherits this palette and frames the Student route, with consent-off and unreachable/Retry states. Compact embed/map-only implementation is tracked separately under B; do not claim that feature is merged merely because the shell is present.
 
-## 6. On-page badge on claude.ai (D)
+## 6. On-page claude.ai pill
 
-Fixed at the bottom-right, inside a shadow DOM so claude.ai's CSS can't touch it, 12px from the edges:
-```
- ╭──────────────────────────────────────╮
- │ ◆ Friction · L1 Socratic · useEffect │      active (amber dot)
- ╰──────────────────────────────────────╯
- ╭──────────────────────────╮
- │ ◆ Friction · no friction │                  no node matched / L4 (green dot)
- ╰──────────────────────────╯
- ╭──────────────────────────╮
- │ ◆ Friction offline       │                  API unreachable (grey dot); prompts pass through unchanged
- ╰──────────────────────────╯
-```
-It updates after every intercept. It never blocks clicks on claude.ai's own UI (`pointer-events: none` except on the pill itself).
+Fixed bottom-right inside shadow DOM, 12px from the edges, with the card glyph driven by `badgeMark()`. The shell is white with an ink border; Nunito text and state marks match the popup. Only the pill's own controls receive pointer events.
+
+| State | Treatment and behaviour |
+|---|---|
+| Learning L1–L3 | Violet card mark, concept/level text and eligible teal Bypass ticket |
+| Normal/mastered | Gold card mark; existing no-friction wording |
+| Idle/offline/disabled | Slate/dashed mark with explicit status; existing fail-open behaviour |
+| Bypassed | Teal ticket mark with remaining count and scope-appropriate wording |
+| Quota spent, not sent | Explicit reason and Copy question; do not arm/resend into a changed chat or draft |
+| Error/reload | Distinct status text and alert treatment; never masquerade as a bypass |
+
+The pill updates after interception. Keep hidden-prompt stripping, chat isolation, draft protection, consent and API-readiness gates intact. Styling does not change grading, mastery or HTTP contracts. Actual claude.ai conversation/reload behaviour needs the human live check after rebuilding the extension.

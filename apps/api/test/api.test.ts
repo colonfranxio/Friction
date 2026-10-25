@@ -272,6 +272,248 @@ describe('bypass', () => {
   });
 });
 
+describe('prompt-scoped bypass (contract v4)', () => {
+  const Q = DEMO_PROMPTS.question;
+  const CONV = 'sb-pb';
+  const bypass = (t: ReturnType<typeof makeApp>, extra: Record<string, unknown> = {}, node: string = N.useEffect) =>
+    t.call('POST', '/bypass', { student_id: S, node_id: node, ...extra });
+  const issue = (t: ReturnType<typeof makeApp>, text = Q, conv = CONV) => bypass(t, { scope: 'prompt', raw_prompt: text, conversation_id: conv });
+  const chatWith = (t: ReturnType<typeof makeApp>, token: unknown, over: Record<string, unknown> = {}) =>
+    t.app.request('/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        student_id: S,
+        conversation_id: CONV,
+        prompt_bypass_token: token,
+        messages: [{ role: 'user', content: Q }],
+        ...over,
+      }),
+    });
+  /** An app whose model/grader calls are counted, so "400 before any model call" is checkable. */
+  const counted = (clock?: () => number) => {
+    const calls = { chat: 0, grade: 0 };
+    const intel: Intelligence = {
+      ...fakeIntelligence,
+      chat: (m, o) => { calls.chat++; return fakeIntelligence.chat(m, o); },
+      evaluateExchange: (i) => { calls.grade++; return fakeIntelligence.evaluateExchange(i); },
+    };
+    return { calls, t: makeApp({ intel, clock }) };
+  };
+  const quota = (t: ReturnType<typeof makeApp>) => t.store.db.users.find((u) => u.id === S)!.bypass_quota;
+  const paused = (t: ReturnType<typeof makeApp>, node: string = N.useEffect) =>
+    t.store.db.states.find((s) => s.student_id === S && s.node_id === node)!.paused;
+
+  it('legacy: omitted and explicit "concept" scope both pause the node and charge every time, with no token', async () => {
+    const t = makeApp();
+    const a = await bypass(t, {}, N.context);
+    const b = await bypass(t, { scope: 'concept' }, N.context);
+    expect(a.body).toEqual({ remaining_quota: 2 });
+    expect(b.body).toEqual({ remaining_quota: 1 });
+    expect(paused(t, N.context)).toBe(true);
+  });
+
+  it('prompt scope: one quota, no pause, mastery untouched, pending quiz closed, educator events as before', async () => {
+    const t = makeApp();
+    await intercept(t, Q);
+    expect(t.store.db.logs[0].quiz_pending).toBe(true);
+    const before = level(t, N.useEffect);
+    t.events.length = 0;
+    const r = await bypass(t, { scope: 'prompt' });
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ remaining_quota: 2 }); // no binding, so no token
+    expect(paused(t)).toBe(false);
+    expect(level(t, N.useEffect)).toBe(before);
+    expect(t.store.db.logs[0].quiz_pending).toBe(false);
+    expect(t.events.map((e) => e.type)).toEqual(['student_state', 'bypass']);
+    const feed = await t.call('GET', `/trees/${SEED_IDS.tree}/activity`);
+    // The intercept and the bypass can share a created_at tick, so don't assume the feed's order.
+    const bypassItem = feed.body.items.find((i: { kind: string }) => i.kind === 'bypass');
+    expect(bypassItem).toMatchObject({ kind: 'bypass', student_name: 'Alex Chen', concept_name: 'React useEffect' });
+    expect(feed.body.items.filter((i: { kind: string }) => i.kind === 'bypass')).toHaveLength(1);
+  });
+
+  it('prompt scope does not undo an existing concept pause', async () => {
+    const t = makeApp();
+    await bypass(t, { scope: 'concept' });
+    expect(paused(t)).toBe(true);
+    await bypass(t, { scope: 'prompt' });
+    expect(paused(t)).toBe(true);
+    expect(quota(t)).toBe(1);
+  });
+
+  it('bad scope or a half/unscoped binding is a 400 before anything is charged or changed; empty quota is 409 with no token', async () => {
+    const t = makeApp();
+    const bad: Array<Record<string, unknown>> = [
+      { scope: 'forever' },
+      { raw_prompt: Q, conversation_id: CONV }, // binding without prompt scope
+      { scope: 'concept', raw_prompt: Q, conversation_id: CONV },
+      { scope: 'prompt', raw_prompt: Q },
+      { scope: 'prompt', conversation_id: CONV },
+      { scope: 'prompt', raw_prompt: '  ', conversation_id: CONV },
+      { scope: 'prompt', raw_prompt: Q, conversation_id: 7 },
+    ];
+    for (const extra of bad) {
+      const r = await bypass(t, extra);
+      expect([JSON.stringify(extra), r.status, r.body.error.code]).toEqual([JSON.stringify(extra), 400, 'bad_request']);
+    }
+    expect(quota(t)).toBe(3);
+    expect(paused(t)).toBe(false);
+    expect(t.store.db.bypasses).toHaveLength(0);
+    for (let i = 0; i < 3; i++) await bypass(t, { scope: 'prompt' });
+    const empty = await issue(t);
+    expect(empty.status).toBe(409);
+    expect(empty.body.prompt_bypass_token).toBeUndefined();
+  });
+
+  it('a token buys exactly one L4, no-quiz, ungraded turn; mastery and pause stay; the next ordinary turn has friction again', async () => {
+    const { t, calls } = counted();
+    await intercept(t, Q); // opens a pending quiz at L1
+    const iss = await issue(t);
+    expect(iss.body.remaining_quota).toBe(2);
+    expect(typeof iss.body.prompt_bypass_token).toBe('string');
+    expect(Object.keys(iss.body).sort()).toEqual(['prompt_bypass_token', 'remaining_quota']);
+    const gradesBefore = calls.grade;
+    const res = await chatWith(t, iss.body.prompt_bypass_token);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-friction-level')).toBe('4');
+    expect(res.headers.get('x-friction-node-id')).toBe(N.useEffect);
+    expect(res.headers.get('x-friction-quiz-attached')).toBe('false');
+    const text = await res.text();
+    expect(text.length).toBeGreaterThan(0);
+    expect(calls.grade).toBe(gradesBefore); // never graded
+    expect(level(t, N.useEffect)).toBe(1);
+    expect(paused(t)).toBe(false);
+    expect(quota(t)).toBe(2); // charged at issue only, not at use
+    const log = t.store.db.logs.find((l) => l.id === res.headers.get('x-friction-intercept-id'))!;
+    expect(log).toMatchObject({ level: 4, quiz_pending: false, app_source: 'sandbox', raw_prompt: Q, injected_prompt: Q, llm_response: text });
+    // A normal turn afterwards is back to level-1 friction with a quiz.
+    const next = await chatWith(t, undefined, { prompt_bypass_token: undefined });
+    expect(next.headers.get('x-friction-level')).toBe('1');
+    expect(next.headers.get('x-friction-quiz-attached')).toBe('true');
+    await next.text();
+  });
+
+  it('a spent token cannot be replayed: 400 before any model call, nothing re-charged', async () => {
+    const { t, calls } = counted();
+    const tok = (await issue(t)).body.prompt_bypass_token;
+    await (await chatWith(t, tok)).text();
+    const chatCalls = calls.chat;
+    const again = await chatWith(t, tok);
+    expect(again.status).toBe(400);
+    expect((await again.json()).error.code).toBe('bad_request');
+    expect(calls.chat).toBe(chatCalls);
+    expect(quota(t)).toBe(2);
+  });
+
+  it('two concurrent requests with one token: exactly one wins, the model runs once', async () => {
+    const { t, calls } = counted();
+    const tok = (await issue(t)).body.prompt_bypass_token;
+    const rs = await Promise.all([chatWith(t, tok), chatWith(t, tok)]);
+    expect(rs.map((r) => r.status).sort()).toEqual([200, 400]);
+    await Promise.all(rs.map((r) => r.text()));
+    expect(calls.chat).toBe(1);
+  });
+
+  it('a mismatch (other text, other chat, other student, unknown token) is a 400 and does NOT consume the valid token', async () => {
+    const { t, calls } = counted();
+    const tok = (await issue(t)).body.prompt_bypass_token;
+    const other = t.store.db.users.find((u) => u.role === 'student' && u.id !== S)!;
+    const wrong: Array<[string, Response]> = [
+      ['text', await chatWith(t, tok, { messages: [{ role: 'user', content: Q + ' (edited)' }] })],
+      ['conversation', await chatWith(t, tok, { conversation_id: 'another-chat' })],
+      ['student', await chatWith(t, tok, { student_id: other.id })],
+      ['unknown token', await chatWith(t, 'not-a-token')],
+      ['non-string token', await chatWith(t, 123)],
+    ];
+    for (const [name, r] of wrong) expect([name, r.status]).toEqual([name, 400]);
+    expect(calls.chat).toBe(0);
+    const ok = await chatWith(t, tok);
+    expect(ok.status).toBe(200);
+    await ok.text();
+  });
+
+  it('expires after 120 seconds (injected clock) with a 400 and no model call', async () => {
+    let now = 1_000_000;
+    const { t, calls } = counted(() => now);
+    const tok = (await issue(t)).body.prompt_bypass_token;
+    now += 119_000;
+    expect(t.ctx.promptTokens.size).toBe(1);
+    now += 2_000; // 121s
+    const r = await chatWith(t, tok);
+    expect(r.status).toBe(400);
+    expect(calls.chat).toBe(0);
+    expect(quota(t)).toBe(2); // the expired token is not refunded
+  });
+
+  it('still valid just inside the window', async () => {
+    let now = 5_000;
+    const { t } = counted(() => now);
+    const tok = (await issue(t)).body.prompt_bypass_token;
+    now += 119_000;
+    const r = await chatWith(t, tok);
+    expect(r.status).toBe(200);
+    await r.text();
+  });
+
+  it('a spent token is not re-armed by a failed model (502) or a client cancel', async () => {
+    const failing: Intelligence = { ...fakeIntelligence, chat: () => (async function* () { throw new Error('down'); })() };
+    const t = makeApp({ intel: failing });
+    const tok = (await issue(t)).body.prompt_bypass_token;
+    expect((await chatWith(t, tok)).status).toBe(502);
+    expect((await chatWith(t, tok)).status).toBe(400);
+    expect(quota(t)).toBe(2);
+    // The ungraded L4 log must not leave a quiz pending.
+    expect(t.store.db.logs.every((l) => !l.quiz_pending)).toBe(true);
+  });
+
+  it('reset and reparse invalidate tokens (full reset, per-student reset, demo-cache parse)', async () => {
+    for (const how of ['full', 'student', 'parse'] as const) {
+      const { t, calls } = counted();
+      const tok = (await issue(t)).body.prompt_bypass_token;
+      if (how === 'full') await t.call('POST', '/demo/reset', { full: true });
+      else if (how === 'student') await t.call('POST', '/demo/reset', { student_id: S });
+      else await t.call('POST', '/trees/parse', { kind: 'text', text: 'x', title: 't' });
+      expect(t.ctx.promptTokens.size).toBe(0);
+      const r = await chatWith(t, tok);
+      expect([how, r.status]).toEqual([how, 400]);
+      expect(calls.chat).toBe(0);
+    }
+  });
+
+  it('a token is not invalidated by another student\'s reset', async () => {
+    const t = makeApp();
+    const tok = (await issue(t)).body.prompt_bypass_token;
+    const other = t.store.db.users.find((u) => u.role === 'student' && u.id !== S)!;
+    await t.call('POST', '/demo/reset', { student_id: other.id });
+    const r = await chatWith(t, tok);
+    expect(r.status).toBe(200);
+    await r.text();
+  });
+
+  it('privacy: educator events and the activity feed carry neither the token nor the raw text', async () => {
+    const t = makeApp();
+    const tok = (await issue(t)).body.prompt_bypass_token;
+    await (await chatWith(t, tok)).text();
+    const feed = await t.call('GET', `/trees/${SEED_IDS.tree}/activity`);
+    const blob = JSON.stringify([t.events, feed.body]);
+    expect(blob).not.toContain(tok);
+    expect(blob).not.toContain(Q);
+    expect(t.events.some((e) => e.type === 'activity')).toBe(true);
+  });
+
+  it('the token turn is still a normal /chat on the wire: partial text saved, failure rejects the body', async () => {
+    const intel: Intelligence = { ...fakeIntelligence, chat: () => (async function* () { yield 'a '; throw new Error('cut'); })() };
+    const t = makeApp({ intel });
+    const tok = (await issue(t)).body.prompt_bypass_token;
+    const res = await chatWith(t, tok);
+    expect(res.status).toBe(200);
+    const reader = res.body!.getReader();
+    await expect((async () => { for (;;) if ((await reader.read()).done) return; })()).rejects.toThrow('cut');
+    expect(t.store.db.logs.at(-1)!.llm_response).toBe('a ');
+  });
+});
+
 describe('tree editing', () => {
   it('edge that would create a cycle → 409 cycle', async () => {
     const t = makeApp();
@@ -490,20 +732,23 @@ describe('chat (sandbox)', () => {
     }
   });
 
-  it('current behavior: a mid-stream model failure ends as a normal 200 with the partial text, keeps it, closes the quiz', async () => {
-    // Known gap (status file, "Mid-stream failure"): a client cannot tell this from a complete reply.
-    // This pins today's wire behavior until E's contract handoff defines an observable failure signal.
+  it('contract v4: a mid-stream model failure rejects the body reader after the delivered chunk; partial kept, quiz closed', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
     const t = makeApp({
-      intel: { ...fakeIntelligence, chat: () => (async function* () { yield 'partial reply '; throw new Error('cut'); })() },
+      intel: { ...fakeIntelligence, chat: () => (async function* () { yield 'partial reply '; await gate; throw new Error('cut'); })() },
     });
     const res = await chat(t, DEMO_PROMPTS.question);
     expect(res.status).toBe(200);
-    expect(await res.text()).toBe('partial reply ');
-    await sleep(20);
+    expect(res.headers.get('content-type')).toContain('text/plain');
+    const reader = res.body!.getReader();
+    const first = await reader.read();
+    expect(new TextDecoder().decode(first.value)).toBe('partial reply '); // delivered before the failure
+    release();
+    await expect(reader.read()).rejects.toThrow('cut'); // not a clean EOF
     expect(t.store.db.logs[0].llm_response).toBe('partial reply ');
     expect(t.store.db.logs[0].quiz_pending).toBe(false);
   });
-
   it('client cancels mid-reply while the model ends quietly on abort (like B): partial kept, quiz closed', async () => {
     let sawAbort = false;
     const intel: Intelligence = {

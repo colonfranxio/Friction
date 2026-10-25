@@ -16,7 +16,10 @@ export type BadgeState =
   /** The extension was reloaded/updated; this tab's content script is orphaned until the page reloads. */
   | { kind: 'reload' };
 
-const DOT = { amber: '#F59E0B', green: '#10B981', grey: '#9CA3AF' };
+const DOT = { amber: '#6D4AFF', green: '#E0A100', grey: '#8F86A8', teal: '#0E7A7A' };
+/** The pill's tiny card glyph: its shape and fill carry the state, so colour is never the only cue. */
+export type BadgeMark = 'learning' | 'mastered' | 'ticket' | 'idle' | 'alert';
+const MARK: Record<string, BadgeMark> = { [DOT.amber]: 'learning', [DOT.green]: 'mastered', [DOT.grey]: 'idle', [DOT.teal]: 'ticket' };
 
 export function badgeText(s: BadgeState): { text: string; dot: string } {
   switch (s.kind) {
@@ -34,7 +37,7 @@ export function badgeText(s: BadgeState): { text: string; dot: string } {
     case 'bypassed': {
       const left = s.remaining === null ? '' : ` · ${s.remaining} left`;
       const what = s.conceptPaused ? 'concept bypassed' : 'bypassed';
-      return { text: `Friction · ${what}${s.concept ? ` · ${s.concept}` : ''}${left}`, dot: DOT.grey };
+      return { text: `Friction · ${what}${s.concept ? ` · ${s.concept}` : ''}${left}`, dot: DOT.teal };
     }
     case 'spent':
       return { text: `Friction · bypass used (${s.remaining} left), not sent: ${s.reason}`, dot: DOT.amber };
@@ -48,6 +51,10 @@ export function badgeText(s: BadgeState): { text: string; dot: string } {
 }
 
 /** The Bypass button shows only while the last message got friction (L1–L3). */
+export function badgeMark(s: BadgeState): BadgeMark {
+  return s.kind === 'error' || s.kind === 'reload' ? 'alert' : MARK[badgeText(s).dot] ?? 'idle';
+}
+
 export function canBypass(s: BadgeState): boolean {
   return s.kind === 'active' && s.level < 4;
 }
@@ -67,21 +74,26 @@ export function mountBadge(
     <style>
       :host { all: initial; position: fixed; right: 12px; bottom: 12px; z-index: 2147483646; pointer-events: none; }
       .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
-        background: #FFFFFF; color: #1F2937; border: 1px solid #E5E7EB; box-shadow: 0 2px 8px rgba(0,0,0,.08);
-        font: 600 12px/1.2 Nunito, ui-rounded, system-ui, sans-serif; max-width: 440px; white-space: nowrap; }
+        background: #FFFFFF; color: #231B3A; border: 1.5px solid #E2DCEC; box-shadow: 0 2px 10px rgba(35,27,58,.12);
+        font: 700 12px/1.2 Nunito, ui-rounded, system-ui, sans-serif; max-width: 440px; white-space: nowrap; }
       .text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-      .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-      .logo { color: #F59E0B; }
-      .bypass { pointer-events: auto; margin-left: 4px; padding: 2px 10px; border-radius: 999px; border: 1px solid #F59E0B;
-        background: #FFFFFF; color: #92400E; font: 700 11px/1.4 Nunito, ui-rounded, system-ui, sans-serif; cursor: pointer; }
-      .bypass:hover { background: #FEF3C7; }
+      .mark { width: 9px; height: 12px; border-radius: 2.5px; flex: none; transform: rotate(-8deg); box-sizing: border-box; }
+      .mark[data-mark="learning"] { background: #6D4AFF; border: 1.5px solid #4B2FB8; }
+      .mark[data-mark="mastered"] { background: #E0A100; border: 1.5px solid #B07A00; }
+      .mark[data-mark="ticket"] { background: #E6F4F3; border: 1.5px dashed #0E7A7A; transform: none; }
+      .mark[data-mark="idle"] { background: #EBE7F2; border: 1.5px dashed #8F86A8; transform: none; }
+      .mark[data-mark="alert"] { background: #FFFFFF; border: 1.5px solid #6D4AFF; }
+      .bypass { pointer-events: auto; margin-left: 4px; padding: 2px 10px; border-radius: 999px; border: 1.5px dashed #0E7A7A;
+        background: #E6F4F3; color: #0E7A7A; font: 800 11px/1.4 Nunito, ui-rounded, system-ui, sans-serif; cursor: pointer; }
+      .bypass:hover { background: #D6EEEC; }
+      .bypass:focus-visible { outline: 2px solid #A993FF; outline-offset: 2px; }
       .bypass:disabled { opacity: .5; cursor: default; }
       .bypass[hidden] { display: none; }
     </style>
-    <div class="pill"><span class="dot"></span><span class="logo">◆</span><span class="text"></span>
+    <div class="pill"><span class="mark" aria-hidden="true"></span><span class="text"></span>
       <button class="bypass" type="button" title="Re-send this message without friction. On this server it also pauses friction on this concept until reset. Uses one bypass; your teacher is notified." hidden>Bypass</button>
       <button class="bypass copy" type="button" title="Copy your original question" hidden>Copy question</button></div>`;
-  const dot = root.querySelector('.dot') as HTMLElement;
+  const mark = root.querySelector('.mark') as HTMLElement;
   const text = root.querySelector('.text') as HTMLElement;
   const btn = root.querySelector('.bypass') as HTMLButtonElement;
   const copy = root.querySelector('.copy') as HTMLButtonElement;
@@ -102,7 +114,7 @@ export function mountBadge(
   const set = (state: BadgeState) => {
     const t = badgeText(state);
     text.textContent = t.text;
-    dot.style.background = t.dot;
+    mark.dataset.mark = badgeMark(state);
     btn.hidden = !opts.onBypass || !canBypass(state);
     copyText = state.kind === 'spent' ? state.prompt : '';
     copy.hidden = !copyText;

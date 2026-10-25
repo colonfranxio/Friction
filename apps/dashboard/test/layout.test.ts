@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildSeed, computeDepths, computeNodeStatuses, SEED_IDS, type StudentSummary, type TreeBundle } from '@friction/shared';
-import { layoutTree, levelsFor, treePresentation } from '../src/tree/layout';
+import { layoutTree, levelsFor, syllabusOrder, treePresentation, COLUMN_GAP, NODE_WIDTH, STEP_Y } from '../src/tree/layout';
 
 function fixture() {
   const seed = buildSeed();
@@ -9,15 +9,22 @@ function fixture() {
   return { bundle, students };
 }
 describe('skill tree presentation', () => {
-  it('keeps saved positions and places prerequisites above dependants', () => {
+  it('lays cards out as centred prerequisite rows in syllabus order, ignoring saved positions and modules', () => {
     const { bundle } = fixture();
     bundle.nodes[0].position = { x: 17, y: 42 };
-    const nodes = layoutTree(bundle);
-    expect(nodes[0].position).toEqual({ x: 17, y: 42 });
+    const placed = layoutTree(bundle);
+    expect(placed).toHaveLength(bundle.nodes.length);
+    expect(placed.find((n) => n.id === bundle.nodes[0].id)!.position).not.toEqual({ x: 17, y: 42 });
     const depths = computeDepths(bundle.nodes, bundle.edges);
-    for (const node of nodes.slice(1)) expect(node.position.y).toBe(depths[node.id] * 150 + 80);
-    const siblings = nodes.filter((n) => n.pillar_id === SEED_IDS.pillars.effects && depths[n.id] === 3);
-    expect(Math.abs(siblings[0].position.x - siblings[1].position.x)).toBe(100);
+    for (const node of placed) expect(node.position.y).toBe(depths[node.id] * STEP_Y);
+    for (const edge of bundle.edges) expect(placed.find((n) => n.id === edge.parent_node_id)!.position.y).toBeLessThan(placed.find((n) => n.id === edge.child_node_id)!.position.y);
+    for (const depth of new Set(placed.map((n) => n.depth))) {
+      const row = placed.filter((n) => n.depth === depth).sort((a, b) => a.position.x - b.position.x);
+      const centre = (row[0].position.x + row.at(-1)!.position.x + NODE_WIDTH) / 2;
+      expect(centre).toBeCloseTo(0);
+      for (let i = 1; i < row.length; i++) expect(row[i].position.x - row[i - 1].position.x).toBe(NODE_WIDTH + COLUMN_GAP);
+    }
+    expect(syllabusOrder(bundle).map((n) => n.id)).toHaveLength(bundle.nodes.length);
   });
   it('reflects a live promotion and unlocks prerequisites without treating bypasses as mastery', () => {
     const { bundle, students } = fixture();

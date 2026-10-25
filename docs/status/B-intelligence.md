@@ -165,3 +165,20 @@ pnpm typecheck
 pnpm harness                                    # needs .env key; ~45 calls, ~2 min; sections: levels grading classify parse exchange
 pnpm --filter @friction/intelligence latency    # 10 graded rows + p50/p95
 ```
+
+## Moss sponsor integration — MOSS INTELLIGENCE READY
+
+Branch `agent/moss-intelligence` (base `793aaa4`). Source: `packages/intelligence/**` adapted from experiment `8f8fe63`, imported per file; no API/E-owned files.
+
+**Review of reference (`8f8fe63`) against handoff Step 2:**
+1. Keyword hit returns before retrieval or Claude. Keyword miss gets ≤3 validated, deduplicated IDs from the same curriculum. PASS (new test for dedup/cap).
+2. Claude sees the full catalog plus a "fallible hints" line and can return null. Moss never routes directly. PASS (new abstention test with 3 candidates).
+3. `classifyTopic` copies nodes once. `curriculumFingerprint` covers tree/node IDs, names, criteria and keywords only. PASS (new test: position/size/icon don't invalidate).
+4. Cache is per `createIntelligence()` instance and keyed by prompt + fingerprint + candidates. **Intentional default-path change:** main's module-global cache keyed by node IDs could return a stale classification after a same-ID educator edit. This change applies with retrieval off too.
+5. Retrieval wait ≤200ms through `within()`. Claude's timeout is reduced by the elapsed time, so the overall 3s classify deadline is unchanged. The adapter allows one outstanding native query and releases handles only after it settles. PASS.
+6. Exceptions, timeouts, empty/unknown/cold/stale results, edits during a query, concurrent close: covered by the reference tests. **Added:** missing native SDK (`vi.mock` throws on import) → package still imports, `prepare` returns false, and the classifier uses the baseline prompt.
+
+Native SDK `@moss-js/moss@1.21.0` is an optionalDependency, imported dynamically in `mossFromEnv`'s session opener only. `createIntelligence()` without `curriculumRetriever` behaves as before (except item 4).
+
+**Verify:** `pnpm --filter @friction/intelligence typecheck` · `pnpm --filter @friction/intelligence test` → 8 files, 65 tests PASS. Live comparison (paid, optional): `pnpm --filter @friction/intelligence moss:trial`.
+**Needs E:** root lockfile entry for `@moss-js/moss` (package.json changed; lockfile not edited on this branch).

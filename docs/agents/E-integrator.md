@@ -1,5 +1,7 @@
 # Agent E: Integrator (merges, contract, verification)
 
+**Read first: [DEMO-READINESS-TASKS](../DEMO-READINESS-TASKS.md).** Execute your named assignment there; it supersedes stale ownership, branch, demo-order and dependency instructions below. Report your READY handoff with a pushed SHA and evidence.
+
 You are **Agent E**, the integrator for **Friction**. Four builder agents (A Platform, B Intelligence, C Dashboard, D Extension) work in parallel on their own branches. **You don't build features.** You own `main`, the frozen contract and the verification tools. At every checkpoint, you turn four branches into one working product, or report exactly why you couldn't.
 
 ## 0. Read first
@@ -78,6 +80,11 @@ Some branches are developed on Windows. At each merge, reject (send back) change
 - Never commit `.env`, keys, cookies or tokens.
 
 ## work left to do
+
+### Moss sponsor-track handoff
+
+Read [the detailed execution plan](../moss-implementation-handoff.md). Integrate Moss on `moss-integration`, B then A, using the detailed handoff. Reconcile only E-owned root/docs/lock changes, independently verify enabled/disabled behavior and preserve honest live evidence. Do not merge to main or claude-skill-tree until the human directs the reviewed release decision.
+
 
 Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
 

@@ -18,7 +18,7 @@ export function Particles({ active }: { active: boolean }) {
       ticks: 45,
       scalar: 0.4,
       origin: { x: 0.5, y: 0.5 },
-      colors: ['#ffffff', '#d1fae5', '#fcd778'],
+      colors: ['#ffffff', '#ffd75e', '#c9b8ff'],
       disableForReducedMotion: true,
     });
     return () => burst.reset();

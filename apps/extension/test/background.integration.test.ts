@@ -9,6 +9,9 @@ import type { BypassResult, RuntimeRequest, StatusResponse } from '../src/lib/me
 
 // FRICTION_API_URL=<url> runs these against a real API (see test/run-against-api.mjs); default = in-process mock.
 const EXTERNAL = process.env.FRICTION_API_URL?.replace(/\/$/, '');
+// Explicit opt-in only: never certify an arbitrary external server from its version alone.
+const READY_SHA = EXTERNAL ? process.env.FRICTION_API_READY_SHA?.trim() ?? '' : '';
+let expectedScope: 'prompt' | 'concept' = 'prompt';
 const PORT = 18000 + Math.floor(Math.random() * 1000);
 const API = EXTERNAL ?? `http://127.0.0.1:${PORT}`;
 let listener: (msg: unknown, sender: unknown, send: (r: unknown) => void) => boolean;
@@ -50,6 +53,10 @@ beforeAll(async () => {
   if (!reset.ok) throw new Error(`demo reset failed (${reset.status}): is DEMO_MODE=1 on ${API}?`);
   store.apiUrl = API;
   store.studentId = SEED_IDS.demoStudent;
+  if (READY_SHA && !/^[a-f0-9]{40}$/i.test(READY_SHA)) throw new Error('FRICTION_API_READY_SHA must be the reviewed full 40-character API commit SHA');
+  store.promptBypassReadySha = READY_SHA;
+  const health = await (await fetch(`${API}/health`)).json();
+  expectedScope = health.contract_version >= 4 && (health.mode.server === 'mock' || !!READY_SHA) ? 'prompt' : 'concept';
   await import('../src/background');
 });
 
@@ -115,16 +122,16 @@ describe('background ⇄ mock API', () => {
   it('bypass uses the last intercepted concept and reports the quota', async () => {
     await call({ type: 'friction:intercept', raw_prompt: DEMO_PROMPTS.bypassQuestion, conversation_id: 'conv-bg-4', previous_assistant_text: null });
     const b = await call<BypassResult>({ type: 'friction:bypass' });
-    expect(b).toEqual({ ok: true, remaining_quota: 2, scope_applied: 'prompt' }); // v4 default: per-prompt
+    expect(b).toEqual({ ok: true, remaining_quota: 2, scope_applied: expectedScope });
     const s = await call<StatusResponse>({ type: 'friction:status' });
-    expect(s.paused).toBe(false); // prompt scope never pauses the concept
+    expect(s.paused).toBe(expectedScope === 'concept');
     expect(s.bypass_quota).toBe(2);
   });
 
   it('bypass targets the node the content script names', async () => {
     const before = await call<StatusResponse>({ type: 'friction:status' });
     const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect });
-    expect(b).toEqual({ ok: true, remaining_quota: (before.bypass_quota ?? 0) - 1, scope_applied: 'prompt' });
+    expect(b).toEqual({ ok: true, remaining_quota: (before.bypass_quota ?? 0) - 1, scope_applied: expectedScope });
   });
 
   it('off-topic prompts keep the last concept for the bypass button', async () => {
@@ -147,16 +154,16 @@ describe('background ⇄ mock API', () => {
     store.enabled = true;
   });
 
-  it('v4: a prompt-scoped bypass spends quota but does NOT pause the concept', async () => {
+  it('v4: requested prompt bypass respects the approval gate and charges once', async () => {
     await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
     const before = await call<StatusResponse>({ type: 'friction:status' });
     const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
     expect(b.ok).toBe(true);
     if (!b.ok) return;
-    expect(b.scope_applied).toBe('prompt');
+    expect(b.scope_applied).toBe(expectedScope);
     expect(b.remaining_quota).toBe((before.bypass_quota ?? 0) - 1);
     const st = await (await fetch(`${API}/students/${SEED_IDS.demoStudent}`)).json();
-    expect(st.states.find((x: { node_id: string }) => x.node_id === SEED_IDS.nodes.useEffect).paused).toBe(false);
+    expect(st.states.find((x: { node_id: string }) => x.node_id === SEED_IDS.nodes.useEffect).paused).toBe(expectedScope === 'concept');
   });
 
   it('v4: a concept-scoped bypass pauses the concept and reports it', async () => {
@@ -199,9 +206,9 @@ describe('background ⇄ mock API', () => {
     });
   });
 
-  it('gate: a real API WITH an exact API READY SHA gets scope "prompt"', async () => {
+  it.skipIf(!!EXTERNAL && !READY_SHA)('gate: a real API WITH an exact API READY SHA gets scope "prompt"', async () => {
     await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
-    store.promptBypassReadySha = 'd52e791' + 'a'.repeat(33);
+    store.promptBypassReadySha = EXTERNAL ? READY_SHA : 'd52e791' + 'a'.repeat(33);
     try {
       await asRealApi(async (bodies) => {
         const s = await call<StatusResponse>({ type: 'friction:status' });
@@ -212,7 +219,7 @@ describe('background ⇄ mock API', () => {
         expect('raw_prompt' in bodies[0] || 'conversation_id' in bodies[0]).toBe(false); // D resends itself: no token binding
       });
     } finally {
-      store.promptBypassReadySha = '';
+      store.promptBypassReadySha = READY_SHA;
     }
   });
 
@@ -246,6 +253,43 @@ describe('background ⇄ mock API', () => {
     store.enabled = true;
     expect(calls).toBe(0);
     expect(b).toEqual({ ok: false, code: 'disabled', message: 'Friction is turned off.' });
+  });
+
+  it.each([
+    ['enabled', false, 'disabled'],
+    ['studentId', 'another-student', 'settings_changed'],
+    ['apiUrl', 'http://127.0.0.1:1', 'settings_changed'],
+  ] as const)('does not POST a bypass when %s changes during the health check', async (key, changed, code) => {
+    const original = store[key];
+    const realFetch = globalThis.fetch;
+    let release!: () => void;
+    let started!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const healthStarted = new Promise<void>((resolve) => { started = resolve; });
+    let posts = 0;
+    store.enabled = true;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/health')) {
+        started();
+        await gate;
+        return Response.json({ ok: true, contract_version: 4, mode: { server: 'api', demo: true, intelligence: 'fake' } });
+      }
+      if (String(input).endsWith('/bypass')) posts++;
+      return realFetch(input, init);
+    }) as typeof fetch;
+    try {
+      const pending = call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
+      await healthStarted;
+      store[key] = changed;
+      release();
+      expect(await pending).toMatchObject({ ok: false, code });
+      expect(posts).toBe(0);
+    } finally {
+      release();
+      globalThis.fetch = realFetch;
+      store[key] = original;
+      store.enabled = true;
+    }
   });
 
   it('the consent toggle stops all API calls', async () => {

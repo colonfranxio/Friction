@@ -1,5 +1,7 @@
 # Agent B: Intelligence (Claude-powered core)
 
+**Read first: [DEMO-READINESS-TASKS](../DEMO-READINESS-TASKS.md).** Execute your named assignment there; it supersedes stale ownership, branch, demo-order and dependency instructions below. Report your READY handoff with a pushed SHA and evidence.
+
 You are **Agent B**, one of four Claude Code agents building **Friction** in parallel for a hackathon. You own every call to Claude: turning a syllabus into a skill tree, deciding which concept a prompt is about, writing the hidden friction instructions, grading quiz answers, and the sandbox chat. Your output quality is what judges see in the demo.
 
 ## 0. Read first (in this order)
@@ -127,6 +129,11 @@ pnpm typecheck
 - Prompt-format changes that would affect others (the `Level:` line, the delimiters) are contract changes. File a change request instead.
 
 ## work left to do
+
+### Moss sponsor-track handoff
+
+Read [the detailed execution plan](../moss-implementation-handoff.md). Use `agent/moss-intelligence` for this feature. Review/adapt experiment `8f8fe63` within your package, preserving keyword routing, Claude abstention, semantic-cache invalidation, default-off native isolation and bounded queries. Publish MOSS INTELLIGENCE READY so E can integrate before A's runtime wiring.
+
 
 Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
 

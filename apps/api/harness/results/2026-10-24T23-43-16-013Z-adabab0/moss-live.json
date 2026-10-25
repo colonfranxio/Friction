@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-10-24T23:43:16.013Z",
+  "sha": "adabab01059cfd8440fb0bff764f9397f439ba01",
+  "dirtyWorkingTree": false,
+  "models": {
+    "classify": "claude-haiku-5-5",
+    "chat": "claude-opus-5-5",
+    "grade": "claude-opus-5-5"
+  },
+  "live": [
+    {
+      "step": "available_during_warmup",
+      "http": 200
+    },
+    {
+      "step": "ready",
+      "state": "ready",
+      "revision": "3fc20bf603a5",
+      "ms": 1515
+    },
+    {
+      "step": "keyword_control_pass",
+      "concept": "React useEffect",
+      "mossQueries": 0
+    },
+    {
+      "step": "retrieval_chat_pass",
+      "candidates": [
+        "Props",
+        "Context API",
+        "React useEffect"
+      ],
+      "retrievalMs": 5,
+      "selected": "Context API",
+      "level": "2",
+      "quizAttached": "true",
+      "masteryUnchanged": true,
+      "replyCharacters": 2459,
+      "replyExcerpt": "What you're running into is called **prop drilling**: passing a value through components that don't use it, just so a deeper one can. React's **Context API** solves this by letting a component \"broadcast\" a value that any descendant can pick up directly.\n\n## The three pieces\n\n1. **Create** a context, a shared \"channel\" for the theme.\n2. **Provide** a value near the top of the tree.\n3. **Consume** "
+    },
+    {
+      "step": "pending_quiz_pass",
+      "concept": "Context API",
+      "mossQueries": 0,
+      "verdict": "correct",
+      "levelBefore": 2,
+      "levelAfter": 4
+    },
+    {
+      "step": "unrelated_abstain_pass",
+      "mossCandidates": [
+        "Custom Hooks",
+        "React useEffect",
+        "Performance & Memoization"
+      ],
+      "selected": null
+    }
+  ],
+  "injected": [
+    {
+      "step": "init_failure_fallback_pass",
+      "fallbackReason": "unavailable",
+      "selected": "Context API",
+      "claude": "real"
+    },
+    {
+      "step": "query_timeout_fallback_pass",
+      "fallbackReason": "timeout",
+      "selected": "Context API",
+      "claude": "real"
+    }
+  ],
+  "config": [
+    {
+      "step": "missing_credentials_pass",
+      "trace": "disabled/credentials",
+      "apiServing": true
+    }
+  ],
+  "status": "complete"
+}

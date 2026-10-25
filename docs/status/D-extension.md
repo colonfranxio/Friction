@@ -6,6 +6,19 @@
 - Current checkpoint: **D READY** (old-server gate resolved, see below). CP1/CP2 done; CP3 hardening done.
 - Last updated: 2026-10-24
 
+## Concept-card restyle (2026-10-24, at the human's direct request)
+- Commits on `agent/extension`: `b3a2365` and the icon follow-up. Spec and handoff are in `docs/design/CONCEPT-CARDS.md` on branch `design/concept-cards`.
+- **Restyled:**
+  - Popup: the current concept is a card (learning, no friction, bypassed, or face-down) and the bypass is a teal ticket with a ×N stub.
+  - claude.ai pill: the ◆ and dot are replaced by a card glyph (`badgeMark()`), and Bypass is a small teal ticket.
+  - The side panel's messages.
+- **New:** a toolbar icon (gold card, `icons/` 16/32/48/128px) in the manifest `icons` and `action.default_icon`; `build.mjs` copies it.
+- **Unchanged:** all behaviour, gates and wording.
+- **Verified:**
+  - typecheck and 82 tests pass
+  - loaded unpacked in Chrome for Testing: the service worker starts, the popup is "Online" against the real API, the icons are served, and the pill mounts on claude.ai
+- **Not verified:** a live claude.ai conversation behind login.
+
 ## CP1 exit criteria
 - [x] Simplified extension (message-box injection, no network interception) builds: `dist/` = content.js, background.js, popup.js, manifest.json, popup.html. One isolated content script, `storage` permission only.
 - [x] Unit tests pass (34 at CP1; 82 now, incl. the in-process integration tests): send interception on Enter and on the Send click; passthrough; fail-open on a thrown error, on a timeout, and when the composer can't be rewritten (original restored); Shift+Enter and Enter outside the composer ignored; no double send while in flight; empty composer; Enter fallback without a send button; composer rewrite in happy-dom; conversation id; last assistant text.

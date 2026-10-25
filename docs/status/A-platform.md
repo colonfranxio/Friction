@@ -2,7 +2,7 @@
 
 **Owned by Agent A. Only this agent edits this file.**
 
-- Contract version confirmed: **3** (changelog v3 read: optional `X-Friction-Quiz-Attached` chat header; no existing field changed; v2 late-grade/cancel rules unchanged). Merged `origin/main` 457e0a7 (CP2 integration) into this branch. Previously confirmed v2 below.
+- Contract version confirmed: **4** (CONTRACT READY v4 read; see "API READY (contract v4)"). Earlier: **3** (changelog v3 read: optional `X-Friction-Quiz-Attached` chat header; no existing field changed; v2 late-grade/cancel rules unchanged). Merged `origin/main` 457e0a7 (CP2 integration) into this branch. Previously confirmed v2 below.
 - Contract version (earlier note): **2** (changelog v2 read: optional `EvaluateInput.signal`; no HTTP shape change; I never abort grading at the intercept budget, so late grades still apply). Merged `origin/main` 355fcac (CP1 integration) on top of CP1.
 - Current checkpoint: CP1 and my CP2 fix are on `main` (PR #1 merged). CP2 live acceptance belongs to E. I'm on the "work left to do" list; see that section.
 - Last updated: 2026-10-24 (merged `main` 999db80 into this branch; E's 16-step smoke passes 3x against :8787 on fakes)
@@ -52,12 +52,40 @@
 - E: merge B (00a5d4d) then A. `agent/platform` alone still has the placeholder `createIntelligence()`, so CP2 criteria 2-4 only pass on the merged result.
 - E/C: the exact quiz-attachment chat header (`X-Friction-Quiz-Attached`) is queued for CP2 in shared/mock (E), then API (A) and dashboard (C). I'll add it to `/chat` and its test when the contract lands.
 
+## API READY (contract v4): observable stream failure + prompt-scoped bypass
+Merged `main` 836784c (CONTRACT READY v4 commit `a11c16a`); contract **v4 confirmed**. Implemented in `apps/api/**` only. Fake/injected checks and one real-Claude smoke are reported separately below.
+
+**Stream failure.** `/chat` now returns a native `ReadableStream` body (`highWaterMark: 0`, so no read-ahead and nothing queued is lost). Before the first chunk nothing changed: 502 `llm_error` / 504 `llm_timeout`, quiz closed. After streaming starts, a generation error/refusal/truncation **errors the body** (`controller.error`), so the client's `reader.read()` rejects; it is not a clean EOF and no JSON is appended. The partial text is saved as `llm_response` and the unseen quiz is closed. A client cancel is distinct: it aborts the model, keeps the partial, closes the quiz. A normal end while the signal is aborted (B's quiet end) still counts as incomplete. Headers and `text/plain` are unchanged.
+
+**Prompt bypass.** `POST /bypass` takes optional `scope: 'concept' | 'prompt'` (omitted = `concept` = the legacy pause-until-reset and repeat-charge behavior, unchanged).
+- `prompt`: spends one quota, closes pending quizzes on that node, emits the usual `student_state` + `bypass` events; does not set a pause, undo an existing one, or touch mastery.
+- Unknown scope, or `raw_prompt`/`conversation_id` without prompt scope, or only one of the two, or an empty value → 400 before anything is charged. Empty quota → 409, no token.
+- With `scope:'prompt'` + `raw_prompt` + `conversation_id`, the response also carries opaque `prompt_bypass_token` (UUID, in memory, 120s TTL, bound to student, node, exact text and chat). Charged at issue only.
+- `POST /chat` with `prompt_bypass_token` and the matching last user message validates and consumes the token in one synchronous step, before any model call: replay, expiry, wrong student/text/chat, unknown/non-string token, or an invalidated tree/node → 400 `bad_request`; a mismatch does **not** consume the valid token. A valid token streams that turn as **L4, `X-Friction-Quiz-Attached: false`, not graded, mastery unchanged**, logs a safe activity row (no raw text or token in any educator event), and saves the reply normally. The next ordinary turn has normal friction. A failure or cancel never refunds or re-arms the token.
+- Reset (full or that student's) and any parse (demo cache or live) drop the affected tokens; another student's reset does not. A server restart discards all tokens.
+
+**Verify (exact commands).**
+```
+pnpm typecheck
+pnpm --filter @friction/api test                  # 72 tests, no network
+pnpm exec tsx scripts/verify-stream-failure.ts    # E's real-HTTP regression: PASS
+pnpm exec tsx scripts/verify-chat-abort.ts        # PASS
+pnpm dev:api   (terminal 1)   then   pnpm smoke --require-v4   (terminal 2)
+```
+Results on this machine: typecheck clean; root `pnpm test` all green (API 72); both standalone tools PASS; `pnpm smoke --require-v4` **17/17** against :8787 (`intelligence=real` because this machine's `.env` is configured; ran once, not 3x; no late grades or errors seen). Mutation check: with token consumption removed, the replay, concurrent-replay and failed-model tests fail. Tests added: v4 rejected-read regression (replaced the old clean-EOF pin), and a 14-case `prompt-scoped bypass` suite (legacy scope, prompt scope, concept-pause preserved, validation/409, one-use turn incl. no grading/mastery/pause, replay, concurrent replay, mismatches not consuming, expiry with an injected clock, failed-model no re-arm, reset/parse/other-student reset, privacy, failure on a token turn).
+
+Independent review (Sonnet 5.5, medium, read-only, on d52e791): reran typecheck, API 72/72 and both standalone tools (PASS); no blockers or should-fix findings across chunk loss, token double-spend/burning, scope semantics, legacy defaults and leaks. It wrote no new probing tests, so its findings are source reading plus those runs. Three minor notes, none changed: (1) a reset landing between token consume and the lock yields a 400 with the token spent (no refund, by design); (2) with no read-ahead the server learns a reply finished only on the client's next read, so a client that cancels right after its last chunk takes the cancel path (full text still saved, quiz closed); (3) an empty reply still sends `X-Friction-Quiz-Attached: true` though the quiz is closed (the mock does the same).
+
+Not verified: a real-Claude 3x gate (E's), the dashboard/extension using the new fields (C/D), a browser run, a valid PDF parse.
+
+**Flaky test, found by E and fixed (CP3 hold on `d6badeb`).** The one-off failure I had called unexplained was my own assertion in `prompt scope: one quota, ...` assuming the bypass was `items[0]` of the activity feed. The intercept row and the bypass row can share a `created_at` tick, so the order is not guaranteed. The test now finds the bypass item and asserts there is exactly one; the quota, state, pending-quiz and event assertions are unchanged, and there are no sleeps or manufactured timestamps. Product code did not change. After the fix: typecheck clean, API 72/72 on four consecutive runs, both standalone stream/abort tools PASS. I could not force the tie on demand, so the proof is by construction plus those reruns, not a reproduced-then-fixed failure.
+
 ## Work left to do (brief §"work left to do", after the CP2 review)
 Merged `main` ff25700 (PR #1 `d757427` is on `main`); contract still **v3**, confirmed. API tests 57, typecheck clean.
 - [x] Quiet-abort regression, partial-reply persistence, exact quiz-header tests, per-student lock and late-grade tests all still pass.
 - [x] Mid-stream failure: endpoint regression added (`current behavior: a mid-stream model failure ...`). It pins what happens today: the model throws after some text, the response still ends as a normal `200 text/plain` with the partial text, the partial is saved as `llm_response`, the quiz is closed, and the error is only logged. A client can't tell this from a complete reply.
 - [x] Concept-bypass: added a test of today's semantics (the node stays paused for every later prompt; a repeat bypass on a paused node is accepted and costs another quota). Existing tests already cover quota exhaustion (409), pending-quiz cleanup and the educator activity/toast event.
-- [ ] **Waiting on E's `CONTRACT READY`** before changing anything on the wire: the stream-failure signal and explicit one-prompt bypass. Then: merge E's commit, implement and test the API side, publish `API READY` here.
+- [x] E's `CONTRACT READY` v4 arrived (`a11c16a`); both items are implemented and published as **API READY** above.
 
 ### Proposal to E: observable mid-stream failure (not implemented; nothing on the wire changed)
 Keep `text/plain` and the three required headers. When the model fails *after* streaming started, abort the HTTP response (end it with a connection error instead of a clean chunked terminator), so `fetch`'s body reader rejects. A client that reads to a clean end can then treat that as complete; a rejected read is "interrupted". It needs no new header or body format, and the partial text stays saved. Alternative if E wants it explicit: an opt-in trailer or header set only on failure. Client-side effect for C: an interrupted read must show the "interrupted" UI and not a finished reply. Needs E's go-ahead since the cancellation semantic is shared with the extension.
@@ -92,3 +120,22 @@ pnpm typecheck
 ```
 Env (all optional): `API_PORT` (8787), `DEMO_MODE` (on), `USE_REAL_INTELLIGENCE` (off), `INTERCEPT_BUDGET_MS` (4000), `DEMO_PARSE_DELAY_MS` (3000).
 To start from a clean store, stop the server and delete `apps/api/data/db.json` (or call `POST /demo/reset {"full":true}`).
+
+## Moss sponsor integration — MOSS API READY
+
+Branch `agent/moss-platform` (base `moss-integration` `6427c24` = B-ready + lockfile). Source: `apps/api/**` adapted from experiment `8f8fe63`. The base's API code equals the reference's base, so no newer API fixes were overwritten. The separate v4 cancellation/token work is **not** included.
+
+**Mode:** ~~off by default~~ **on by default since 2026-10-24 (human decision)**: real intelligence + both Moss credentials enable it; `USE_MOSS_RETRIEVAL=0`/`false` disables it. Fake mode never loads intelligence or the SDK.
+
+**Review of reference against handoff Step 3:**
+1. Fake/disabled/incomplete config never constructs an adapter (tests). PASS.
+2. `start()` runs after the app is built; preparation is background-only; `/health` serves during warmup (live). PASS.
+3. Pool of 2 courses (demo student's first); preparing and closing handles count toward it. Other courses use the baseline. PASS, documented.
+4. Store fingerprint checked before and after each query; edit/delete/parse/reset tests through real routes. PASS.
+5. **Stall limitation (documented):** the reconcile loop is shared, so a permanently hung native `prepare`/`close` stops further Moss preparation. Bounded: `refresh()` returns the same in-flight promise, so there's no queue growth. Requests see `cold_or_stale` and use the baseline. New test `a permanently hung native preparation never blocks requests or queues more work`. No worker process added (hackathon scope).
+6. **Lifecycle correction:** the reference capped `store.flush()` together with Moss disposal at 2s, which could cut persistence short. Now `close()` stops polling synchronously, `store.flush()` is awaited uncapped (as on main), and only native disposal is capped at 2s.
+7. Traces: `disabled | warming | ready | retrieved | fallback(reason) | closed`, with revision prefix, `candidates`, `ms`, and **new `ids`** (canonical curriculum node IDs only, on `retrieved`). No keys, prompts, student IDs or provider errors.
+
+**Live harness (`pnpm --filter @friction/api moss:live`)**, strengthened per Step 5: keyword control (0 Moss queries), Context API must be among the candidates, Claude must choose it, pending-quiz answer graded with 0 Moss queries, unrelated prompt must be abstained, injected init-failure and query-timeout doubles, genuine missing-credentials startup. Writes `harness/results/<timestamp>-<sha>/moss-live.json` with SHA, dirty flag and model IDs. The earlier run is preserved in `results/reference-388ce96/`.
+
+**Verify:** `pnpm --filter @friction/api typecheck` · `pnpm --filter @friction/api test` → 3 files, 76 tests PASS. A dev live run of this harness passed every step; the official run is E's, at the integration SHA.

@@ -1,42 +1,43 @@
-import { computeDepths, computeNodeStatuses, type BloomLevel, type NodeStatus, type StudentSummary, type TreeBundle } from '@friction/shared';
-export const PILLAR_WIDTH = 280;
-export const PILLAR_GAP = 40;
-export function layoutTree(bundle: TreeBundle) {
+import { computeDepths, computeNodeStatuses, type BloomLevel, type NodeStatus, type SkillNode, type StudentSummary, type TreeBundle } from '@friction/shared';
+/** Concept cards sit in a fixed-width slot so majors and minors share one centre line. */
+export const NODE_WIDTH = 132;
+export const COLUMN_GAP = 48;
+/** Matches .concept-card's fixed height plus its 6px shadow edge. */
+export const CARD_HEIGHT = 178;
+export const STEP_Y = 215;
+/** Syllabus order: modules in order, then concepts as the syllabus lists them. */
+export function syllabusOrder(bundle: TreeBundle): SkillNode[] {
   const pillars = [...bundle.pillars].sort((a, b) => a.order - b.order);
-  const depths = computeDepths(bundle.nodes, bundle.edges);
-  return bundle.nodes.map((node) => {
-    const siblings = bundle.nodes.filter((n) => n.pillar_id === node.pillar_id && depths[n.id] === depths[node.id]);
-    const pillarIndex = Math.max(0, pillars.findIndex((p) => p.id === node.pillar_id));
-    return { ...node, position: node.position ?? {
-      x: pillarIndex * (PILLAR_WIDTH + PILLAR_GAP) + PILLAR_WIDTH / 2 - 50 + (siblings.indexOf(node) - (siblings.length - 1) / 2) * 100,
-      y: depths[node.id] * 150 + 80,
-    } };
-  });
+  const rank = (node: SkillNode) => { const index = pillars.findIndex((p) => p.id === node.pillar_id); return index < 0 ? pillars.length : index; };
+  const listed = new Map(bundle.nodes.map((node, index) => [node.id, index]));
+  return [...bundle.nodes].sort((a, b) => rank(a) - rank(b) || listed.get(a.id)! - listed.get(b.id)!);
 }
-/** Narrow-panel layout: pillars stacked top to bottom, at most 3 concepts per row. Ignores saved (wide-layout) positions. */
-export function layoutVertical(bundle: TreeBundle) {
-  const pillars = [...bundle.pillars].sort((a, b) => a.order - b.order);
+/**
+ * One standard tree for every course: each row is a prerequisite level, centred on one axis, cards evenly spaced.
+ * Rows keep syllabus order, nudged so each card sits under its prerequisites. Saved positions are ignored.
+ */
+export function layoutTree(bundle: TreeBundle) {
   const depths = computeDepths(bundle.nodes, bundle.edges);
-  const positions: Record<string, { x: number; y: number }> = {};
-  const headers: { id: string; name: string; index: number; y: number }[] = [];
-  let top = 0;
-  const place = (nodes: TreeBundle['nodes'], header?: { id: string; name: string; index: number }) => {
-    if (!nodes.length) return;
-    if (header) headers.push({ ...header, y: top });
-    top += header ? 44 : 0;
-    for (const depth of [...new Set(nodes.map((n) => depths[n.id]))].sort((a, b) => a - b)) {
-      const row = nodes.filter((n) => depths[n.id] === depth);
-      for (let i = 0; i < row.length; i += 3) {
-        const chunk = row.slice(i, i + 3);
-        chunk.forEach((n, j) => (positions[n.id] = { x: (j - (chunk.length - 1) / 2) * 115 - 50, y: top }));
-        top += 150;
-      }
-    }
-    top += 24;
-  };
-  pillars.forEach((p, index) => place(bundle.nodes.filter((n) => n.pillar_id === p.id), { id: p.id, name: p.name, index }));
-  place(bundle.nodes.filter((n) => !pillars.some((p) => p.id === n.pillar_id)));
-  return { nodes: bundle.nodes.map((node) => ({ ...node, position: positions[node.id] })), headers };
+  const order = syllabusOrder(bundle);
+  const rank = new Map(order.map((node, index) => [node.id, index]));
+  const x = new Map<string, number>();
+  const rows = [...new Set(order.map((node) => depths[node.id]))].sort((a, b) => a - b);
+  const placed: (SkillNode & { position: { x: number; y: number }; depth: number })[] = [];
+  for (const depth of rows) {
+    const parentX = (node: SkillNode) => {
+      const xs = bundle.edges.filter((e) => e.child_node_id === node.id && x.has(e.parent_node_id)).map((e) => x.get(e.parent_node_id)!);
+      return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+    };
+    const row = order.filter((node) => depths[node.id] === depth)
+      .sort((a, b) => (depth ? parentX(a) - parentX(b) : 0) || rank.get(a.id)! - rank.get(b.id)!);
+    const width = row.length * NODE_WIDTH + (row.length - 1) * COLUMN_GAP;
+    row.forEach((node, index) => {
+      const left = -width / 2 + index * (NODE_WIDTH + COLUMN_GAP);
+      x.set(node.id, left + NODE_WIDTH / 2);
+      placed.push({ ...node, depth, position: { x: left, y: depth * STEP_Y } });
+    });
+  }
+  return placed;
 }
 export const levelsFor = (student?: StudentSummary): Record<string, BloomLevel> => Object.fromEntries((student?.states ?? []).map((s) => [s.node_id, s.current_blooms_level]));
 export function treePresentation(bundle: TreeBundle, students: StudentSummary[], studentId?: string) {

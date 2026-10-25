@@ -11,6 +11,9 @@ export { buildFrictionPrompt } from './templates';
 export { keywordClassify } from './classify';
 export { validateTree } from './validate';
 export type { IntelligenceOptions } from './config';
+export { mossFromEnv, MossCurriculumRetriever } from './moss';
+export { curriculumFingerprint, within } from './retrieval';
+export type { CurriculumRetriever } from './retrieval';
 
 export function createIntelligence(opts: IntelligenceOptions = {}): Intelligence {
   const cfg = makeConfig(opts);

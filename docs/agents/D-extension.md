@@ -1,5 +1,7 @@
 # Agent D: Extension (claude.ai bonus surface)
 
+**Read first: [DEMO-READINESS-TASKS](../DEMO-READINESS-TASKS.md).** Execute your named assignment there; it supersedes stale ownership, branch, demo-order and dependency instructions below. Report your READY handoff with a pushed SHA and evidence.
+
 You are **Agent D**, one of four Claude Code agents building **Friction** for a hackathon. The main demo runs on our own sandbox chat (Agent C). **Your job is the bonus:** show the same friction on real claude.ai with a Chrome extension. Keep it simple, and never break claude.ai.
 
 ## 0. Read first
@@ -77,6 +79,11 @@ Windows works the same (load `apps\extension\dist`).
 
 ## work left to do
 
+### Moss sponsor-track handoff
+
+Read [the detailed execution plan](../moss-implementation-handoff.md). Moss requires no new extension integration or credentials in the browser. Continue your separate learning-map branch and consent/chat safety work. A later combined demo must target the same backend as C's dashboard; no feature branches are automatically merged together.
+
+
 Current shared handoff: [CONTRACT READY v4](../checkpoints/CONTRACT-READY-v4.md). Follow its owner checklist; shared readiness does not mean the real API is API READY.
 
 This section updates the remaining-work assignment after CP2. Own only `apps/extension/**` and your status file on `agent/extension`. Your newer hardening at `56a5183` is pushed but not integrated. Review and preserve completed fixes rather than rebuilding them. The extension remains a bonus surface; it must not block the main sandbox demo.
@@ -138,3 +145,8 @@ This reassignment supersedes the branch instruction and C/D execution split belo
   - **human check:** open the panel on claude.ai, answer a check question, and the node turns green live in the panel.
 
 **Execution order and parallel safety (E review):** accepted backlog scope; existing hardening and acceptance gates retain priority. Once E schedules it, build D's shell/settings/tests in parallel with C's embed page in separate existing checkouts, using D's private mock 8789 and the separately configured C dashboard. Until C publishes **EMBED READY** with SHA and iframe/error behavior, a full Student view is development scaffolding, not final compact-panel acceptance. Merge C's ready implementation through E before final D integration; keep all D changes within `apps/extension/**` and D's status file. E verifies the combined feature, then the human checks live Chrome. No new A/B endpoint or shared contract is required.
+
+
+## Concept-card integration handoff
+
+Merge the published main into your branch before further work, then read [CONCEPT-CARDS](../design/CONCEPT-CARDS.md), [design.md](../../design.md), [UI layouts §2/§5/§6](../ui-layouts.md) and the concept-card integration report. Preserve centered prerequisite cards, vertical scrolling/frontier navigation, no drag/module rename, gold/violet/slate/teal styling, narrow-screen fitting below 0.5 when needed, and the integrated B safety fixes. C must not restore deleted PillarHeader or CanvasActions.move/rename; D must preserve card icons, ticket counts, Copy question and the new consent/composer guards when merging. Extension-first demo: teacher tree creation, then student/extension views.

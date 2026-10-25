@@ -27,7 +27,7 @@ export function EmbedPage() {
   const status = node && computeNodeStatuses(data.bundle.nodes, data.bundle.edges, levels)[node.id];
   return <main className="embed embed-map-only">
     {error && <div className="error-banner" role="alert"><span>Reconnecting… {error}</span><button onClick={retry}>Try again</button></div>}
-    <SkillTreeCanvas bundle={data.bundle} students={data.students} studentId={studentId} vertical onSelect={setSelected} />
+    <SkillTreeCanvas bundle={data.bundle} students={data.students} studentId={studentId} onSelect={setSelected} />
     {node && status && <section className="embed-detail" aria-live="polite">
       <button className="icon-button embed-close" onClick={() => setSelected(undefined)} aria-label="Close">×</button>
       <span className={`embed-status ${status}`}>{STATUS[status]} · {levelLabel(levels[node.id] ?? 1)} · {levels[node.id] ?? 1}/{node.required_blooms_level}</span>

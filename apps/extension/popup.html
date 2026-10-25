@@ -4,58 +4,83 @@
     <meta charset="UTF-8" />
     <title>Friction</title>
     <style>
-      :root { --bg:#FDFBF7; --surface:#FFFFFF; --border:#E5E7EB; --text:#1F2937; --muted:#6B7280; --active:#F59E0B; --mastered:#10B981; }
+      /* Concept cards: gold = no friction, violet = learning, hatched = nothing matched yet, teal = bypass ticket. */
+      :root { --bg:#F4F1FA; --surface:#FFFFFF; --border:#E2DCEC; --text:#231B3A; --muted:#5E5675; --locked:#8F86A8;
+        --active:#6D4AFF; --active-ink:#4B2FB8; --active-wash:#EDE8FF; --mastered:#E0A100; --mastered-ink:#7A5400; --mastered-shade:#B07A00; --mastered-wash:#FFF8E1;
+        --alert:#0E7A7A; --alert-wash:#E6F4F3; --font-card: Fraunces, Georgia, 'Times New Roman', serif; }
       * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
       body { margin: 0; width: 360px; background: var(--bg); color: var(--text); font: 14px/1.4 Nunito, ui-rounded, system-ui, sans-serif; }
-      header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
-      .brand { font-weight: 800; } .brand span { color: var(--active); }
-      .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-      .dot { width: 8px; height: 8px; border-radius: 50%; background: #9CA3AF; }
+      header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 2px solid var(--text); background: var(--surface); }
+      .brand { display: flex; align-items: center; gap: 8px; font-family: var(--font-card); font-weight: 700; font-size: 18px; }
+      .brand-mark { width: 16px; height: 21px; border-radius: 4px; background: var(--mastered); border: 2px solid var(--text); transform: rotate(-10deg); }
+      .status { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--locked); }
       main { padding: 14px 16px; display: grid; gap: 14px; }
-      .row { display: flex; justify-content: space-between; align-items: center; }
-      .label { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-      .concept { font-weight: 700; font-size: 15px; margin: 4px 0 6px; }
-      .chip { display: inline-block; padding: 3px 10px; border-radius: 999px; background: #FEF3C7; color: #92400E; font-weight: 700; font-size: 12px; }
-      .chip-green { background: #D1FAE5; color: #065F46; }
+      .row { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+      .label { font-size: 11px; color: var(--muted); font-weight: 900; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 8px; }
+      .card { position: relative; padding: 14px 16px; border-radius: 16px; background: var(--surface); border: 3px solid var(--active); box-shadow: 0 5px 0 var(--active-ink); transform: rotate(-1deg); }
+      .card-kicker { font-size: 11px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: var(--active-ink); }
+      .card[data-state="mastered"] { background: var(--mastered-wash); border-color: var(--mastered); box-shadow: 0 5px 0 var(--mastered-shade); transform: none; }
+      .card[data-state="mastered"] .card-kicker { color: var(--mastered-ink); }
+      .card[data-state="bypassed"] { border: 2.5px dashed var(--alert); box-shadow: none; transform: none; }
+      .card[data-state="bypassed"] .card-kicker { color: var(--alert); }
+      .card-down { background: repeating-linear-gradient(135deg, #EBE7F2 0 8px, #E2DDEB 8px 16px); border: 2.5px dashed var(--locked); box-shadow: none; transform: none; color: #4B4560; font-size: 13px; font-weight: 700; }
+      .concept { font-family: var(--font-card); font-weight: 700; font-size: 18px; line-height: 1.25; margin: 6px 0 10px; }
+      .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; border: 1.5px solid var(--active); background: var(--active-wash); color: var(--active-ink); font-weight: 900; font-size: 12px; }
+      .chip-green { border-color: var(--mastered); background: var(--surface); color: var(--mastered-ink); }
       .muted { color: var(--muted); font-size: 12px; }
-      button { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--active); background: var(--surface); color: #92400E; font: 700 14px Nunito, system-ui, sans-serif; cursor: pointer; }
+      button { width: 100%; padding: 10px; border-radius: 12px; border: 2px solid var(--text); background: var(--surface); color: var(--text); font: 800 14px Nunito, system-ui, sans-serif; cursor: pointer; }
       button:disabled { opacity: .5; cursor: default; }
-      button.secondary { border-color: #10B981; color: #065F46; }
-      .switch { position: relative; width: 38px; height: 22px; } .switch input { opacity: 0; width: 0; height: 0; }
-      .slider { position: absolute; inset: 0; background: #D1D5DB; border-radius: 999px; transition: .2s; cursor: pointer; }
-      .slider::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-      input:checked + .slider { background: var(--mastered); } input:checked + .slider::before { transform: translateX(16px); }
+      button:focus-visible, input:focus-visible { outline: 3px solid #A993FF; outline-offset: 2px; }
+      button.secondary { border-color: var(--active-ink); color: var(--active-ink); box-shadow: 0 3px 0 var(--active-ink); }
+      button.secondary:not(:disabled):hover { background: var(--active-wash); }
+      /* Bypass is a scarce, legitimate ticket: a stub with a count, never alarm red. */
+      #bypass { display: flex; align-items: stretch; padding: 0; text-align: left; border: 2px dashed var(--alert); background: var(--alert-wash); color: var(--alert); }
+      #bypass:not(:disabled):hover { background: #D6EEEC; }
+      .ticket-body { flex: 1; padding: 12px 14px; font-size: 14px; font-weight: 900; }
+      .ticket-stub { display: grid; place-items: center; min-width: 64px; border-left: 2px dashed var(--alert); font-family: var(--font-card); font-size: 22px; font-weight: 700; }
+      #bypass-note { margin: 8px 2px 0; }
+      .switch { position: relative; width: 40px; height: 24px; } .switch input { opacity: 0; width: 0; height: 0; }
+      .slider { position: absolute; inset: 0; background: #D7D1E3; border-radius: 999px; transition: .2s; cursor: pointer; }
+      .slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+      input:checked + .slider { background: var(--active); } input:checked + .slider::before { transform: translateX(16px); }
       details { border-top: 1px solid var(--border); padding-top: 10px; }
-      summary { cursor: pointer; font-weight: 700; font-size: 13px; }
+      summary { cursor: pointer; font-weight: 800; font-size: 13px; }
       form { display: grid; gap: 8px; margin-top: 8px; }
       input[type=text] { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font: 12px ui-monospace, monospace; }
       .save { padding: 6px; font-size: 12px; }
-      #msg { min-height: 16px; font-size: 12px; color: #92400E; }
+      #msg { min-height: 16px; font-size: 12px; font-weight: 700; color: var(--alert); }
       footer { text-align: right; padding: 0 16px 10px; font-size: 11px; color: var(--muted); }
+      @media (prefers-reduced-motion: reduce) { .card { transform: none; } * { transition-duration: .01ms !important; } }
     </style>
   </head>
   <body>
     <header>
-      <div class="brand"><span>◆</span> Friction</div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Friction</div>
       <div class="status"><span class="dot" id="status-dot"></span><span id="status">…</span></div>
     </header>
     <main>
       <div class="row">
         <div>Friction enabled</div>
-        <label class="switch"><input type="checkbox" id="enabled" /><span class="slider"></span></label>
+        <label class="switch"><input type="checkbox" id="enabled" aria-label="Friction enabled" /><span class="slider"></span></label>
       </div>
       <section>
-        <div class="label">Current concept</div>
-        <div id="current" hidden>
+        <div class="label">Current card</div>
+        <div id="current" class="card" hidden>
+          <span class="card-kicker" id="kicker">Learning</span>
           <div class="concept" id="concept"></div>
           <span class="chip" id="chip"></span> <span class="muted" id="friction"></span>
         </div>
-        <div id="no-current" class="muted">Ask Claude about something from your course to see your level here.</div>
+        <div id="no-current" class="card card-down">Ask Claude about something from your course to turn a card face up.</div>
       </section>
       <section>
-        <button id="bypass" disabled>Bypass</button>
+        <button id="bypass" disabled>
+          <span class="ticket-body" id="bypass-label">Bypass</span>
+          <span class="ticket-stub" id="bypass-left" aria-label="Bypasses left">×–</span>
+        </button>
         <p class="muted" id="bypass-note">Re-sends your last message without friction. Depending on the server, it may also pause friction on this concept until reset. Uses one bypass and notifies your teacher.</p>
-        <div id="msg"></div>
+        <div id="msg" role="status"></div>
         <button id="copy-question" hidden>Copy question</button>
       </section>
       <section>

@@ -1,14 +1,24 @@
 :root {
-  --bg: #fdfbf7;
+  /* Concept cards: a collectible deck. Gold = mastered, violet = learning, hatched slate = locked, teal = bypass ticket. */
+  --bg: #f4f1fa;
   --surface: #fff;
-  --border: #e5e7eb;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --locked: #9ca3af;
-  --active: #f59e0b;
-  --mastered: #10b981;
-  --alert: #f97316;
+  --border: #e2dcec;
+  --text: #231b3a;
+  --muted: #5e5675;
+  --locked: #8f86a8;
+  --locked-edge: #b9b1cc;
+  --active: #6d4aff;
+  --active-ink: #4b2fb8;
+  --active-wash: #ede8ff;
+  --mastered: #e0a100;
+  --mastered-ink: #7a5400;
+  --mastered-shade: #b07a00;
+  --mastered-wash: #fff8e1;
+  --alert: #0e7a7a;
+  --alert-wash: #e6f4f3;
   --radius: 12px;
+  --card-radius: 16px;
+  --font-card: Fraunces, Georgia, 'Times New Roman', serif;
   font-family: Nunito, system-ui, sans-serif;
   color: var(--text);
   background: var(--bg);

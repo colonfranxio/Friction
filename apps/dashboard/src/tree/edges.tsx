@@ -1,8 +1,8 @@
-import { BaseEdge, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
+import { BaseEdge, getBezierPath, type EdgeProps } from '@xyflow/react';
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 export function SkillEdge(props: EdgeProps) {
-  const [path] = getSmoothStepPath({ ...props, borderRadius: 8, offset: 4 });
+  const [path] = getBezierPath(props);
   const status = props.data?.status;
   const viewKey = props.data?.viewKey;
   const previous = useRef({ status, viewKey });
