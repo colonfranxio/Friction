@@ -7,6 +7,24 @@
 - Current checkpoint: CP1 and my CP2 fix are on `main` (PR #1 merged). CP2 live acceptance belongs to E. I'm on the "work left to do" list; see that section.
 - Last updated: 2026-10-24 (merged `main` 999db80 into this branch; E's 16-step smoke passes 3x against :8787 on fakes)
 
+## API DEMO READY (demo-readiness task A, 2026-10-24): done at the human's direct request
+- **Baseline:** main `655f42d`, fast-forwarded into `agent/platform`. Mode: fake intelligence, isolated store.
+- **Fix:** `POST /demo/reset {student_id}` after a non-cached upload.
+  - The student's seed-course states still reset to the seed, exactly as before; inactive-state handling is unchanged.
+  - If the student's active course is an uploaded one, every concept in it is recreated at L1/unpaused, so intercepts keep working on that course.
+  - Other students, the active tree, quota restore, and log/bypass/token cleanup are unchanged. Full reset and seed reset are unchanged.
+- **Regressions** (`apps/api/test/api.test.ts`, describe `parse`):
+  - Non-demo parse, then progress plus a pause plus quota 0, then per-student reset. The student is still on the uploaded course with every concept at L1 and unpaused; quota is restored; seed states equal the seed with no duplicates; another student's states are byte-identical; an intercept on the uploaded course returns that concept at L1.
+  - A per-student reset on the seed course still equals the seed states.
+- **Evidence:**
+  - workspace typecheck PASS
+  - `@friction/api` 95 tests PASS
+  - `pnpm smoke --require-v4` on the real API code with fake intelligence and a temporary store on :8791: all 17 steps PASS
+  - `verify-chat-abort` PASS and `verify-stream-failure` PASS
+- **Open:**
+  - CR-2 (whole-class upload) is conditional and not implemented.
+  - The public-link backend proposal hasn't started; it needs a hosting choice.
+
 ## Exit criteria: CP1 (T+3h): every endpoint on fakes
 - [x] Hono boots on 8787; `GET /health` → `{ok, contract_version, mode:{intelligence:'fake', demo, server:'api'}}`. Verified with `curl.exe` against `pnpm dev:api`/`start`.
 - [x] JSON store seeds on first run and survives a restart. `apps/api/data/db.json` is created at boot; test "seeds on first run and survives a restart" writes, re-opens a second store from the same file, and checks quota, logs and bypasses. Corrupt files are moved aside and reseeded.
