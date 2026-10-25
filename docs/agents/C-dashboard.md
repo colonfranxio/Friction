@@ -167,3 +167,8 @@ This section updates the remaining-work assignment after CP2. Own only `apps/das
   - typecheck, build and existing browser suites still pass.
 
 **Execution order and parallel safety (E review):** this request is accepted for the backlog; it does not close the open acceptance gates or authorize bypassing their priority. Once E schedules it, C's embed page and D's side-panel shell/settings/tests can proceed in parallel in their existing isolated checkouts and owned paths. C publishes **EMBED READY** with SHA, route, narrow-screen/error/live-update evidence and any agreed iframe signal. D's final panel integration depends on that handoff; the full Student-page fallback is temporary development scaffolding. Use C's reserved mock/dashboard ports, not D's backend. E merges C before D for this feature, then runs integrated iframe/consent checks and requests the human live-panel check. Preserve the existing API READY dependencies for bypass work; this read-only panel needs no new A/B API work.
+
+
+## Concept-card integration handoff
+
+Merge the published main into your branch before further work, then read [CONCEPT-CARDS](../design/CONCEPT-CARDS.md), [design.md](../../design.md), [UI layouts §2/§5/§6](../ui-layouts.md) and the concept-card integration report. Preserve centered prerequisite cards, vertical scrolling/frontier navigation, no drag/module rename, gold/violet/slate/teal styling, narrow-screen fitting below 0.5 when needed, and the integrated B safety fixes. C must not restore deleted PillarHeader or CanvasActions.move/rename; D must preserve card icons, ticket counts, Copy question and the new consent/composer guards when merging. Extension-first demo: teacher tree creation, then student/extension views.

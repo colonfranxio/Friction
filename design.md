@@ -1,41 +1,51 @@
-# Project Friction: Skill Tree UI/UX Design Document
+# Friction: concept-card design system
 
-## 1. Design Philosophy & Visual Identity
+The current visual specification is [Concept Cards](docs/design/CONCEPT-CARDS.md). It supersedes the earlier circle-node, pillar-column and green/amber design. Data, prerequisite rules and the four assistance levels are unchanged.
 
-The Friction Skill Tree interface translates heavily gamified, vertical progression mechanics into a clean, light-mode interface suited for professional development and education. The design language is defined as "Approachable Professionalism." It avoids aggressive neon colors and dark backgrounds, utilizing soft contrast, rounded geometry, and a warm, inviting palette to reduce cognitive load while maintaining the tactile satisfaction of a gaming skill tree.
+## 1. Identity and tokens
 
-## 2. Layout & Architecture
+Friction uses a light lavender ground with tactile collectible cards. Fraunces is used for headlines, card titles and the logo; Nunito for UI text. The shared mark is a tilted gold card with an ink border, used in the dashboard, favicon, extension toolbar, popup and claude.ai pill.
 
-The structural foundation optimizes complex educational curricula into digestible visual roadmaps.
+| Role | Colour |
+|---|---|
+| Ground | `#F4F1FA` |
+| Surface | `#FFFFFF` |
+| Border | `#E2DCEC` |
+| Ink | `#231B3A` |
+| Muted | `#5E5675` |
+| Mastered | Gold `#E0A100`, ink `#7A5400` |
+| Learning | Violet `#6D4AFF`, ink `#4B2FB8` |
+| Locked | Slate `#8F86A8`, with hatching |
+| Bypass | Teal `#0E7A7A` |
 
-* **Vertical Pillars:** Skills are organized into distinct vertical columns representing major course modules, chronologies, or distinct learning tracks.
-* **Path Routing:** Nodes are connected via structured, branching lines that clearly map prerequisites. Lines use rounded corners (8px radius) to feel fluid rather than rigid, converging and diverging to illustrate alternative learning paths.
-* **Node Hierarchy:** Major milestone concepts are represented by larger circular nodes, while smaller nodes represent sub-skills or intermediate steps.
-* **Progress Indicators:** Pill-shaped fractional badges (e.g., 1/4, 3/4) are positioned directly beneath each node. These quantify mastery depth, representing the user's current Bloom's Taxonomy level out of the required maximum for that specific node.
+Errors retain a warm treatment distinct from bypass tickets. State is never communicated by colour alone.
 
-## 3. Color Palette & Typography
+## 2. Card anatomy
 
-The interface utilizes a warm, professional light-mode aesthetic to reduce eye strain during extended work sessions.
+Every concept uses a fixed 132 × 172px card, regardless of major/minor metadata. The card contains a LOCKED / LEARNING / MASTERED ★ kicker, an emblem with the concept icon, a two-line title, a progress meter and a current/required mastery badge. Locked cards also show a padlock and a patterned face; learning cards tilt slightly. Class focus counts remain available on educator cards. Tooltips expose mastery criteria and keyboard focus supports inspection.
 
-* **Background:** Off-white or soft cream (`#F9FAFB` or `#FDFBF7`).
-* **Inactive/Locked Paths:** Unearned nodes use a soft slate (`#9CA3AF`) and feature a small padlock icon to denote locked prerequisites. Connecting lines are a light silver (`#E5E7EB`).
-* **Active/In-Progress Paths:** Nodes currently being learned utilize a warm amber (`#F59E0B`) to indicate active engagement without inducing urgency. Solid, low-opacity lines connect active nodes.
-* **Mastered Paths:** Fully completed nodes transition to a calming sage or mint green (`#10B981`).
-* **Typography:** The primary typeface is a modern, geometric sans-serif with rounded terminals (*Nunito* or *Inter*), ensuring maximum legibility for small fractional badges while maintaining a friendly tone.
-* **Iconography:** Node icons use abstract geometric vectors or minimalist educational symbols (e.g., a database icon for SQL, a grid for CSS) rendered in monochrome within their colored circular containers.
+## 3. Prerequisites and navigation
 
-## 4. Micro-Animations & Additive Elements
+Each row represents one prerequisite depth from shared `computeDepths`. Rows are centred on one axis with even spacing. Syllabus order follows module order, then API concept order, with placement adjusted beneath prerequisites. Module columns and banners are removed; modules still exist in data and the inspector.
 
-Playful micro-animations transform the skill tree from a static syllabus into a living, responsive roadmap that rewards progress.
+Saved node positions are ignored. Navigation is vertical page-like scrolling, with no canvas pan or zoom and no drag-to-position. Scale starts at 1 and shrinks when required by the row width, including below 0.5 on narrow screens when necessary to keep every card visible. This minimum-scale exception was approved by the human during integration. Verify actual card bounds, not just absence of a horizontal scrollbar.
 
-* **Node Unlocking Sequences:** When a user achieves a new Bloom's Level or unlocks a prerequisite, the padlock icon dissolves via a satisfying spring animation. The node's fill color pulses softly, and the newly unlocked connecting line draws itself outward using a fluid masking effect.
-* **Interactive Hover States:** Hovering over an active node triggers a gentle, magnetic floating effect that slightly scales up the circle and its internal vector icon. The informational tooltip unfurls with a rapid accordion animation, displaying the mastery criteria with a subtle drop shadow to create depth.
-* **Mastery Celebrations:** Reaching Level 4 (Create) on a major milestone node triggers a contained burst of geometric particles tightly bound to the node's radius. The pill-shaped fractional badge flips mimicking a mechanical scoreboard ticker when a mastery point is added.
-* **Dynamic Backgrounds and Momentum:** The canvas background features a slow, breathing parallax effect to provide structural depth. For students on a high-activity learning streak, active pathways display a subtle, looping pulse of light traveling along the connecting lines, visually simulating energy flowing through the curriculum.
+The map opens at the learning frontier: the first prerequisite row still in progress. Changing the viewer returns to that frontier; live updates and edits preserve the reading position. “Back to what you're learning” appears only when the frontier leaves view. Ctrl+scroll uses browser page zoom.
 
-## 5. View Modalities
+## 4. Motion and accessibility
 
-The interface adapts its toolset based on the user's role.
+Mastery flips the card to its gold face with contained confetti; newly unlocked children turn face up. Reduced motion skips these decorative transitions while preserving live state and announcements. Keep readable contrast, text state labels, visible focus and touch-accessible controls. Do not celebrate initial loading or a viewer switch as newly earned mastery. Decorative parallax is outside the implemented design.
 
-* **Student View (Read-Only & Interactive):** Students interact with a clean, navigable map. The focus is entirely on progress tracking, exploring upcoming prerequisites, and viewing mastery criteria via hover tooltips.
-* **Educator View (Build & Edit Modality):** The interface transitions into an open canvas. When educators upload a syllabus PDF or provide text constraints, the UI auto-populates the node structure. Educators can seamlessly drag and drop nodes to redraw connecting lines, click into a node's fractional badge to override the required Bloom's mastery level, and customize overarching pillar names.
+## 5. Educator and student surfaces
+
+The demo begins with the teacher creating a skill tree, then moves to student views and the extension. The sandbox remains available as a secondary testing/fallback surface.
+
+Educators upload a syllabus, inspect/edit concepts and required levels, create/delete nodes, and connect/delete prerequisite edges. Cycles remain rejected. Dragging and module renaming from the canvas are intentionally removed. Students see the same card layout read-only, with mastery updating live through SSE.
+
+## 6. Extension and bypass tickets
+
+The popup, on-page pill and side-panel shell share the card identity, typography and palette. Gold denotes mastered/normal assistance, violet learning, and hatched slate a locked/idle treatment. Bypass controls and teacher notifications use a teal ticket with a ×N count: scarce and legitimate, without an alarming treatment.
+
+Keep existing consent, offline, API-readiness, chat and draft safeguards. UI styling does not change bypass scope: certified prompt bypass affects one intended send; legacy concept bypass is labelled as pause-until-reset. If quota is spent but the intended send becomes unsafe, preserve the current draft, report “not sent” and offer Copy question. Never imply that a failed resend completed.
+
+The side panel loads the configured Student view. The separate map-only embed remains B's feature until explicitly integrated; this visual merge does not certify its delivery. Refer to [UI layouts](docs/ui-layouts.md) §2, §5 and §6 for the surface details.

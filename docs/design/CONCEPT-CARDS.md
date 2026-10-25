@@ -40,7 +40,7 @@ Requested directly by the human (2026-10-24) after the Paper explorations in `do
 - **Centring and spacing:** every row is centred on one axis, with even spacing.
 - **Row order:** syllabus order (module order, then the order the API returns concepts), shifted so each card sits under its prerequisites.
 - **Saved positions:** `node.position` is ignored. The layout is standard for every course.
-- **Navigation:** vertical scroll only, like a page. There is no zoom and no pan. Scale is fixed at 1 and only shrinks (to no less than 0.5) when the widest row would not fit the window's width.
+- **Navigation:** vertical scroll only, like a page. There is no zoom and no pan. Scale is fixed at 1 and only shrinks when the widest row would not fit the window's width. Integration correction approved by the human: allow scale below 0.5 on narrow screens so no card becomes inaccessible; keep vertical-only scrolling.
 - **Opening position:** opens scrolled to the learning frontier (the first row still in progress). It returns there when the viewer changes, but not on live updates or edits. A "Back to what you're learning" button appears once the frontier is scrolled out of view.
 
 ## Behaviour that changed (decide if any should come back)
@@ -76,6 +76,6 @@ Requested directly by the human (2026-10-24) after the Paper explorations in `do
   - merge `design/concept-cards` into `main`, then `agent/extension`
   - update `design.md` and `docs/ui-layouts.md` §2, §5 and §6 from this page
   - do one rehearsal pass on the real API with an uploaded syllabus
-- **C:** merge `main`, then read this page. The dashboard files under `src/tree/`, `src/styles/` and `src/pages/TreePage.tsx` changed. `PillarHeader.tsx` is deleted, and `CanvasActions` no longer has `move` or `rename`.
-- **D:** pull `agent/extension`. `popup.html`, `popup.ts`, `sidepanel.html` and `src/lib/badge.ts` are restyled, and the new `badgeMark()` drives the pill's card glyph. `icons/` and the manifest `icons`/`default_icon` entries are new, and `build.mjs` copies the icons. Behaviour and wording are unchanged.
+- **C:** merge the integrated `main`, then read this page and the integration report. The dashboard files under `src/tree/`, `src/styles/` and `src/pages/TreePage.tsx` changed. `PillarHeader.tsx` is deleted, and `CanvasActions` no longer has `move` or `rename`.
+- **D:** merge the integrated `main` into `agent/extension` before further work. Preserve the integrated B safety corrections when updating styling. `popup.html`, `popup.ts`, `sidepanel.html` and `src/lib/badge.ts` are restyled, and the new `badgeMark()` drives the pill's card glyph. `icons/` and the manifest `icons`/`default_icon` entries are new, and `build.mjs` copies the icons. Behaviour and wording are unchanged.
 - **A:** unchanged, still open from MOSS-release: `POST /demo/reset {student_id}` restores seed states even when the student's active course is an uploaded one.
