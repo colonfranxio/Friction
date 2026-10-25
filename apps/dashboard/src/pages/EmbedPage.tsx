@@ -17,6 +17,18 @@ export function EmbedPage() {
   const data = useTreeData(profile.student?.tree_id ?? undefined);
   useEffect(() => { if (data.live || data.treeRevision) void profile.refresh(); }, [data.live, data.treeRevision, profile.refresh]);
   const [selected, setSelected] = useState<string>();
+  // Closing the detail card (button or Escape) returns focus to the card it describes.
+  const close = () => {
+    const card = selected ? document.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(selected)}"]`) : null;
+    setSelected(undefined);
+    requestAnimationFrame(() => card?.focus()); // after React Flow's own Escape handling blurs the node
+  };
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
   const error = profile.error || data.error;
   const retry = () => { void profile.refresh(); void data.refresh(); };
   if (error && !data.bundle) return <main className="embed embed-state" role="alert"><p>We couldn’t reach your learning map. {error}</p><button onClick={retry}>Try again</button></main>;
@@ -29,7 +41,7 @@ export function EmbedPage() {
     {error && <div className="error-banner" role="alert"><span>Reconnecting… {error}</span><button onClick={retry}>Try again</button></div>}
     <SkillTreeCanvas bundle={data.bundle} students={data.students} studentId={studentId} onSelect={setSelected} />
     {node && status && <section className="embed-detail" aria-live="polite">
-      <button className="icon-button embed-close" onClick={() => setSelected(undefined)} aria-label="Close">×</button>
+      <button className="icon-button embed-close" onClick={close} aria-label="Close">×</button>
       <span className={`embed-status ${status}`}>{STATUS[status]} · {levelLabel(levels[node.id] ?? 1)} · {levels[node.id] ?? 1}/{node.required_blooms_level}</span>
       <h2>{node.concept_name}</h2>
       <p>{node.mastery_criteria}</p>
