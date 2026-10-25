@@ -83,6 +83,8 @@ Verify actual built panel/iframe behavior, consent/no-load/unload and storage/UR
 
 ## Phase 3 — D + E + human, after integrated handoff
 
+**D's Phase1 verification/checklist is integrated from `ed2b6bf`.** See [D-DEMO-VERIFICATION](checkpoints/D-DEMO-VERIFICATION.md) and D's status for the twelve-point live checklist. Its older panel finding is resolved by B's integrated embed. The logged-in Phase3 checks below are still open; Phase1 completion is not LIVE EXTENSION GO.
+
 Use the credentialed demo machine and one exclusive backend/store window. C/B may assist; no simultaneous smoke/reset tests against that store.
 
 1. Build/load the exact final extension, reload the Claude tab, confirm consent, student, API, dashboard backend and approved readiness SHA all match. Wait for Moss ready after startup and again after syllabus parsing.
