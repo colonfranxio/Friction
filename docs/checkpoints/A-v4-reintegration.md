@@ -33,3 +33,12 @@ All servers used a private port (8797) and the clone's own store. No shared serv
 ## Still open for full acceptance
 
 The whole-class syllabus assignment (CR-2), D's extension handoff, C's real-API prompt-bypass verification, rehearsals and the recording.
+
+## Independent verification (read-only, at `f131cca` / `43c87bd`)
+
+**PASS, no blocking issues.** The verifier independently confirmed: ownership; the tie fix touches only `api.test.ts:330-333`, with all behavior assertions retained; the v4 stream-failure, token (120s, bound, synchronously consumed) and lock handling match the contract; non-opt-in clients keep concept bypass; no Moss assumptions broken. Typecheck, API tests, and both stream tools PASS.
+
+Non-blocking notes for A:
+- `apps/api/src/services/parse.ts:148`: formatting (`=db` missing a space).
+- `apps/api/src/routes/chat.ts:23-34`: the prompt token is consumed outside the per-student lock. A reset that deletes the node in that gap yields a 400 and loses the token (the contract has no refund).
+- `apps/api/src/routes/bypass.ts:37`: prompt-scope bypass bumps the state's `updated_at` without a state change. Harmless; the contract asks for the notification.
