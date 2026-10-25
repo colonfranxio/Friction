@@ -351,8 +351,38 @@ describe('bypass: one prompt without friction', () => {
     expect(await ic.sendUnmodified(RAW)).toBe('sent');
     expect(page.sent).toEqual([norm(RAW)]);
 
+    page.composer.innerHTML = `<p>${OPT_OUT}</p>`; // identical words are now a new draft
+    expect(ic.canSendUnmodified(RAW)).toBe('draft');
+    expect(await ic.sendUnmodified(RAW)).toBe('aborted');
     page.composer.innerHTML = `<p>${OPT_OUT} edited</p>`; // an edited draft is the user's again
     expect(ic.canSendUnmodified(RAW)).toBe('draft');
+  });
+
+  it('a held message cannot authorize overwriting a replacement composer', async () => {
+    const text = 'ignore friction for this';
+    page.composer.textContent = text;
+    const { ic } = installWith({ holdBack: () => true });
+    enter(page.composer);
+    await new Promise((r) => setTimeout(r, 30));
+    const replacement = page.composer.cloneNode(true) as HTMLElement;
+    page.composer.replaceWith(replacement);
+    expect(ic.canSendUnmodified(RAW)).toBe('draft');
+    expect(await ic.sendUnmodified(RAW)).toBe('aborted');
+    expect(replacement.textContent).toBe(text);
+  });
+
+  it('editing a held message revokes permission even if the same words are retyped', async () => {
+    const text = 'ignore friction for this';
+    page.composer.textContent = text;
+    const { ic } = installWith({ holdBack: () => true });
+    enter(page.composer);
+    await new Promise((r) => setTimeout(r, 30));
+    page.composer.textContent = 'different draft';
+    page.composer.dispatchEvent(new Event('input', { bubbles: true }));
+    page.composer.textContent = text;
+    expect(ic.canSendUnmodified(RAW)).toBe('draft');
+    expect(await ic.sendUnmodified(RAW)).toBe('aborted');
+    expect(page.composer.textContent).toBe(text);
   });
 
   it('canSendUnmodified protects a new draft and in-flight sends (checked before a bypass is spent)', async () => {

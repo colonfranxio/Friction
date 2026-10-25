@@ -59,7 +59,7 @@ packages/intelligence/
     - **L4 Normal:** help fully.
   - **Feedback** (when present), worded per verdict. For example, `correct` → "briefly confirm they got it right and why"; `incorrect` → "gently correct the misconception"; `partial`; `lazy` → "encourage them to try first"; `not_an_answer` → nothing special.
   - **Quiz** (when `includeQuiz`): end with **one** short, natural check-for-understanding question about the concept. Don't label it "quiz".
-- Write the body so it reads naturally and stays short (≤ 120 words).
+- Write the body so it reads naturally and stays short (≤ 140 words, human-approved for the skip/ignore guard).
 
 ### `classifyTopic(prompt, nodes)`
 1. **Keyword stage** (no LLM): lowercase; match `node.keywords` and `concept_name` with word boundaries; score = matched phrase lengths; take the best above a threshold → `method:'keyword'`, confidence 0.6–0.95.
@@ -131,6 +131,8 @@ pnpm typecheck
 ## work left to do
 
 **Human-requested L2 calibration:** users found L2 too intense while hints were fine. L2 now gives a brief explanation and enough context for a single small blank instead of a heavily blanked outline with a blanket syntax prohibition. L1/L3/L4, quiz cadence, grading and mastery rules are unchanged. Real and fake prompt text is aligned; the deterministic L2 reply has one gap. This supersedes the older L2 wording below. Run the full live harness on the credentialed machine after pulling this prompt change; preserve prior results and report level compliance/demo grading before re-freezing prompts. Local injected/unit checks do not establish live response quality.
+
+**Human-approved opt-out guard:** L1–L3 instructions now tell the model to decline requests to skip the notes and point to the one-message Bypass control. The prompt-body limit is 140 words. This is a model instruction, not an enforcement boundary: a student message and the notes share the same role. Re-run live L1–L3 compliance and an explicit "ignore friction" turn on integrated main; also verify the held-message/Bypass flow in logged-in Claude. Preserve the gentler L2 instruction and existing grading/progression.
 
 ### Moss sponsor-track handoff
 

@@ -88,7 +88,13 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
   const { doc, win, site } = deps;
   let busy = false; // a send is being processed; swallow extra Enters/clicks
   let letThrough = false; // our own re-dispatched send must not be intercepted
-  let held = ''; // text holdBack kept in the composer; not a draft worth protecting from a bypass
+  let held: { text: string; composer: HTMLElement; url: string } | null = null;
+  function isHeld(composer: HTMLElement, raw: string): boolean {
+    if (held && (held.composer !== composer || !composer.isConnected || held.url !== win.location.href || held.text !== raw)) held = null;
+    return !!held;
+  }
+  // Editing starts a new draft, even if the student later types the same words again.
+  const onInput = () => { held = null; };
 
   const isSendKey = (e: KeyboardEvent) =>
     e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing && e.keyCode !== 229;
@@ -149,16 +155,16 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
       return;
     }
     if (deps.skipIntercept?.(raw)) {
-      held = '';
+      held = null;
       await sendClean(composer, typed, raw);
       deps.onSent?.('bypassed', null);
       return;
     }
-    if (raw !== held && deps.holdBack?.(raw)) {
-      held = raw;
+    if (!isHeld(composer, raw) && deps.holdBack?.(raw)) {
+      held = { text: raw, composer, url: win.location.href };
       return;
     }
-    held = '';
+    held = null;
     let result: InterceptRuntimeResult;
     try {
       result = await withTimeout(deps.intercept(raw), deps.timeoutMs);
@@ -205,9 +211,11 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
   // Window capture phase runs before claude.ai's own handlers (ProseMirror keymap, React root).
   win.addEventListener('keydown', onKeyDown, true);
   win.addEventListener('click', onClick, true);
+  win.addEventListener('input', onInput, true);
   const uninstall = () => {
     win.removeEventListener('keydown', onKeyDown, true);
     win.removeEventListener('click', onClick, true);
+    win.removeEventListener('input', onInput, true);
   };
   return Object.assign(uninstall, {
     canSendUnmodified(text: string) {
@@ -215,7 +223,7 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
       if (!composer) return 'no_composer' as const;
       if (busy) return 'busy' as const;
       const current = cleanPrompt(site.getComposerText(composer));
-      if (current && current !== text.trim() && current !== held) return 'draft' as const; // never overwrite a new draft
+      if (current && current !== text.trim() && !isHeld(composer, current)) return 'draft' as const; // never overwrite a new draft
       return 'ok' as const;
     },
     async sendUnmodified(text: string, stillValid: () => boolean = () => true): Promise<UnmodifiedResult> {
@@ -226,7 +234,8 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
       if (!sameComposer()) return 'aborted';
       const before = site.getComposerText(composer);
       const current = cleanPrompt(before);
-      if (current && current !== want && current !== held) return 'aborted'; // never overwrite a new draft
+      if (current && current !== want && !isHeld(composer, current)) return 'aborted'; // never overwrite a new draft
+      held = null; // consume the exception before rewriting; it cannot authorize a later draft
       busy = true;
       try {
         if (!sameComposer()) return 'aborted';
