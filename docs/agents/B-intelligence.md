@@ -130,6 +130,8 @@ pnpm typecheck
 
 ## work left to do
 
+**Human-requested L2 calibration:** users found L2 too intense while hints were fine. L2 now gives a brief explanation and enough context for a single small blank instead of a heavily blanked outline with a blanket syntax prohibition. L1/L3/L4, quiz cadence, grading and mastery rules are unchanged. Real and fake prompt text is aligned; the deterministic L2 reply has one gap. This supersedes the older L2 wording below. Run the full live harness on the credentialed machine after pulling this prompt change; preserve prior results and report level compliance/demo grading before re-freezing prompts. Local injected/unit checks do not establish live response quality.
+
 ### Moss sponsor-track handoff
 
 Read [the detailed execution plan](../moss-implementation-handoff.md). Use `agent/moss-intelligence` for this feature. Review/adapt experiment `8f8fe63` within your package, preserving keyword routing, Claude abstention, semantic-cache invalidation, default-off native isolation and bounded queries. Publish MOSS INTELLIGENCE READY so E can integrate before A's runtime wiring.

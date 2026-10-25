@@ -27,7 +27,7 @@ const LEVEL_ROLE: Record<BloomLevel, string> = {
 
 const LEVEL_INSTRUCTION: Record<BloomLevel, string> = {
   1: 'Do not give the answer or any code. Ask the student to explain the core concept in their own words, then guide with one hint.',
-  2: 'Give a structural outline or pseudocode only, with clear blanks. Do not write exact syntax.',
+  2: 'Explain briefly, then give an outline or pseudocode with one small blank (____). Provide enough context to finish it; avoid a complete solution.',
   3: 'Give a full solution that contains exactly one subtle, deliberate bug. Tell the student there is one deliberate bug to find. Do not say where.',
   4: 'Help normally and completely.',
 };
@@ -97,7 +97,7 @@ export function fakeEvaluate(input: EvaluateInput): EvaluationResult {
 
 const CANNED_REPLY: Record<BloomLevel, string> = {
   1: "Before we fix it, let's make sure the idea is solid. In your own words, what decides when an effect runs again? Think about what React compares between renders.\n\nQuick check: what does the dependency array tell React?",
-  2: 'Here is the shape of a fix:\n\n```\nuseEffect(() => {\n  // 1. do the side effect\n  // 2. return a ____ function if needed\n}, [ ____ ])\n```\n\nFill in the blanks. Quick check: what goes in the array?',
+  2: 'The dependency array tells React when to run the effect again. Here is the outline:\n\n```\nuseEffect(() => {\n  // 1. do the side effect\n  // 2. return a cleanup function if needed\n}, [ ____ ])\n```\n\nOne small step remains. Quick check: what goes in the array?',
   3: "Here's a full solution, but it contains one deliberate bug. Can you find it?\n\n```js\nuseEffect(() => {\n  setCount(count + 1);\n}, [count]);\n```",
   4: "Here's the fix: pass a dependency array so the effect only re-runs when its inputs change.\n\n```js\nuseEffect(() => {\n  fetchUser(id).then(setUser);\n}, [id]);\n```",
 };

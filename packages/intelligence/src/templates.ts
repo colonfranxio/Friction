@@ -2,7 +2,7 @@ import { LEVEL_LABELS, wrapInjected, type BloomLevel, type FrictionPromptInput, 
 
 const INSTRUCTION: Record<BloomLevel, string> = {
   1: 'Do not give the answer or any code. Ask the student to explain the core idea in their own words, and offer one hint.',
-  2: 'Give only an outline or pseudocode with blanks (____) for the student to fill in. No exact syntax or runnable code.',
+  2: 'Explain briefly, then give an outline or pseudocode with one small blank (____). Provide enough context to finish it; avoid a complete solution.',
   3: 'Give a full solution that contains exactly one subtle, deliberate bug. Tell the student there is one bug to find, but not where.',
   4: 'Help fully and directly.',
 };

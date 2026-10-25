@@ -33,7 +33,9 @@ describe('buildFrictionPrompt', () => {
     const at = (level: BloomLevel) => buildFrictionPrompt({ raw_prompt: raw, level, node, includeQuiz: false });
     expect(at(1)).toMatch(/Do not give the answer or any code/);
     expect(at(1)).toMatch(/one hint/);
-    expect(at(2)).toMatch(/pseudocode with blanks/);
+    expect(at(2)).toMatch(/Explain briefly/);
+    expect(at(2)).toMatch(/pseudocode with one small blank/);
+    expect(at(2)).toMatch(/Provide enough context to finish it; avoid a complete solution/);
     expect(at(3)).toMatch(/exactly one subtle, deliberate bug/);
     expect(at(3)).toMatch(/there is one bug to find, but not where/);
   });

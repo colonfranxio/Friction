@@ -62,6 +62,16 @@ describe('seed graph and mastery', () => {
 });
 
 describe('prompt and fake intelligence contract', () => {
+  it('L2 gives context and leaves only one small step in the streamed demo reply', async () => {
+    const node = buildSeed().nodes.find(n => n.id === SEED_IDS.nodes.useEffect)!;
+    const prompt = fakeIntelligence.buildFrictionPrompt({ raw_prompt: DEMO_PROMPTS.question, level: 2, node, includeQuiz: true });
+    let reply = '';
+    for await (const chunk of fakeIntelligence.chat([{ role: 'user', content: prompt }])) reply += chunk;
+    expect(reply).toContain('dependency array tells React when to run');
+    expect(reply.match(/____/g)).toHaveLength(1);
+    expect(reply.trim().endsWith('?')).toBe(true);
+  });
+
   it.each([
     [DEMO_PROMPTS.question, 'not_an_answer'],
     ['How can I prevent a useEffect render loop?', 'not_an_answer'],
