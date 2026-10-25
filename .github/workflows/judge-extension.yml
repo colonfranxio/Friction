@@ -24,7 +24,7 @@ jobs:
         run: |
           mkdir -p judge-package/extension judge-package/docs judge-package/fixtures
           cp -R apps/extension/dist/. judge-package/extension/
-          cp docs/JUDGE-GUIDE.md docs/SUBMISSION-SETUP.md docs/DEVPOST-DRAFT.md judge-package/docs/
+          cp docs/JUDGE-GUIDE.md docs/SUBMISSION-SETUP.md judge-package/docs/
           cp fixtures/elementary-syllabus.md fixtures/elementary-syllabus.pdf judge-package/fixtures/
           cp README.md judge-package/README.md
           git rev-parse HEAD > judge-package/SOURCE-COMMIT.txt

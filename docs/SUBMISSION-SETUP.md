@@ -4,7 +4,7 @@
 
 The human has Vercel; Render signup remains to do. No public dashboard/API, GitHub release asset or video URL has been published by this work. GitHub release operations are blocked here by the workspace's invalid `GH_TOKEN`; git push works. Do not send account credentials in chat.
 
-Prepared: [judge guide](JUDGE-GUIDE.md), [Devpost copy and video plan](DEVPOST-DRAFT.md), root `vercel.json` for dashboard build and SPA deep links, and a manual GitHub Actions packaging workflow. These are deployment inputs, not evidence that deployment has passed.
+Prepared: [judge guide](JUDGE-GUIDE.md), root `vercel.json` for dashboard build and SPA deep links, and a manual GitHub Actions packaging workflow. These are deployment inputs, not evidence that deployment has passed. The Devpost draft was removed from main; prepare submission copy and video separately.
 
 ## 1. A — public API access and limits, before public deployment
 
