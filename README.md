@@ -18,6 +18,52 @@ pnpm smoke:mock          # in a second terminal
 
 Works on **Windows, macOS and Linux** (Node ≥ 22.9). All commands are `pnpm` scripts, with no shell-specific syntax. See the Windows notes in [AGENTS.md](AGENTS.md).
 
+## Students: download and run the Chrome extension
+
+You need desktop Google Chrome and a Claude account. This build supports **claude.ai**. Your teacher/demo organizer must provide your Student ID and a running Friction backend with your course loaded. The extension alone does not run the backend. The current build permits local backend addresses only; hosted classroom access still needs deployment configuration.
+
+### Download
+
+If your organizer gives you a built extension ZIP, download and extract it (Windows: right-click → **Extract All**). Find the extracted folder containing `manifest.json`, `content.js` and `background.js`.
+
+Otherwise, download the source from [GitHub](https://github.com/colonfranxio/Friction) using **Code → Download ZIP**, extract it, and open a terminal in the extracted repository folder containing `package.json`. Install Node ≥ 22.9 and pnpm 9, then build:
+
+```text
+npm install -g pnpm@9
+pnpm install --frozen-lockfile
+pnpm build:ext
+```
+
+The extension folder is now `apps/extension/dist`. Windows ARM/Snapdragon users should follow the [x64 Node instructions below](#windows-arm64-for-example-snapdragon-laptops) before installing dependencies. There is no Chrome Web Store installation in this setup.
+
+### Load and connect
+
+1. Open `chrome://extensions` in Chrome and turn on **Developer mode**.
+2. Click **Load unpacked** and select the folder containing the built `manifest.json`: `apps/extension/dist` for a source build. Select the extracted folder for a prebuilt ZIP, not the ZIP itself.
+3. Click Chrome's puzzle-piece icon and pin **Friction**, then open it and expand **Settings**.
+4. Enter the **Student ID** supplied by your organizer. For a local demo, set **API URL** to `http://127.0.0.1:8787` and **Dashboard URL** to `http://127.0.0.1:5173`. These point to servers on your own computer, not your teacher's computer. Use an **API READY SHA** only if your organizer supplies an approved value; it controls supported bypass behavior. Click **Save** and check **Friction enabled**.
+5. Open or refresh [claude.ai](https://claude.ai), sign in, and ask about a concept from your assigned course. Check the Friction badge for a concept/level. **Open learning map** in the extension shows your progress. Turning Friction off stops its API requests.
+
+### Start the local services, if you are running the demo yourself
+
+Use the repository folder and your existing `.env` from the organizer (real intelligence needs the API key and model settings from `.env.example`; never share those secrets). Keep these running in two separate terminals:
+
+```text
+pnpm dev:api
+```
+
+```text
+pnpm dev:dash
+```
+
+Both must use the same backend configuration. If someone else manages the services on your demo computer, ask them to start them instead.
+
+### If it says “Friction offline”
+
+Open `http://127.0.0.1:8787/health` in your browser. If it does not respond, start the API or ask your organizer for help. Check the extension's API URL, leave the server terminal open, and refresh Claude. Offline requests pass through to Claude without tutoring. An online prompt outside the loaded course may also receive no friction.
+
+After an update, rebuild with `pnpm build:ext` (or extract the new built ZIP), click **Reload** on Friction at `chrome://extensions`, and refresh every open Claude tab. Keep the loaded extension folder in place. A detailed demo walkthrough will follow once the final UI is accepted.
+
 | Path | What | Owner |
 |---|---|---|
 | `packages/shared` | Frozen contract: types, API, rules, client, seed, fakes | Lead |
