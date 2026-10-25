@@ -44,7 +44,11 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
     left: Math.min(0, ...placed.map((n) => n.position.x)), right: Math.max(0, ...placed.map((n) => n.position.x + NODE_WIDTH)),
     bottom: Math.max(0, ...placed.map((n) => n.position.y + CARD_HEIGHT)),
   }), [placed]);
-  const zoom = size.width ? Math.min(1, Math.max(0.5, (size.width - 48) / (bounds.right - bounds.left))) : 1;
+  // A fixed minimum clips wide rows on mobile and in the sandbox mini-tree, where
+  // horizontal navigation is intentionally disabled. Fit the complete row instead.
+  const zoom = size.width > 0
+    ? Math.min(1, Math.max(1, size.width - 48) / Math.max(1, bounds.right - bounds.left))
+    : 1;
   const viewport = { x: size.width / 2 - ((bounds.left + bounds.right) / 2) * zoom, y: TREE_PADDING, zoom };
   const contentHeight = bounds.bottom * zoom + TREE_PADDING * 2;
   // The learning frontier: the first row still in progress (else the last row once everything is mastered, else the top).
@@ -103,7 +107,7 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
           deleteKeyCode={editing ? ['Backspace', 'Delete'] : null} nodesFocusable edgesFocusable={editing}
           onBeforeDelete={async ({ edges: deletedEdges }) => { for (const edge of deletedEdges) actions?.deleteEdge(edge.source, edge.target); return false; }}
           onConnect={(connection) => actions?.connect(connection)}
-          minZoom={0.5} maxZoom={1} proOptions={{ hideAttribution: true }}>
+          minZoom={zoom} maxZoom={1} proOptions={{ hideAttribution: true }}>
           <Background color="#ddd6ea" gap={24} size={1} />
         </ReactFlow>
       </div>
