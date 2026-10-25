@@ -15,14 +15,18 @@ export function syllabusOrder(bundle: TreeBundle): SkillNode[] {
 /**
  * One standard tree for every course: each row is a prerequisite level, centred on one axis, cards evenly spaced.
  * Rows keep syllabus order, nudged so each card sits under its prerequisites. Saved positions are ignored.
+ * On narrow windows (side panel, phone) a level wider than `maxColumns` wraps onto extra lines at full card size
+ * instead of shrinking every card.
  */
-export function layoutTree(bundle: TreeBundle) {
+export function layoutTree(bundle: TreeBundle, maxColumns = Infinity) {
   const depths = computeDepths(bundle.nodes, bundle.edges);
   const order = syllabusOrder(bundle);
   const rank = new Map(order.map((node, index) => [node.id, index]));
   const x = new Map<string, number>();
   const rows = [...new Set(order.map((node) => depths[node.id]))].sort((a, b) => a - b);
   const placed: (SkillNode & { position: { x: number; y: number }; depth: number })[] = [];
+  const columns = Math.max(1, Math.floor(maxColumns));
+  let y = 0;
   for (const depth of rows) {
     const parentX = (node: SkillNode) => {
       const xs = bundle.edges.filter((e) => e.child_node_id === node.id && x.has(e.parent_node_id)).map((e) => x.get(e.parent_node_id)!);
@@ -30,12 +34,16 @@ export function layoutTree(bundle: TreeBundle) {
     };
     const row = order.filter((node) => depths[node.id] === depth)
       .sort((a, b) => (depth ? parentX(a) - parentX(b) : 0) || rank.get(a.id)! - rank.get(b.id)!);
-    const width = row.length * NODE_WIDTH + (row.length - 1) * COLUMN_GAP;
-    row.forEach((node, index) => {
-      const left = -width / 2 + index * (NODE_WIDTH + COLUMN_GAP);
-      x.set(node.id, left + NODE_WIDTH / 2);
-      placed.push({ ...node, depth, position: { x: left, y: depth * STEP_Y } });
-    });
+    for (let start = 0; start < row.length; start += columns) {
+      const line = row.slice(start, start + columns);
+      const width = line.length * NODE_WIDTH + (line.length - 1) * COLUMN_GAP;
+      line.forEach((node, index) => {
+        const left = -width / 2 + index * (NODE_WIDTH + COLUMN_GAP);
+        x.set(node.id, left + NODE_WIDTH / 2);
+        placed.push({ ...node, depth, position: { x: left, y } });
+      });
+      y += STEP_Y;
+    }
   }
   return placed;
 }

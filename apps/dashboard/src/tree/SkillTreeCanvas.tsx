@@ -4,7 +4,7 @@ import { Crosshair } from 'lucide-react';
 import type { BloomLevel, StudentSummary, TreeBundle } from '@friction/shared';
 import { SkillNode, type SkillFlowNode } from './SkillNode';
 import { SkillEdge } from './edges';
-import { layoutTree, treePresentation, CARD_HEIGHT, NODE_WIDTH, STEP_Y } from './layout';
+import { layoutTree, treePresentation, CARD_HEIGHT, COLUMN_GAP, NODE_WIDTH } from './layout';
 /** Screen-space breathing room above the first row and below the last. */
 const TREE_PADDING = 36;
 const nodeTypes = { skill: SkillNode };
@@ -21,7 +21,10 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
 }) {
   const presentation = useMemo(() => treePresentation(bundle, students, studentId), [bundle, students, studentId]);
   const viewKey = `${bundle.tree.id}:${studentId ?? 'class'}`;
-  const placed = useMemo(() => layoutTree(bundle), [bundle]);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  // How many full-size cards fit side by side; wider prerequisite levels wrap onto extra lines.
+  const columns = size.width > 0 ? Math.max(1, Math.floor((size.width - 32 + COLUMN_GAP) / (NODE_WIDTH + COLUMN_GAP))) : Infinity;
+  const placed = useMemo(() => layoutTree(bundle, columns), [bundle, columns]);
   const initialNodes = useMemo<FlowNode[]>(() => placed.map((concept): SkillFlowNode => ({
     id: concept.id, type: 'skill', position: concept.position, draggable: false,
     data: { concept, level: presentation.levels[concept.id] ?? 1, status: presentation.statuses[concept.id], count: presentation.focused[concept.id] ?? 0, editing, viewKey,
@@ -29,7 +32,6 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
   })), [placed, presentation, editing, actions, viewKey]);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(initialNodes);
   const scroller = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     const element = scroller.current;
@@ -39,7 +41,7 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
     return () => observer.disconnect();
   }, [bundle.nodes.length > 0]);
   // No zoom or panning: the tree is a fixed-scale column that scrolls vertically like a page.
-  // It only scales down when the widest row would not fit the window's width.
+  // Wide levels wrap first (see `columns`); it only scales down when a single card would not fit.
   const bounds = useMemo(() => ({
     left: Math.min(0, ...placed.map((n) => n.position.x)), right: Math.max(0, ...placed.map((n) => n.position.x + NODE_WIDTH)),
     bottom: Math.max(0, ...placed.map((n) => n.position.y + CARD_HEIGHT)),
@@ -51,17 +53,20 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
     : 1;
   const viewport = { x: size.width / 2 - ((bounds.left + bounds.right) / 2) * zoom, y: TREE_PADDING, zoom };
   const contentHeight = bounds.bottom * zoom + TREE_PADDING * 2;
-  // The learning frontier: the first row still in progress (else the last row once everything is mastered, else the top).
-  const frontierRow = useMemo(() => {
+  // The learning frontier: the first row still in progress (else the last row once everything is mastered, else the top),
+  // as the top of its first line in tree coordinates.
+  const frontierY = useMemo(() => {
     const active = placed.filter((n) => presentation.statuses[n.id] === 'active').map((n) => n.depth);
     const allMastered = placed.length > 0 && placed.every((n) => presentation.statuses[n.id] === 'mastered');
-    return active.length ? Math.min(...active) : allMastered ? Math.max(0, ...placed.map((n) => n.depth)) : 0;
+    const row = active.length ? Math.min(...active) : allMastered ? Math.max(0, ...placed.map((n) => n.depth)) : 0;
+    const tops = placed.filter((n) => n.depth === row).map((n) => n.position.y);
+    return tops.length ? Math.min(...tops) : 0;
   }, [placed, presentation]);
   const scrollToFrontier = useCallback((behavior: ScrollBehavior = 'auto') => {
     const element = scroller.current;
     if (!element) return;
-    element.scrollTo({ top: TREE_PADDING + (frontierRow * STEP_Y + CARD_HEIGHT / 2) * zoom - element.clientHeight / 2, behavior });
-  }, [frontierRow, zoom]);
+    element.scrollTo({ top: TREE_PADDING + (frontierY + CARD_HEIGHT / 2) * zoom - element.clientHeight / 2, behavior });
+  }, [frontierY, zoom]);
   // Open on the frontier and return to it when the viewer changes, not on every live update or edit.
   const scrolledFor = useRef<string>(undefined);
   useEffect(() => {
@@ -74,9 +79,9 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
   const checkFrontier = useCallback(() => {
     const element = scroller.current;
     if (!element) return;
-    const top = TREE_PADDING + frontierRow * STEP_Y * zoom, bottom = top + CARD_HEIGHT * zoom;
+    const top = TREE_PADDING + frontierY * zoom, bottom = top + CARD_HEIGHT * zoom;
     setFrontierVisible(bottom > element.scrollTop + 24 && top < element.scrollTop + element.clientHeight - 24);
-  }, [frontierRow, zoom]);
+  }, [frontierY, zoom]);
   useEffect(checkFrontier, [checkFrontier, size]);
   useEffect(() => {
     // Keep measurements while SSE patches data; dropping them briefly unmounts edges.
