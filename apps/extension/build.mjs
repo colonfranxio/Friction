@@ -17,6 +17,8 @@ if (missing.length) throw new Error(`missing entries: ${missing.join(', ')}`);
 
 const copyStatic = () => {
   for (const f of ['manifest.json', 'popup.html', 'sidepanel.html']) copyFileSync(join(here, f), join(dist, f));
+  mkdirSync(join(dist, 'icons'), { recursive: true });
+  for (const size of [16, 32, 48, 128]) copyFileSync(join(here, 'icons', `icon-${size}.png`), join(dist, 'icons', `icon-${size}.png`));
 };
 
 const opts = {
