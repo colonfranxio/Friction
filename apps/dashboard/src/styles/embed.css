@@ -1,0 +1,16 @@
+/* Side-panel view (/student/:id?embed=1): the map fills the panel; a node's details slide up from the bottom. */
+.embed { box-sizing: border-box; height: 100vh; background: var(--bg); overflow: hidden; position: relative; }
+.embed-state { display: grid; place-content: center; justify-items: center; gap: 12px; padding: 16px; text-align: center; font-size: 13px; color: var(--muted); }
+.embed-map-only { display: flex; flex-direction: column; }
+.embed-map-only .canvas-wrap { flex: 1; min-height: 0; }
+.embed-map-only .skill-node .node-tooltip { display: none !important; } /* the click card replaces it in the narrow panel */
+.embed-map-only .canvas-footer { padding: 10px 12px; }
+.embed-map-only .canvas-footer > span { display: none; }
+.embed-detail { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 5; max-height: 45vh; overflow: auto; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 6px 24px #231b3a1f; }
+.embed-detail h2 { font-family: var(--font-card); font-size: 16px; font-weight: 800; margin: 6px 24px 6px 0; overflow-wrap: anywhere; }
+.embed-detail p { font-size: 12px; color: var(--muted); margin: 0; overflow-wrap: anywhere; }
+.embed-close { position: absolute; top: 8px; right: 10px; font-size: 18px; line-height: 1; }
+.embed-status { font-size: 10px; font-weight: 800; letter-spacing: .4px; color: var(--muted); }
+.embed-status.mastered { color: var(--mastered-ink); }
+.embed-status.active { color: var(--active-ink); }
+.embed .error-banner { margin: 8px; }
