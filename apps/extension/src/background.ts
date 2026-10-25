@@ -132,7 +132,15 @@ async function handleBypass(m: Extract<RuntimeRequest, { type: 'friction:bypass'
   const client = createFrictionClient(s.apiUrl);
   // Prompt scope only behind the same gate as C's sandbox; otherwise send the legacy payload (no scope field).
   const wantPrompt = (m.scope ?? 'prompt') === 'prompt';
-  const usePrompt = wantPrompt && promptBypassEnabled(await healthWithin(client, 1500), s.promptBypassReadySha);
+  const health = wantPrompt ? await healthWithin(client, 1500) : null;
+  // Health can take long enough for consent or the selected student/server to change.
+  // Bind the charge to the settings that initiated it and recheck immediately before POST.
+  const current = await getSettings();
+  if (!current.enabled) return { ok: false, code: 'disabled', message: 'Friction is turned off.' };
+  if (current.studentId !== s.studentId || current.apiUrl !== s.apiUrl) {
+    return { ok: false, code: 'settings_changed', message: 'Friction settings changed. Nothing was charged; try again in the intended chat.' };
+  }
+  const usePrompt = wantPrompt && promptBypassEnabled(health, current.promptBypassReadySha);
   try {
     const r = await client.bypass(
       usePrompt ? { student_id: s.studentId, node_id: nodeId, scope: 'prompt' } : { student_id: s.studentId, node_id: nodeId },

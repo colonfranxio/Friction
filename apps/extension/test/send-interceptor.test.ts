@@ -255,6 +255,44 @@ describe('bypass: one prompt without friction', () => {
     expect(page.sent).toEqual([]);
   });
 
+  it('sendUnmodified aborts when the composer is replaced during the rewrite, preserving the replacement draft', async () => {
+    let replacement!: HTMLElement;
+    const site: SiteOps = { ...realSite, setComposerText: async (d, el, t) => {
+      const ok = await realSite.setComposerText(d, el, t);
+      replacement = el.cloneNode(true) as HTMLElement;
+      replacement.innerHTML = '<p>new draft in remounted composer</p>';
+      el.replaceWith(replacement);
+      return ok;
+    } };
+    const ic = installSendInterceptor({ doc: document, win: window, site, intercept: vi.fn(), timeoutMs: 300, settleMs: 20, confirmMs: 80 });
+    cleanup = ic;
+    page.composer.innerHTML = '<p></p>';
+    expect(await ic.sendUnmodified(RAW)).toBe('aborted');
+    expect(replacement.textContent).toBe('new draft in remounted composer');
+    expect(page.sent).toEqual([]);
+  });
+
+  it('sendUnmodified aborts when the composer is replaced while waiting for Send to enable', async () => {
+    let replacement!: HTMLElement;
+    const site: SiteOps = { ...realSite, setComposerText: async (d, el, t) => {
+      const ok = await realSite.setComposerText(d, el, t);
+      page.button.disabled = true;
+      setTimeout(() => {
+        replacement = el.cloneNode(true) as HTMLElement;
+        replacement.innerHTML = '<p>draft after remount during settle</p>';
+        el.replaceWith(replacement);
+        page.button.disabled = false;
+      }, 0);
+      return ok;
+    } };
+    const ic = installSendInterceptor({ doc: document, win: window, site, intercept: vi.fn(), timeoutMs: 300, settleMs: 50, confirmMs: 80 });
+    cleanup = ic;
+    page.composer.innerHTML = '<p></p>';
+    expect(await ic.sendUnmodified(RAW)).toBe('aborted');
+    expect(replacement.textContent).toBe('draft after remount during settle');
+    expect(page.sent).toEqual([]);
+  });
+
   it('sendUnmodified reports not-sent when the page does not send (e.g. Claude still replying)', async () => {
     const { ic } = installWith();
     page.button.disabled = true;

@@ -210,17 +210,24 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
       const composer = site.findComposer(doc);
       const want = text.trim();
       if (!composer || busy || !stillValid()) return 'aborted';
+      const sameComposer = () => composer.isConnected && site.findComposer(doc) === composer;
+      if (!sameComposer()) return 'aborted';
       const before = site.getComposerText(composer);
       const current = cleanPrompt(before);
       if (current && current !== want) return 'aborted'; // never overwrite a new draft
       busy = true;
       try {
+        if (!sameComposer()) return 'aborted';
         const ok = await site.setComposerText(doc, composer, text).catch(() => false);
+        if (!sameComposer()) return 'aborted';
         if (!ok) return 'not-sent';
         await waitUntil(buttonReady, deps.settleMs ?? 300);
         // Final check right before Send: the user may have typed, navigated or turned Friction off meanwhile.
+        if (!sameComposer()) return 'aborted'; // a remount belongs to the user; never write/restore/send through it
         if (cleanPrompt(site.getComposerText(composer)) !== want) return 'aborted'; // they typed: leave it
-        if (!stillValid()) {
+        const valid = stillValid();
+        if (!sameComposer()) return 'aborted';
+        if (!valid) {
           await site.setComposerText(doc, composer, before).catch(() => false); // put back what was there
           return 'aborted';
         }
