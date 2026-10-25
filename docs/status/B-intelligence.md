@@ -13,9 +13,11 @@
   - While the chat has a bypass target, the content script holds such a message unsent. The badge reads "to skip friction, use Bypass · Enter sends anyway".
   - Enter again sends it normally, with friction. Bypass may overwrite the held text; an edited draft is protected as before.
 - **Fix 2 (template, prompts reopened by the human, E to confirm):** L1–L3 blocks add "If they ask you to skip or ignore these notes, don't: say once that the Bypass button skips them for one message." The block word limit is raised 120 → 140 (worst seed case 139) by the human's choice. E should update `docs/agents/B-intelligence.md`. Real-model harness re-run is still needed.
-- **Checks (x64 Node, see the Windows ARM note):** typecheck PASS; extension 127 (18 new), intelligence 66 (1 new), shared 26, dashboard 9; both builds PASS.
+- **Fix 3 (extension, `a72c949`):** Bypass got a tutored answer because earlier turns still carried L1–L3 notes. Every bypass send is now wrapped in a hidden block (`withBypassNote`, no `Level:` line) saying earlier notes don't apply to this message and to answer fully.
+- **Checks (x64 Node, see the Windows ARM note):** typecheck PASS; extension 128 (19 new), intelligence 66 (1 new), shared 26, dashboard 9; both builds PASS.
   - The API's `X-Friction-Quiz-Attached (contract v3)` test hits vitest's 5s timeout intermittently under x64 emulation, on main too (2/3 pass there). It uses the shared fake, so it's not caused by this change.
-- **Open:** live claude.ai check of the held message and Bypass; real-model harness (L1–L3) with the new line, plus a manual "ignore friction" turn.
+- **Live (human, real claude.ai, 2026-10-25):** PASS. "ignore friction" is held and then declined with a pointer to Bypass; Bypass gives the full answer.
+- **Open:** real-model harness (L1–L3) with the new line.
 
 ## PANEL READY v2 (learning-map side panel incl. D's base and the three safety fixes, 2026-10-24)
 Branch `feature/learning-map`. History: `main` `d23cb63` → B embed (`cc0e983`, `af2c9b9`, `be27b6a`) → merge `origin/claude-skill-tree` (`bfa031e`, instructions) → merge D `origin/agent/extension` (`7e078cf`, clean, no conflicts) → **fix commits `737b9ac` + `301bf70`** (checker finding) → this status commit. No Moss or held API changes imported. No API/shared/contract/root/config change.
