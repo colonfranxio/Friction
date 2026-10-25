@@ -7,6 +7,13 @@
 - Current checkpoint: C READY v4, mock-backed correctness/acceptance complete; real API READY and E's exclusive live acceptance still pending
 - Last updated: 2026-10-24
 
+## Concept-card redesign (2026-10-24, at the human's direct request): supersedes the CP3 visual sign-off below
+- Branch `design/concept-cards`. Full spec, changed behaviour and handoff: [docs/design/CONCEPT-CARDS.md](../design/CONCEPT-CARDS.md).
+- **Looks:** nodes are concept cards (gold mastered, violet learning, hatched locked); the deck palette and Fraunces headings are used on every screen; bypass is a teal ticket; the logo is a gold card.
+- **Tree layout:** centred prerequisite rows with no module columns. It scrolls vertically only (no zoom or pan) and opens on the learning frontier.
+- **Removed:** module rename from the canvas, and drag-to-position.
+- Typecheck, 9 unit tests and all six browser suites pass on a private mock.
+
 ## CP3 visual sign-off (dashboard only)
 - User requested a final UI check. Reviewed educator, student, and sandbox screenshots at 1440x1000, 1280x800, and 390x844, plus mobile upload. Browser checks confirm no horizontal overflow; the sandbox fits the 1280x800 demo screen without page scrolling.
 - Improved readable supporting text and contrast, safe formatted streaming code blocks/inline code/bold, responsive error actions and touch controls. Raw HTML is never rendered.

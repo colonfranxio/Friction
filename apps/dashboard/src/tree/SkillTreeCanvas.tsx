@@ -65,6 +65,15 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
     scrolledFor.current = viewKey;
     scrollToFrontier();
   }, [size.width, viewKey, scrollToFrontier]);
+  // The "back" button only appears once the frontier row has been scrolled out of view.
+  const [frontierVisible, setFrontierVisible] = useState(true);
+  const checkFrontier = useCallback(() => {
+    const element = scroller.current;
+    if (!element) return;
+    const top = TREE_PADDING + frontierRow * STEP_Y * zoom, bottom = top + CARD_HEIGHT * zoom;
+    setFrontierVisible(bottom > element.scrollTop + 24 && top < element.scrollTop + element.clientHeight - 24);
+  }, [frontierRow, zoom]);
+  useEffect(checkFrontier, [checkFrontier, size]);
   useEffect(() => {
     // Keep measurements while SSE patches data; dropping them briefly unmounts edges.
     setNodes((current) => initialNodes.map((next) => {
@@ -80,7 +89,7 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
   });
   const select: NodeMouseHandler<FlowNode> = (_event, node) => onSelect?.(node.id);
   return <div className="canvas-wrap">
-    {bundle.nodes.length === 0 ? <div className="center-state"><h2>Your canvas is ready</h2><p>Turn on edit mode and add your first concept.</p></div> : <div className="tree-scroll" ref={scroller}>
+    {bundle.nodes.length === 0 ? <div className="center-state"><h2>Your canvas is ready</h2><p>Turn on edit mode and add your first concept.</p></div> : <div className="tree-scroll" ref={scroller} onScroll={checkFrontier}>
       <div className="tree-scroll-content" style={{ height: contentHeight }}>
         <ReactFlow<FlowNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} viewport={viewport} onViewportChange={() => {}}
           onNodesChange={onNodesChange} onNodeClick={select} onPaneClick={() => { onSelect?.(undefined); setSelectedEdgeIds(new Set()); }}
@@ -99,7 +108,7 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
         </ReactFlow>
       </div>
     </div>}
-    {bundle.nodes.length > 0 && <button className="frontier-button" aria-label="Back to what you’re learning" title="Back to what you’re learning" onClick={() => scrollToFrontier('smooth')}><Crosshair size={14} /><span className="frontier-label">Back to what you’re learning</span></button>}
+    {bundle.nodes.length > 0 && !frontierVisible && <button className="frontier-button" aria-label="Back to what you’re learning" title="Back to what you’re learning" onClick={() => scrollToFrontier('smooth')}><Crosshair size={14} /><span className="frontier-label">Back to what you’re learning</span></button>}
     <footer className="canvas-footer"><div className="legend"><span><i className="mastered" />Mastered</span><span><i className="active" />Learning</span><span><i className="locked" />Locked</span></div><span>{bundle.nodes.length} concepts · {bundle.edges.length} connections</span></footer>
   </div>;
 }

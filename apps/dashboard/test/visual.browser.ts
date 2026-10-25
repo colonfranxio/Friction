@@ -39,7 +39,13 @@ try {
           return { heading: pane.x + pane.width / 2, node: node.x + node.width / 2 };
         });
         assert.ok(Math.abs(centers.heading - centers.node) < 4, `${name} tree is centred in its window`);
-      } else assert.ok(await page.getByRole('button', { name: 'Back to what you’re learning' }).isVisible());
+      } else {
+        // The map opens on the frontier; the way back only appears once you scroll away from it.
+        const back = page.getByRole('button', { name: 'Back to what you’re learning' });
+        assert.equal(await back.count(), 0, 'no back button while the frontier is in view');
+        await page.locator('.mini-tree .tree-scroll').evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+        await back.waitFor(); await back.click(); await back.waitFor({ state: 'detached' });
+      }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `${name} ${size.name} horizontal overflow`);
       if (name === 'sandbox' && size.name === 'laptop') assert.equal(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 8), true, 'sandbox demo fits laptop height');
       await page.screenshot({ path: resolve(artifacts, `${name}-${size.name}.png`), fullPage: true });
