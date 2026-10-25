@@ -3,7 +3,10 @@
 .embed-state { display: grid; place-content: center; justify-items: center; gap: 12px; padding: 16px; text-align: center; font-size: 13px; color: var(--muted); }
 .embed-map-only { display: flex; flex-direction: column; }
 .embed-map-only .canvas-wrap { flex: 1; min-height: 0; }
-.embed-map-only .pillar-strip { padding: 12px 8px 0; }
+.embed-map-only .pillar-rail { position: absolute; inset: 0 0 auto; z-index: 5; pointer-events: none; }
+.embed-map-only .skill-node .node-tooltip { display: none !important; } /* the click card replaces it in the narrow panel */
+.embed-map-only .pillar-rail .pillar-slot { left: 50%; width: calc(100% - 24px); max-width: 340px; padding: 4px 0; background: #fcfbf7e6; border-radius: 8px; }
+.embed-map-only .pillar-rail .pillar-heading { font-size: 11px; }
 .embed-map-only .canvas-footer { padding: 10px 12px; }
 .embed-map-only .canvas-footer > span { display: none; }
 .embed-detail { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 5; max-height: 45vh; overflow: auto; padding: 14px 16px; background: white; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 24px #1f2a1f1f; }

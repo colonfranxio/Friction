@@ -13,6 +13,31 @@ export function layoutTree(bundle: TreeBundle) {
     } };
   });
 }
+/** Narrow-panel layout: pillars stacked top to bottom, at most 3 concepts per row. Ignores saved (wide-layout) positions. */
+export function layoutVertical(bundle: TreeBundle) {
+  const pillars = [...bundle.pillars].sort((a, b) => a.order - b.order);
+  const depths = computeDepths(bundle.nodes, bundle.edges);
+  const positions: Record<string, { x: number; y: number }> = {};
+  const headers: { id: string; name: string; index: number; y: number }[] = [];
+  let top = 0;
+  const place = (nodes: TreeBundle['nodes'], header?: { id: string; name: string; index: number }) => {
+    if (!nodes.length) return;
+    if (header) headers.push({ ...header, y: top });
+    top += header ? 44 : 0;
+    for (const depth of [...new Set(nodes.map((n) => depths[n.id]))].sort((a, b) => a - b)) {
+      const row = nodes.filter((n) => depths[n.id] === depth);
+      for (let i = 0; i < row.length; i += 3) {
+        const chunk = row.slice(i, i + 3);
+        chunk.forEach((n, j) => (positions[n.id] = { x: (j - (chunk.length - 1) / 2) * 115 - 50, y: top }));
+        top += 150;
+      }
+    }
+    top += 24;
+  };
+  pillars.forEach((p, index) => place(bundle.nodes.filter((n) => n.pillar_id === p.id), { id: p.id, name: p.name, index }));
+  place(bundle.nodes.filter((n) => !pillars.some((p) => p.id === n.pillar_id)));
+  return { nodes: bundle.nodes.map((node) => ({ ...node, position: positions[node.id] })), headers };
+}
 export const levelsFor = (student?: StudentSummary): Record<string, BloomLevel> => Object.fromEntries((student?.states ?? []).map((s) => [s.node_id, s.current_blooms_level]));
 export function treePresentation(bundle: TreeBundle, students: StudentSummary[], studentId?: string) {
   const depths = computeDepths(bundle.nodes, bundle.edges);

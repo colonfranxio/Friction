@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Background, Controls, ReactFlow, useNodesState, type Connection, type Edge, type NodeMouseHandler, type ReactFlowInstance, type Viewport } from '@xyflow/react';
+import { Background, Controls, PanOnScrollMode, ReactFlow, useNodesState, useViewport, type Connection, type Edge, type NodeMouseHandler, type ReactFlowInstance, type Viewport } from '@xyflow/react';
 import type { BloomLevel, StudentSummary, TreeBundle } from '@friction/shared';
 import { SkillNode, type SkillFlowNode } from './SkillNode';
 import { SkillEdge } from './edges';
-import { layoutTree, treePresentation, PILLAR_WIDTH, PILLAR_GAP } from './layout';
+import { layoutTree, layoutVertical, treePresentation, PILLAR_WIDTH, PILLAR_GAP } from './layout';
 import { PillarHeader } from './PillarHeader';
 const nodeTypes = { skill: SkillNode };
 const edgeTypes = { skill: SkillEdge };
@@ -14,16 +14,23 @@ export interface CanvasActions {
   required: (id: string, level: BloomLevel) => void;
   rename: (id: string, name: string) => void;
 }
-export function SkillTreeCanvas({ bundle, students, studentId, editing = false, onSelect, actions }: {
-  bundle: TreeBundle; students: StudentSummary[]; studentId?: string; editing?: boolean;
+/** Pillar names for the stacked layout; rendered inside the flow so it tracks scroll-panning (which skips onMove). */
+function PillarRail({ headers }: { headers: ReturnType<typeof layoutVertical>['headers'] }) {
+  const { y, zoom } = useViewport();
+  return <div className="pillar-rail">{headers.map((h) => <div className="pillar-slot" key={h.id} style={{ top: y + h.y * zoom }}><PillarHeader index={h.index} name={h.name} editing={false} rename={() => {}} /></div>)}</div>;
+}
+/** `vertical`: narrow read-only panel (extension side panel): pillars stacked, fit to width, scroll down. */
+export function SkillTreeCanvas({ bundle, students, studentId, editing = false, vertical = false, onSelect, actions }: {
+  bundle: TreeBundle; students: StudentSummary[]; studentId?: string; editing?: boolean; vertical?: boolean;
   onSelect?: (id: string | undefined) => void; actions?: CanvasActions;
 }) {
   const presentation = useMemo(() => treePresentation(bundle, students, studentId), [bundle, students, studentId]);
-  const initialNodes = useMemo<SkillFlowNode[]>(() => layoutTree(bundle).map((concept) => ({
+  const stacked = useMemo(() => (vertical ? layoutVertical(bundle) : undefined), [bundle, vertical]);
+  const initialNodes = useMemo<SkillFlowNode[]>(() => (stacked?.nodes ?? layoutTree(bundle)).map((concept) => ({
     id: concept.id, type: 'skill', position: concept.position,
     data: { concept, level: presentation.levels[concept.id] ?? 1, status: presentation.statuses[concept.id], count: presentation.focused[concept.id] ?? 0, editing, viewKey: `${bundle.tree.id}:${studentId ?? 'class'}`,
       onRequired: (level: BloomLevel) => actions?.required(concept.id, level) },
-  })), [bundle, presentation, editing, actions, studentId]);
+  })), [bundle, stacked, presentation, editing, actions, studentId]);
   const [nodes, setNodes, onNodesChange] = useNodesState<SkillFlowNode>(initialNodes);
   const container = useRef<HTMLDivElement>(null);
   const [flow, setFlow] = useState<ReactFlowInstance<SkillFlowNode>>();
@@ -35,11 +42,15 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
     let frame = 0;
     const observer = new ResizeObserver(() => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => { void flow.fitView({ padding: 0.1 }); });
+      frame = requestAnimationFrame(() => {
+        if (!vertical) { void flow.fitView({ padding: 0.1 }); return; }
+        // Fit the width (3 concepts per row at most) and start at the top; the height scrolls.
+        void flow.setViewport({ x: element.clientWidth / 2, y: 16, zoom: Math.min(1.2, element.clientWidth / 380) });
+      });
     });
     observer.observe(element);
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
-  }, [flow]);
+  }, [flow, vertical]);
   useEffect(() => {
     // Keep measurements while SSE patches data; dropping them briefly unmounts edges.
     setNodes((current) => initialNodes.map((next) => {
@@ -55,7 +66,7 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
   });
   const select: NodeMouseHandler<SkillFlowNode> = (_event, node) => onSelect?.(node.id);
   return <div className="canvas-wrap" ref={container}>
-    <div className="pillar-strip">{[...bundle.pillars].sort((a, b) => a.order - b.order).map((pillar, index) => <div className="pillar-slot" key={pillar.id} style={{ left: viewport.x + (index * (PILLAR_WIDTH + PILLAR_GAP) + PILLAR_WIDTH / 2) * viewport.zoom, width: PILLAR_WIDTH * viewport.zoom }}><PillarHeader index={index} name={pillar.name} editing={editing} rename={(name) => actions?.rename(pillar.id, name)} /></div>)}</div>
+    {!stacked && <div className="pillar-strip">{[...bundle.pillars].sort((a, b) => a.order - b.order).map((pillar, index) => <div className="pillar-slot" key={pillar.id} style={{ left: viewport.x + (index * (PILLAR_WIDTH + PILLAR_GAP) + PILLAR_WIDTH / 2) * viewport.zoom, width: PILLAR_WIDTH * viewport.zoom }}><PillarHeader index={index} name={pillar.name} editing={editing} rename={(name) => actions?.rename(pillar.id, name)} /></div>)}</div>}
     {bundle.nodes.length === 0 ? <div className="center-state"><h2>Your canvas is ready</h2><p>Turn on edit mode and add your first concept.</p></div> : <ReactFlow<SkillFlowNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={setFlow}
       onMove={(_event, next) => setViewport(next)}
       onNodesChange={onNodesChange} onNodeClick={select} onPaneClick={() => { onSelect?.(undefined); setSelectedEdgeIds(new Set()); }}
@@ -68,8 +79,9 @@ export function SkillTreeCanvas({ bundle, students, studentId, editing = false, 
       deleteKeyCode={editing ? ['Backspace', 'Delete'] : null} nodesFocusable edgesFocusable={editing}
       onBeforeDelete={async ({ edges: deletedEdges }) => { for (const edge of deletedEdges) actions?.deleteEdge(edge.source, edge.target); return false; }}
       onConnect={(connection) => actions?.connect(connection)} onNodeDragStop={(_event, node) => actions?.move(node.id, node.position)}
-      fitView fitViewOptions={{ padding: 0.18 }} minZoom={0.25} maxZoom={1.7} proOptions={{ hideAttribution: true }}>
+      fitView={!vertical} fitViewOptions={{ padding: 0.18 }} panOnScroll={vertical} panOnScrollMode={PanOnScrollMode.Vertical} zoomOnScroll={!vertical} minZoom={0.25} maxZoom={1.7} proOptions={{ hideAttribution: true }}>
       <Background color="#d9d5ca" gap={24} size={1} /><Controls showInteractive={false} />
+      {stacked && <PillarRail headers={stacked.headers} />}
     </ReactFlow>}
     <footer className="canvas-footer"><div className="legend"><span><i className="mastered" />Mastered</span><span><i className="active" />Learning</span><span><i className="locked" />Locked</span></div><span>{bundle.nodes.length} concepts · {bundle.edges.length} connections</span></footer>
   </div>;
