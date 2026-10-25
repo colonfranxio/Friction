@@ -11,6 +11,8 @@ export type BadgeState =
   | { kind: 'bypassed'; concept: string | null; remaining: number | null; conceptPaused?: boolean }
   /** A bypass was used but the re-send was cancelled (chat/draft/consent/send changed); offers the question to copy. */
   | { kind: 'spent'; remaining: number; reason: string; prompt: string }
+  /** An "ignore friction" message was held unsent (lib/opt-out); skipping goes through Bypass. */
+  | { kind: 'opt-out' }
   /** Bypass failed; show why. */
   | { kind: 'error'; message: string }
   /** The extension was reloaded/updated; this tab's content script is orphaned until the page reloads. */
@@ -41,6 +43,8 @@ export function badgeText(s: BadgeState): { text: string; dot: string } {
     }
     case 'spent':
       return { text: `Friction · bypass used (${s.remaining} left), not sent: ${s.reason}`, dot: DOT.amber };
+    case 'opt-out':
+      return { text: 'Friction · to skip friction, use Bypass · Enter sends anyway', dot: DOT.amber };
     case 'error':
       return { text: `Friction · ${s.message}`, dot: DOT.amber };
     case 'reload':
@@ -56,7 +60,7 @@ export function badgeMark(s: BadgeState): BadgeMark {
 }
 
 export function canBypass(s: BadgeState): boolean {
-  return s.kind === 'active' && s.level < 4;
+  return (s.kind === 'active' && s.level < 4) || s.kind === 'opt-out';
 }
 
 export interface BadgeOptions {

@@ -24,6 +24,10 @@ describe('badgeText', () => {
     expect(canBypass({ kind: 'none' })).toBe(false);
     expect(canBypass({ kind: 'bypassed', concept: null, remaining: 2 })).toBe(false);
   });
+  it('opt-out: a held "ignore friction" message points to Bypass', () => {
+    expect(badgeText({ kind: 'opt-out' }).text).toBe('Friction · to skip friction, use Bypass · Enter sends anyway');
+    expect(canBypass({ kind: 'opt-out' })).toBe(true);
+  });
   it('shows the bypassed state with the remaining quota', () => {
     expect(badgeText({ kind: 'bypassed', concept: 'React useEffect', remaining: 2 }).text).toBe('Friction · bypassed · React useEffect · 2 left');
   });

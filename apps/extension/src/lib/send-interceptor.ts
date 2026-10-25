@@ -33,6 +33,11 @@ export interface InterceptorDeps {
   onSent?(mode: SendMode, result: InterceptRuntimeResult | null): void;
   /** Called with the trimmed text before intercepting; true = send it unmodified (a bypassed prompt). */
   skipIntercept?(raw: string): boolean;
+  /**
+   * true = don't send: leave the text in the composer (an "ignore friction" message; the caller points to Bypass).
+   * Asked once per text: Enter again on the same held text sends it normally. A bypass may overwrite held text.
+   */
+  holdBack?(raw: string): boolean;
 }
 
 export interface SendInterceptor {
@@ -83,6 +88,7 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
   const { doc, win, site } = deps;
   let busy = false; // a send is being processed; swallow extra Enters/clicks
   let letThrough = false; // our own re-dispatched send must not be intercepted
+  let held = ''; // text holdBack kept in the composer; not a draft worth protecting from a bypass
 
   const isSendKey = (e: KeyboardEvent) =>
     e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing && e.keyCode !== 229;
@@ -143,10 +149,16 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
       return;
     }
     if (deps.skipIntercept?.(raw)) {
+      held = '';
       await sendClean(composer, typed, raw);
       deps.onSent?.('bypassed', null);
       return;
     }
+    if (raw !== held && deps.holdBack?.(raw)) {
+      held = raw;
+      return;
+    }
+    held = '';
     let result: InterceptRuntimeResult;
     try {
       result = await withTimeout(deps.intercept(raw), deps.timeoutMs);
@@ -203,7 +215,7 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
       if (!composer) return 'no_composer' as const;
       if (busy) return 'busy' as const;
       const current = cleanPrompt(site.getComposerText(composer));
-      if (current && current !== text.trim()) return 'draft' as const; // never overwrite a new draft
+      if (current && current !== text.trim() && current !== held) return 'draft' as const; // never overwrite a new draft
       return 'ok' as const;
     },
     async sendUnmodified(text: string, stillValid: () => boolean = () => true): Promise<UnmodifiedResult> {
@@ -214,7 +226,7 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
       if (!sameComposer()) return 'aborted';
       const before = site.getComposerText(composer);
       const current = cleanPrompt(before);
-      if (current && current !== want) return 'aborted'; // never overwrite a new draft
+      if (current && current !== want && current !== held) return 'aborted'; // never overwrite a new draft
       busy = true;
       try {
         if (!sameComposer()) return 'aborted';
