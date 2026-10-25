@@ -48,6 +48,7 @@ function setup(opts: { firstTurn?: 'before' | 'after'; holdIntercept?: boolean }
   const ic = installSendInterceptor({
     doc: document, win: window, site, timeoutMs: 5000, settleMs: 20, confirmMs: 80,
     intercept: () => (opts.holdIntercept ? interceptGate.promise : Promise.resolve({ outcome: { passthrough: true, reason: 'no_match' }, concept_name: null })),
+    onSent: (mode) => mode !== 'not-sent' && flow.noteSent(), // as content.ts does
   });
   cleanup = ic;
 
@@ -151,6 +152,18 @@ describe('bypass flow', () => {
     p.interceptGate.resolve({ outcome: { passthrough: true, reason: 'no_match' }, concept_name: null });
     await vi.waitFor(() => expect(p.sent).toHaveLength(1));
     expect(p.sent).toEqual([norm('another question')]);
+  });
+
+  it('another message sent AND completed while the server answers: the old prompt is not re-sent out of order', async () => {
+    const p = setup();
+    const run = p.flow.run();
+    p.composer.innerHTML = '<p>a newer question</p>';
+    p.composer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(p.sent).toHaveLength(1)); // composer is empty again, interceptor idle
+    p.answer();
+    expect(await run).toMatchObject({ ok: true, resent: false, not_sent_reason: 'another message was sent' });
+    expect(p.sent).toEqual([norm('a newer question')]);
+    expect(p.flow.getArmed()).toBeNull();
   });
 
   it('quota refused: nothing sent, badge says so', async () => {

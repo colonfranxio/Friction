@@ -95,6 +95,7 @@ const interceptor = installSendInterceptor({
   ),
   onSent: (mode, r) => {
     if (mode !== 'bypassed') conversations.endSend(mode !== 'not-sent'); // before the target: a first send may alias the chat now
+    if (mode !== 'not-sent') bypass.noteSent(); // a bypass waiting on the server must not re-send after a newer message
     if (mode === 'injected' && r && !r.outcome.passthrough && r.outcome.response.node_id && r.outcome.response.level !== 4) {
       bypass.setTarget({ raw: pendingRaw, node_id: r.outcome.response.node_id, concept: r.concept_name, conv: pendingConv });
     } else if (mode !== 'not-sent' && mode !== 'bypassed') {

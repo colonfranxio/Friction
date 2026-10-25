@@ -27,7 +27,9 @@ const REASONS = {
   stale: 'you switched chats',
   draft: 'you started a new draft',
   busy: 'another message was sending',
+  sent: 'another message was sent',
   no_composer: 'the message box was not found',
+  changed: 'the page changed',
 } as const;
 type Reason = keyof typeof REASONS;
 
@@ -47,6 +49,8 @@ export function createBypassFlow(deps: {
   /** Text that must go out unmodified on the next send in `conv` (a bypass whose automatic re-send didn't go through). */
   let armed: { text: string; conv: string; until: number } | null = null;
   let bypassing = false;
+  /** Count of messages that went out in this tab (any mode); a change during a bypass means the user moved on. */
+  let sends = 0;
 
   const sameChat = (t: BypassTarget) => deps.currentConversation() === t.conv;
   /** Why `t` can't be re-sent right now, or null. */
@@ -82,6 +86,7 @@ export function createBypassFlow(deps: {
     if (before) return { ok: false, code: 'busy', message: 'Wait for the current message to send, then bypass.' };
     bypassing = true;
     deps.badge.setBusy(true);
+    const sendsBefore = sends;
     try {
       let r: BypassResult;
       try {
@@ -96,10 +101,10 @@ export function createBypassFlow(deps: {
       }
       if (target === t) target = null; // one bypass per prompt
       // The quota is spent. Re-check: the user may have moved on while the server answered.
-      const after = blocker(t);
+      const after = blocker(t) ?? (sends !== sendsBefore ? 'sent' : null);
       if (after) return spentNotSent(t, r, after);
-      const sent = await deps.interceptor.sendUnmodified(t.raw, () => deps.isEnabled() && sameChat(t));
-      if (sent === 'aborted') return spentNotSent(t, r, blocker(t) ?? (deps.isEnabled() ? 'stale' : 'disabled'));
+      const sent = await deps.interceptor.sendUnmodified(t.raw, () => deps.isEnabled() && sameChat(t) && sends === sendsBefore);
+      if (sent === 'aborted') return spentNotSent(t, r, blocker(t) ?? (sends !== sendsBefore ? 'sent' : 'changed'));
       if (sent === 'not-sent') armed = { text: t.raw, conv: t.conv, until: now() + ARMED_TTL_MS }; // left in the composer: the next Send (within 2 min) goes out unmodified
       deps.badge.set({ kind: 'bypassed', concept: t.concept, remaining: r.remaining_quota, conceptPaused: r.scope_applied === 'concept' });
       return { ok: true, remaining_quota: r.remaining_quota, resent: sent === 'sent', scope_applied: r.scope_applied };
@@ -115,6 +120,10 @@ export function createBypassFlow(deps: {
       target = t;
     },
     getTarget: () => target,
+    /** A message went out (the interceptor's onSent, any mode except 'not-sent'). */
+    noteSent() {
+      sends++;
+    },
     getArmed: () => armed,
     /** The chat on screen changed (or may have): drop the target and armed text if they belong to another chat. */
     onConversation(conv: string | null) {
