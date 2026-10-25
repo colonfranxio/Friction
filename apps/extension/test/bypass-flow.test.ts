@@ -6,7 +6,7 @@ import type { BadgeState } from '../src/lib/badge';
 import { createBypassFlow } from '../src/lib/bypass-flow';
 import { createConversationTracker } from '../src/lib/conversation';
 import type { BypassResult } from '../src/lib/messages';
-import { installSendInterceptor } from '../src/lib/send-interceptor';
+import { installSendInterceptor, withBypassNote } from '../src/lib/send-interceptor';
 import * as site from '../src/site/claude';
 
 const RAW = 'How do I stop my useEffect from running in an infinite loop?';
@@ -93,7 +93,7 @@ describe('bypass flow', () => {
     const run = p.flow.run();
     p.answer();
     expect(await run).toEqual({ ok: true, remaining_quota: 2, resent: true, scope_applied: 'prompt' });
-    expect(p.sent).toEqual([norm(RAW)]);
+    expect(p.sent).toEqual([norm(withBypassNote(RAW))]);
     expect(p.requestBypass).toHaveBeenCalledTimes(1);
     expect(p.flow.getArmed()).toBeNull();
     expect(lastBadge(p.badges)).toMatchObject({ kind: 'bypassed', remaining: 2 });
@@ -106,7 +106,7 @@ describe('bypass flow', () => {
     p.answer();
     await first;
     expect(p.requestBypass).toHaveBeenCalledTimes(1);
-    expect(p.sent).toEqual([norm(RAW)]);
+    expect(p.sent).toEqual([norm(withBypassNote(RAW))]);
   });
 
   it('new draft typed while the server answers: draft kept, nothing sent or armed, question offered', async () => {
@@ -192,7 +192,7 @@ describe('bypass flow', () => {
       const run = p.flow.run();
       p.answer();
       expect(await run).toMatchObject({ ok: true, resent: true });
-      expect(p.sent).toEqual([norm(RAW)]);
+      expect(p.sent).toEqual([norm(withBypassNote(RAW))]);
     });
   }
 

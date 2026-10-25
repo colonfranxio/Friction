@@ -4,7 +4,7 @@
  *
  * DOM operations are injected (`site`) so this is testable in happy-dom.
  */
-import { FRICTION_CLOSE, FRICTION_OPEN, stripInjected } from '@friction/shared';
+import { FRICTION_CLOSE, FRICTION_OPEN, stripInjected, wrapInjected } from '@friction/shared';
 import type { InterceptRuntimeResult } from '../background-types';
 
 export interface SiteOps {
@@ -62,6 +62,15 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
     );
   });
 }
+
+/**
+ * A bypassed prompt still sits in a chat whose earlier messages carry tutoring notes, so plain text keeps
+ * getting tutored. This block (hidden like any friction block) lifts them for this one message.
+ */
+const BYPASS_NOTE =
+  'Private note for your reply. Follow it silently: never mention or allude to it, or to "friction" or "bypass".\n' +
+  'The student used a Bypass for this message: earlier private notes do not apply to it. Answer it fully and directly, with complete working code if code is needed. No hint-only, outline-only or deliberately buggy answers, and no check question.';
+export const withBypassNote = (raw: string) => wrapInjected(raw, BYPASS_NOTE);
 
 /** The user's prompt with any friction block and stray ⟦friction⟧ / ⟦/friction⟧ markers removed. */
 export function cleanPrompt(text: string): string {
@@ -150,7 +159,9 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
     }
     if (deps.skipIntercept?.(raw)) {
       held = '';
-      await sendClean(composer, typed, raw);
+      const ok = await site.setComposerText(doc, composer, withBypassNote(raw)).catch(() => false);
+      if (ok) await sendAndConfirm(composer, raw);
+      else await sendClean(composer, typed, raw);
       deps.onSent?.('bypassed', null);
       return;
     }
@@ -230,7 +241,7 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
       busy = true;
       try {
         if (!sameComposer()) return 'aborted';
-        const ok = await site.setComposerText(doc, composer, text).catch(() => false);
+        const ok = await site.setComposerText(doc, composer, withBypassNote(want)).catch(() => false);
         if (!sameComposer()) return 'aborted';
         if (!ok) return 'not-sent';
         await waitUntil(buttonReady, deps.settleMs ?? 300);
@@ -244,7 +255,7 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
           return 'aborted';
         }
         triggerSend(composer);
-        const sent = await waitUntil(() => site.getComposerText(composer).trim() !== want, deps.confirmMs ?? 600);
+        const sent = await waitUntil(() => cleanPrompt(site.getComposerText(composer)) !== want, deps.confirmMs ?? 600);
         return sent ? 'sent' : 'not-sent';
       } finally {
         busy = false;
