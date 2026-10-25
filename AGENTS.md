@@ -15,6 +15,8 @@ You are one of four agents building Friction in parallel. Your personal brief is
 
 ## Working rules
 
+**Current demo assignments:** all agents must read [DEMO-READINESS-TASKS](docs/DEMO-READINESS-TASKS.md) before starting. It defines the extension-first demo, current ownership exceptions, parallel work, READY handoffs and integration order, superseding older instructions where they conflict. B owns final learning-map implementation with full feature permissions; C/D coordinate instead of editing its active files concurrently. E integrates reviewed code on main. Submission walkthrough is deferred until final UI acceptance.
+
 ### Moss sponsor integration (separate feature)
 
 Follow [docs/moss-implementation-handoff.md](docs/moss-implementation-handoff.md) for Moss work. E integrates on `moss-integration`; B uses `agent/moss-intelligence`, A uses `agent/moss-platform`. These destinations override normal branches for this feature only. C/D retain the separate learning-map assignment. Released to main on 2026-10-24, on by default with credentials (see docs/checkpoints/MOSS-release.md). `claude-skill-tree` still receives no Moss implementation until reconciled on a dedicated candidate. All existing path ownership and isolated-checkout rules apply.

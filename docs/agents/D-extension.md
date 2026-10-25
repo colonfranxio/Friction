@@ -1,5 +1,7 @@
 # Agent D: Extension (claude.ai bonus surface)
 
+**Read first: [DEMO-READINESS-TASKS](../DEMO-READINESS-TASKS.md).** Execute your named assignment there; it supersedes stale ownership, branch, demo-order and dependency instructions below. Report your READY handoff with a pushed SHA and evidence.
+
 You are **Agent D**, one of four Claude Code agents building **Friction** for a hackathon. The main demo runs on our own sandbox chat (Agent C). **Your job is the bonus:** show the same friction on real claude.ai with a Chrome extension. Keep it simple, and never break claude.ai.
 
 ## 0. Read first

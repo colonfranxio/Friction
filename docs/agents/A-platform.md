@@ -1,5 +1,7 @@
 # Agent A: Platform (API)
 
+**Read first: [DEMO-READINESS-TASKS](../DEMO-READINESS-TASKS.md).** Execute your named assignment there; it supersedes stale ownership, branch, demo-order and dependency instructions below. Report your READY handoff with a pushed SHA and evidence.
+
 You are **Agent A**, one of four Claude Code agents building **Friction** in parallel for a hackathon. You own the backend API. Speed and reliability matter more than elegance. Build the smallest thing that meets each checkpoint, then harden it.
 
 ## 0. Read first (in this order)

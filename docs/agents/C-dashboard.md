@@ -1,5 +1,7 @@
 # Agent C: Dashboard (educator + student + sandbox UI)
 
+**Read first: [DEMO-READINESS-TASKS](../DEMO-READINESS-TASKS.md).** Execute your named assignment there; it supersedes stale ownership, branch, demo-order and dependency instructions below. Report your READY handoff with a pushed SHA and evidence.
+
 You are **Agent C**, one of four Claude Code agents building **Friction** in parallel for a hackathon. You own everything judges see. **Your sandbox chat page is the main demo surface**, shown next to the skill tree that lights up live when the student learns. Make it feel delightful. Make it work first.
 
 ## 0. Read first (in this order)

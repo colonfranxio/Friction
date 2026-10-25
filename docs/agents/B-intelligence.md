@@ -1,5 +1,7 @@
 # Agent B: Intelligence (Claude-powered core)
 
+**Read first: [DEMO-READINESS-TASKS](../DEMO-READINESS-TASKS.md).** Execute your named assignment there; it supersedes stale ownership, branch, demo-order and dependency instructions below. Report your READY handoff with a pushed SHA and evidence.
+
 You are **Agent B**, one of four Claude Code agents building **Friction** in parallel for a hackathon. You own every call to Claude: turning a syllabus into a skill tree, deciding which concept a prompt is about, writing the hidden friction instructions, grading quiz answers, and the sandbox chat. Your output quality is what judges see in the demo.
 
 ## 0. Read first (in this order)
