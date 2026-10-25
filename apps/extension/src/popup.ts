@@ -12,17 +12,20 @@ async function render() {
     s = await send<StatusResponse>({ type: 'friction:status' });
   } catch {
     $('status').textContent = 'Offline';
-    $('status-dot').style.background = '#9CA3AF';
+    $('status-dot').style.background = '#8F86A8';
     $<HTMLButtonElement>('bypass').disabled = true;
     return;
   }
   $('status').textContent = !s.enabled ? 'Paused' : s.online ? 'Online' : 'Offline';
-  $('status-dot').style.background = s.online ? '#10B981' : '#9CA3AF';
+  $('status-dot').style.background = s.online ? '#6D4AFF' : '#8F86A8';
   $<HTMLInputElement>('enabled').checked = s.enabled;
 
   const last = s.last;
   if (last?.node_id && last.level) {
     const lvl = s.paused ? 4 : last.level;
+    const state = s.paused ? 'bypassed' : lvl === 4 ? 'mastered' : 'learning';
+    $('current').dataset.state = state;
+    $('kicker').textContent = state === 'bypassed' ? 'Bypassed' : state === 'mastered' ? 'No friction ★' : 'Learning';
     $('concept').textContent = last.concept_name ?? 'Current concept';
     $('chip').textContent = `L${lvl} · ${LEVEL_LABELS[lvl].role}`;
     $('chip').className = lvl === 4 ? 'chip chip-green' : 'chip';
@@ -38,7 +41,9 @@ async function render() {
   const quota = s.bypass_quota;
   // Honest wording: a prompt-scoped bypass skips one message; the legacy one pauses the concept until reset.
   const what = s.prompt_bypass ? 'message' : 'concept';
-  btn.textContent = quota === null ? `Bypass this ${what}` : `Bypass this ${what} (${quota} left)`;
+  $('bypass-label').textContent = `Bypass this ${what}`;
+  $('bypass-left').textContent = quota === null ? '×–' : `×${quota}`;
+  $('bypass-left').setAttribute('aria-label', quota === null ? 'Bypasses left unknown' : `${quota} bypasses left`);
   $('bypass-note').textContent = s.prompt_bypass
     ? 'Re-sends your last message to Claude without friction. Uses one bypass and notifies your teacher.'
     : 'Re-sends your last message without friction and pauses friction on this concept until reset. Uses one bypass and notifies your teacher.';
