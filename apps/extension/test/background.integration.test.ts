@@ -115,10 +115,16 @@ describe('background ⇄ mock API', () => {
   it('bypass uses the last intercepted concept and reports the quota', async () => {
     await call({ type: 'friction:intercept', raw_prompt: DEMO_PROMPTS.bypassQuestion, conversation_id: 'conv-bg-4', previous_assistant_text: null });
     const b = await call<BypassResult>({ type: 'friction:bypass' });
-    expect(b).toEqual({ ok: true, remaining_quota: 2 });
+    expect(b).toEqual({ ok: true, remaining_quota: 2, scope_applied: 'prompt' }); // v4 default: per-prompt
     const s = await call<StatusResponse>({ type: 'friction:status' });
-    expect(s.paused).toBe(true);
+    expect(s.paused).toBe(false); // prompt scope never pauses the concept
     expect(s.bypass_quota).toBe(2);
+  });
+
+  it('bypass targets the node the content script names', async () => {
+    const before = await call<StatusResponse>({ type: 'friction:status' });
+    const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect });
+    expect(b).toEqual({ ok: true, remaining_quota: (before.bypass_quota ?? 0) - 1, scope_applied: 'prompt' });
   });
 
   it('off-topic prompts keep the last concept for the bypass button', async () => {
@@ -139,6 +145,107 @@ describe('background ⇄ mock API', () => {
     expect(calls).toBe(0);
     expect(s.enabled).toBe(false);
     store.enabled = true;
+  });
+
+  it('v4: a prompt-scoped bypass spends quota but does NOT pause the concept', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    const before = await call<StatusResponse>({ type: 'friction:status' });
+    const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
+    expect(b.ok).toBe(true);
+    if (!b.ok) return;
+    expect(b.scope_applied).toBe('prompt');
+    expect(b.remaining_quota).toBe((before.bypass_quota ?? 0) - 1);
+    const st = await (await fetch(`${API}/students/${SEED_IDS.demoStudent}`)).json();
+    expect(st.states.find((x: { node_id: string }) => x.node_id === SEED_IDS.nodes.useEffect).paused).toBe(false);
+  });
+
+  it('v4: a concept-scoped bypass pauses the concept and reports it', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.dataFetching, scope: 'concept' });
+    expect(b.ok && b.scope_applied).toBe('concept');
+    const st = await (await fetch(`${API}/students/${SEED_IDS.demoStudent}`)).json();
+    expect(st.states.find((x: { node_id: string }) => x.node_id === SEED_IDS.nodes.dataFetching).paused).toBe(true);
+  });
+
+  /** Make the in-process mock look like the real API (server:'api') and record /bypass request bodies. */
+  async function asRealApi<T>(fn: (bodies: Array<Record<string, unknown>>) => Promise<T>): Promise<T> {
+    const realFetch = globalThis.fetch;
+    const bodies: Array<Record<string, unknown>> = [];
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/bypass') && init?.body) bodies.push(JSON.parse(String(init.body)));
+      const res = await realFetch(input, init);
+      if (!url.endsWith('/health')) return res;
+      const h = await res.json();
+      return new Response(JSON.stringify({ ...h, mode: { ...h.mode, server: 'api' } }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    try {
+      return await fn(bodies);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  }
+
+  it('gate: a real API without an API READY SHA gets the legacy payload (no scope field) → concept', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    store.promptBypassReadySha = '';
+    await asRealApi(async (bodies) => {
+      const s = await call<StatusResponse>({ type: 'friction:status' });
+      expect(s.prompt_bypass).toBe(false);
+      const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
+      expect(b.ok && b.scope_applied).toBe('concept');
+      expect(bodies).toHaveLength(1);
+      expect('scope' in bodies[0]).toBe(false); // never send new fields to an uncertified server
+    });
+  });
+
+  it('gate: a real API WITH an exact API READY SHA gets scope "prompt"', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    store.promptBypassReadySha = 'd52e791' + 'a'.repeat(33);
+    try {
+      await asRealApi(async (bodies) => {
+        const s = await call<StatusResponse>({ type: 'friction:status' });
+        expect(s.prompt_bypass).toBe(true);
+        const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
+        expect(b.ok && b.scope_applied).toBe('prompt');
+        expect(bodies[0]).toMatchObject({ scope: 'prompt' });
+        expect('raw_prompt' in bodies[0] || 'conversation_id' in bodies[0]).toBe(false); // D resends itself: no token binding
+      });
+    } finally {
+      store.promptBypassReadySha = '';
+    }
+  });
+
+  it('gate: if /health fails, the bypass falls back to the legacy payload (no scope) → concept', async () => {
+    await fetch(`${API}/demo/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ student_id: SEED_IDS.demoStudent }) });
+    const realFetch = globalThis.fetch;
+    const bodies: Array<Record<string, unknown>> = [];
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/health')) throw new TypeError('health down');
+      if (url.endsWith('/bypass') && init?.body) bodies.push(JSON.parse(String(init.body)));
+      return realFetch(input, init);
+    }) as typeof fetch;
+    try {
+      const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect, scope: 'prompt' });
+      expect(b.ok && b.scope_applied).toBe('concept');
+      expect(bodies).toHaveLength(1);
+      expect('scope' in bodies[0]).toBe(false);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  it('bypass makes no API call when consent is off', async () => {
+    store.enabled = false;
+    const realFetch = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async (...a: Parameters<typeof fetch>) => { calls++; return realFetch(...a); }) as typeof fetch;
+    const b = await call<BypassResult>({ type: 'friction:bypass', node_id: SEED_IDS.nodes.useEffect });
+    globalThis.fetch = realFetch;
+    store.enabled = true;
+    expect(calls).toBe(0);
+    expect(b).toEqual({ ok: false, code: 'disabled', message: 'Friction is turned off.' });
   });
 
   it('the consent toggle stops all API calls', async () => {

@@ -4,7 +4,7 @@
  *
  * DOM operations are injected (`site`) so this is testable in happy-dom.
  */
-import { FRICTION_OPEN } from '@friction/shared';
+import { FRICTION_CLOSE, FRICTION_OPEN, stripInjected } from '@friction/shared';
 import type { InterceptRuntimeResult } from '../background-types';
 
 export interface SiteOps {
@@ -16,7 +16,8 @@ export interface SiteOps {
   setComposerText(doc: Document, el: HTMLElement, text: string): Promise<boolean>;
 }
 
-export type SendMode = 'injected' | 'passthrough' | 'failed-open' | 'not-sent';
+export type SendMode = 'injected' | 'passthrough' | 'failed-open' | 'not-sent' | 'bypassed';
+export type UnmodifiedResult = 'sent' | 'not-sent' | 'aborted';
 
 export interface InterceptorDeps {
   doc: Document;
@@ -30,6 +31,21 @@ export interface InterceptorDeps {
   /** Max wait for the composer to empty after sending; if it doesn't, the original text is restored. */
   confirmMs?: number;
   onSent?(mode: SendMode, result: InterceptRuntimeResult | null): void;
+  /** Called with the trimmed text before intercepting; true = send it unmodified (a bypassed prompt). */
+  skipIntercept?(raw: string): boolean;
+}
+
+export interface SendInterceptor {
+  (): void; // uninstall
+  /**
+   * Put `text` in the composer and send it without Friction.
+   * 'sent': it went out. 'not-sent': it is in the composer but the page didn't send it.
+   * 'aborted': nothing was sent and the composer is as the user left it (a draft or another send
+   * appeared, or `stillValid()` turned false; it is checked before writing and right before Send).
+   */
+  sendUnmodified(text: string, stillValid?: () => boolean): Promise<UnmodifiedResult>;
+  /** Can `text` be re-sent right now without clobbering anything? (no send in flight, composer empty or already holding `text`) */
+  canSendUnmodified(text: string): 'ok' | 'busy' | 'draft' | 'no_composer';
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -42,6 +58,18 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
+/** The user's prompt with any friction block and stray ⟦friction⟧ / ⟦/friction⟧ markers removed. */
+export function cleanPrompt(text: string): string {
+  // Repeat until stable, so nested fragments can't rebuild a marker (e.g. "⟦fric⟦friction⟧tion⟧").
+  let prev: string;
+  let cur = text;
+  do {
+    prev = cur;
+    cur = stripInjected(cur).split(FRICTION_OPEN).join('').split(FRICTION_CLOSE).join('');
+  } while (cur !== prev);
+  return cur.trim();
+}
+
 async function waitUntil(cond: () => boolean, maxMs: number, stepMs = 25): Promise<boolean> {
   const end = Date.now() + maxMs;
   while (!cond()) {
@@ -51,7 +79,7 @@ async function waitUntil(cond: () => boolean, maxMs: number, stepMs = 25): Promi
   return true;
 }
 
-export function installSendInterceptor(deps: InterceptorDeps): () => void {
+export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
   const { doc, win, site } = deps;
   let busy = false; // a send is being processed; swallow extra Enters/clicks
   let letThrough = false; // our own re-dispatched send must not be intercepted
@@ -90,25 +118,46 @@ export function installSendInterceptor(deps: InterceptorDeps): () => void {
     return sent;
   }
 
+  /** Send the composer as-is, or after replacing its text with the cleaned prompt. */
+  async function sendClean(composer: HTMLElement, typed: string, raw: string) {
+    if (raw !== typed) {
+      await site.setComposerText(doc, composer, raw).catch(() => false);
+      await waitUntil(buttonReady, deps.settleMs ?? 300);
+    }
+    triggerSend(composer);
+  }
+
   async function run() {
     const composer = site.findComposer(doc);
-    const raw = composer ? site.getComposerText(composer).trim() : '';
-    if (!composer || !raw || raw.includes(FRICTION_OPEN)) {
-      // Nothing to do (or already injected): behave exactly like a normal send.
-      triggerSend(composer);
+    const typed = composer ? site.getComposerText(composer).trim() : '';
+    if (!composer || !typed) {
+      triggerSend(composer); // nothing to do: behave exactly like a normal send
+      return;
+    }
+    // Never trust a friction block the user typed or pasted (e.g. copied from an earlier message):
+    // strip it and any stray markers, then treat the rest as a normal prompt. Our own re-dispatched
+    // send never reaches here (letThrough), so this can't double-inject.
+    const raw = cleanPrompt(typed);
+    if (!raw) {
+      await site.setComposerText(doc, composer, '').catch(() => false); // only a friction block: send nothing
+      return;
+    }
+    if (deps.skipIntercept?.(raw)) {
+      await sendClean(composer, typed, raw);
+      deps.onSent?.('bypassed', null);
       return;
     }
     let result: InterceptRuntimeResult;
     try {
       result = await withTimeout(deps.intercept(raw), deps.timeoutMs);
     } catch {
-      triggerSend(composer);
+      await sendClean(composer, typed, raw);
       deps.onSent?.('failed-open', null);
       return;
     }
     const o = result.outcome;
     if (o.passthrough || o.response.injected_prompt === raw) {
-      triggerSend(composer);
+      await sendClean(composer, typed, raw);
       deps.onSent?.('passthrough', result);
       return;
     }
@@ -144,8 +193,43 @@ export function installSendInterceptor(deps: InterceptorDeps): () => void {
   // Window capture phase runs before claude.ai's own handlers (ProseMirror keymap, React root).
   win.addEventListener('keydown', onKeyDown, true);
   win.addEventListener('click', onClick, true);
-  return () => {
+  const uninstall = () => {
     win.removeEventListener('keydown', onKeyDown, true);
     win.removeEventListener('click', onClick, true);
   };
+  return Object.assign(uninstall, {
+    canSendUnmodified(text: string) {
+      const composer = site.findComposer(doc);
+      if (!composer) return 'no_composer' as const;
+      if (busy) return 'busy' as const;
+      const current = cleanPrompt(site.getComposerText(composer));
+      if (current && current !== text.trim()) return 'draft' as const; // never overwrite a new draft
+      return 'ok' as const;
+    },
+    async sendUnmodified(text: string, stillValid: () => boolean = () => true): Promise<UnmodifiedResult> {
+      const composer = site.findComposer(doc);
+      const want = text.trim();
+      if (!composer || busy || !stillValid()) return 'aborted';
+      const before = site.getComposerText(composer);
+      const current = cleanPrompt(before);
+      if (current && current !== want) return 'aborted'; // never overwrite a new draft
+      busy = true;
+      try {
+        const ok = await site.setComposerText(doc, composer, text).catch(() => false);
+        if (!ok) return 'not-sent';
+        await waitUntil(buttonReady, deps.settleMs ?? 300);
+        // Final check right before Send: the user may have typed, navigated or turned Friction off meanwhile.
+        if (cleanPrompt(site.getComposerText(composer)) !== want) return 'aborted'; // they typed: leave it
+        if (!stillValid()) {
+          await site.setComposerText(doc, composer, before).catch(() => false); // put back what was there
+          return 'aborted';
+        }
+        triggerSend(composer);
+        const sent = await waitUntil(() => site.getComposerText(composer).trim() !== want, deps.confirmMs ?? 600);
+        return sent ? 'sent' : 'not-sent';
+      } finally {
+        busy = false;
+      }
+    },
+  });
 }
