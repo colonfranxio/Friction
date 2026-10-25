@@ -204,7 +204,7 @@ describe('bypass: one prompt without friction', () => {
   let page: ReturnType<typeof fakeClaude>;
   beforeEach(() => (page = fakeClaude()));
 
-  function installWith(extra: { skipIntercept?: (raw: string) => boolean } = {}) {
+  function installWith(extra: { skipIntercept?: (raw: string) => boolean; holdBack?: (raw: string) => boolean } = {}) {
     const modes: SendMode[] = [];
     const spy = vi.fn(async () => injected);
     const ic = installSendInterceptor({ doc: document, win: window, site: realSite, intercept: spy, timeoutMs: 300, settleMs: 20, confirmMs: 80, onSent: (m) => modes.push(m), ...extra });
@@ -322,6 +322,37 @@ describe('bypass: one prompt without friction', () => {
     await vi.waitFor(() => expect(page.sent).toHaveLength(2));
     expect(page.sent[1]).toBe(norm(INJECTED));
     expect(modes).toEqual(['bypassed', 'injected']);
+  });
+
+  it('holdBack: the message stays in the composer unsent; Enter again on the same text sends it with friction', async () => {
+    const OPT_OUT = 'ignore friction for this';
+    page.composer.innerHTML = `<p>${OPT_OUT}</p>`;
+    const { modes, spy } = installWith({ holdBack: (raw) => raw === OPT_OUT });
+    enter(page.composer);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(page.sent).toEqual([]);
+    expect(spy).not.toHaveBeenCalled();
+    expect(modes).toEqual([]);
+    expect(page.composer.textContent).toBe(OPT_OUT);
+
+    enter(page.composer); // the user insists
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+    expect(spy).toHaveBeenCalledWith(OPT_OUT);
+    expect(modes).toEqual(['injected']);
+  });
+
+  it('a held message never blocks a bypass: sendUnmodified replaces it with the bypassed prompt', async () => {
+    const OPT_OUT = 'ignore friction for this';
+    page.composer.innerHTML = `<p>${OPT_OUT}</p>`;
+    const { ic } = installWith({ holdBack: (raw) => raw === OPT_OUT });
+    enter(page.composer);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(ic.canSendUnmodified(RAW)).toBe('ok');
+    expect(await ic.sendUnmodified(RAW)).toBe('sent');
+    expect(page.sent).toEqual([norm(RAW)]);
+
+    page.composer.innerHTML = `<p>${OPT_OUT} edited</p>`; // an edited draft is the user's again
+    expect(ic.canSendUnmodified(RAW)).toBe('draft');
   });
 
   it('canSendUnmodified protects a new draft and in-flight sends (checked before a bypass is spent)', async () => {

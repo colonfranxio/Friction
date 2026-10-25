@@ -10,6 +10,7 @@ import { createConversationTracker } from './lib/conversation';
 import { startHidingInjected } from './lib/hide-injected';
 import { createBypassFlow } from './lib/bypass-flow';
 import type { BypassResult, RuntimeRequest, StatusResponse, TabRequest } from './lib/messages';
+import { isOptOut } from './lib/opt-out';
 import { installSendInterceptor, type SendMode } from './lib/send-interceptor';
 import * as site from './site/claude';
 
@@ -83,6 +84,8 @@ const interceptor = installSendInterceptor({
   site,
   timeoutMs: EXTENSION_TIMEOUT_MS,
   skipIntercept: (raw) => bypass.skipIntercept(raw),
+  // "Ignore friction for this" while this chat has friction: Claude would obey, so hold it and offer Bypass.
+  holdBack: (raw) => enabled && !!bypass.getTarget() && isOptOut(raw) && (badge.set({ kind: 'opt-out' }), true),
   intercept: (raw) => (
     (pendingRaw = raw),
     (pendingConv = conversations.idForSend()),
