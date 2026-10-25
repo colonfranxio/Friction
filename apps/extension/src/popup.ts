@@ -92,7 +92,7 @@ async function init() {
     const copy = $<HTMLButtonElement>('copy-question');
     copy.hidden = true;
     try {
-      // The claude.ai tab does the bypass itself: it knows the prompt to re-send.
+      // The AI chat tab does the bypass itself: it knows the prompt to re-send.
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.id === undefined) throw new Error('no tab');
       const r = (await chrome.tabs.sendMessage(tab.id, { type: 'friction:bypass-resend' } satisfies TabRequest)) as BypassResendResult;
@@ -110,7 +110,7 @@ async function init() {
             ? `Re-sent without friction. ${r.remaining_quota} left. Your teacher has been notified.`
             : `Bypass used (${r.remaining_quota} left). Your message is in the box; press Send and it goes out without friction.`) + scopeNote;
     } catch {
-      $('msg').textContent = 'Open your claude.ai tab (reload it if needed), then click Bypass.';
+      $('msg').textContent = 'Open your AI chat tab (Claude, ChatGPT or Gemini; reload it if needed), then click Bypass.';
     }
     await render();
   });

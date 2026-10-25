@@ -5,7 +5,7 @@ export type ISODate = string;
 
 /** PRD friction levels. Bloom mapping: 1 = Remember+Understand, 2 = Apply, 3 = Analyze+Evaluate, 4 = Create. */
 export type BloomLevel = 1 | 2 | 3 | 4;
-export type AppSource = 'claude_web' | 'chatgpt_web' | 'sandbox';
+export type AppSource = 'claude_web' | 'chatgpt_web' | 'gemini_web' | 'sandbox';
 export type Role = 'educator' | 'student';
 export type NodeStatus = 'locked' | 'active' | 'mastered';
 export type NodeSize = 'major' | 'minor';

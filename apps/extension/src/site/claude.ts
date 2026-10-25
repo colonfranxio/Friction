@@ -1,8 +1,8 @@
 /**
- * Everything claude.ai-specific: selectors + DOM operations. If claude.ai changes its markup,
+ * claude.ai: selectors + URL format. Shared DOM logic is in ./dom.ts. If claude.ai changes its markup,
  * this is the only file to touch (record findings in NOTES.md).
  */
-import { FRICTION_OPEN } from '@friction/shared';
+import { makeAdapter } from './dom';
 
 export const SELECTORS = {
   composer: ['div.ProseMirror[contenteditable="true"]', '[contenteditable="true"][role="textbox"]', 'fieldset [contenteditable="true"]'],
@@ -10,111 +10,16 @@ export const SELECTORS = {
   assistant: ['[data-testid="assistant-message"]', '.font-claude-response', '.font-claude-message', '[data-is-streaming]'],
 };
 
-const MAX_ASSISTANT_CHARS = 4000;
+export const claude = makeAdapter({
+  id: 'claude',
+  app_source: 'claude_web',
+  hosts: ['claude.ai'],
+  selectors: SELECTORS,
+  conversationIdFromPath(pathname) {
+    const m = /\/chat\/([0-9a-fA-F-]{36})(?:[/?#]|$)/.exec(pathname);
+    return m ? m[1] : null;
+  },
+});
 
-function first<T extends Element>(doc: ParentNode, sels: string[]): T | null {
-  for (const s of sels) {
-    const el = doc.querySelector<T>(s);
-    if (el) return el;
-  }
-  return null;
-}
-
-export function findComposer(doc: Document): HTMLElement | null {
-  return first<HTMLElement>(doc, SELECTORS.composer);
-}
-
-export function findSendButton(doc: Document): HTMLButtonElement | null {
-  return first<HTMLButtonElement>(doc, SELECTORS.send);
-}
-
-export function isInComposer(target: EventTarget | null, doc: Document): boolean {
-  const c = findComposer(doc);
-  return !!c && target instanceof Node && (c === target || c.contains(target));
-}
-
-export function isOnSendButton(target: EventTarget | null, doc: Document): boolean {
-  const b = findSendButton(doc);
-  return !!b && target instanceof Node && (b === target || b.contains(target));
-}
-
-export function getComposerText(el: HTMLElement): string {
-  return (el.innerText ?? el.textContent ?? '').replace(/\u00a0/g, ' ');
-}
-
-const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
-const log = (strategy: string) => (console.debug('[friction] composer rewritten via', strategy), true);
-
-/** Did the composer end up containing `text` (whitespace-insensitive)? */
-function composerHas(el: HTMLElement, text: string): boolean {
-  return norm(getComposerText(el)) === norm(text);
-}
-
-function selectAll(doc: Document, el: HTMLElement) {
-  el.focus();
-  const sel = doc.getSelection();
-  if (!sel) return;
-  const range = doc.createRange();
-  range.selectNodeContents(el);
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
-
-/**
- * Replace the composer's content. Tries, in order:
- *  1. a synthetic paste (ProseMirror turns lines into paragraphs),
- *  2. execCommand('insertText'),
- *  3. direct DOM write + input event (ProseMirror re-reads DOM changes).
- * Returns true only if the composer ends up holding the text.
- */
-export async function setComposerText(doc: Document, el: HTMLElement, text: string): Promise<boolean> {
-  const settle = () => new Promise((r) => setTimeout(r, 0));
-
-  try {
-    selectAll(doc, el);
-    const dt = new DataTransfer();
-    dt.setData('text/plain', text);
-    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-    await settle();
-    if (composerHas(el, text)) return log('paste');
-  } catch {
-    /* DataTransfer/ClipboardEvent unsupported: next strategy */
-  }
-
-  try {
-    selectAll(doc, el);
-    if (typeof doc.execCommand === 'function' && doc.execCommand('insertText', false, text)) {
-      await settle();
-      if (composerHas(el, text)) return log('insertText');
-    }
-  } catch {
-    /* next strategy */
-  }
-
-  const lines = text.split('\n');
-  el.replaceChildren(
-    ...lines.map((line) => {
-      const p = doc.createElement('p');
-      p.textContent = line;
-      return p;
-    }),
-  );
-  el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
-  await settle();
-  return composerHas(el, text) ? log('dom') : false;
-}
-
-export function conversationIdFromPath(pathname: string): string | null {
-  const m = /\/chat\/([0-9a-fA-F-]{36})(?:[/?#]|$)/.exec(pathname);
-  return m ? m[1] : null;
-}
-
-export function lastAssistantText(doc: Document): string | null {
-  for (const sel of SELECTORS.assistant) {
-    const all = doc.querySelectorAll<HTMLElement>(sel);
-    const last = all[all.length - 1];
-    const text = (last?.innerText ?? last?.textContent ?? '').trim();
-    if (text && !text.includes(FRICTION_OPEN)) return text.slice(-MAX_ASSISTANT_CHARS);
-  }
-  return null;
-}
+// Named exports kept for existing callers and tests.
+export const { findComposer, findSendButton, isInComposer, isOnSendButton, getComposerText, setComposerText, conversationIdFromPath, lastAssistantText } = claude;

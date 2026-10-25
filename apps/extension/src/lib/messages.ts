@@ -1,8 +1,8 @@
 /** Message shapes between content script / popup and the service worker (chrome.runtime.sendMessage). */
-import type { BloomLevel, InterceptResponse, UUID } from '@friction/shared';
+import type { AppSource, BloomLevel, InterceptResponse, UUID } from '@friction/shared';
 
 export type RuntimeRequest =
-  | { type: 'friction:intercept'; raw_prompt: string; conversation_id: string | null; previous_assistant_text: string | null }
+  | { type: 'friction:intercept'; raw_prompt: string; conversation_id: string | null; previous_assistant_text: string | null; app_source?: AppSource }
   | { type: 'friction:status' }
   /** node_id: the concept to bypass (the tab's last friction-ed message); falls back to the last intercept. */
   | { type: 'friction:bypass'; node_id?: UUID | null; scope?: 'prompt' | 'concept' };

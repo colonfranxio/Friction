@@ -82,7 +82,7 @@ export function createBypassFlow(deps: {
       deps.badge.set({ kind: 'error', message: 'clear your draft to bypass' });
       return { ok: false, code: 'draft', message: 'Send or clear your new draft first, then bypass.' };
     }
-    if (before === 'no_composer') return { ok: false, code: 'no_composer', message: 'Message box not found. Reload the claude.ai tab.' };
+    if (before === 'no_composer') return { ok: false, code: 'no_composer', message: 'Message box not found. Reload your AI chat tab.' };
     if (before) return { ok: false, code: 'busy', message: 'Wait for the current message to send, then bypass.' };
     bypassing = true;
     deps.badge.setBusy(true);

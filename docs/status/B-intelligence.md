@@ -165,3 +165,11 @@ pnpm typecheck
 pnpm harness                                    # needs .env key; ~45 calls, ~2 min; sections: levels grading classify parse exchange
 pnpm --filter @friction/intelligence latency    # 10 graded rows + p50/p95
 ```
+
+## Multi-site CP0: contract ready (2026-10-24, `feature/multi-site`)
+Plan: `docs/multi-site/PLAN.md`; briefs: `docs/multi-site/agents/`.
+- Seam: `apps/extension/src/site/{types,dom,index}.ts`; `claude.ts` rebuilt on `makeAdapter` (selectors/regex/helpers unchanged, named exports kept); `chatgpt.ts` (D) and `gemini.ts` (C) are disabled stubs; `content.ts` runs only when `siteFor(location.hostname)` returns an adapter.
+- **Contract change for E (additive):** `AppSource` += `'gemini_web'` (`packages/shared/src/types.ts`); runtime message `friction:intercept` gains optional `app_source` (background falls back to `'claude_web'` for pre-0.4 tabs). The API already passes `app_source` through.
+- Manifest 0.4.0: host_permissions + content-script matches add `chatgpt.com`, `chat.openai.com`, `gemini.google.com`.
+- Gates: workspace typecheck; tests extension 108 (incl. `site.registry.test.ts`), api 57, intelligence 42, shared 26, dashboard 9; `pnpm build:ext`. Checker (Sonnet 5.5, medium): PASS, nits only.
+- Open human check: claude.ai regression with the rebuilt extension (useEffect question → Socratic pushback).

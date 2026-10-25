@@ -62,7 +62,7 @@ async function handleIntercept(m: Extract<RuntimeRequest, { type: 'friction:inte
       {
         student_id: s.studentId,
         raw_prompt: m.raw_prompt,
-        app_source: 'claude_web',
+        app_source: m.app_source ?? 'claude_web', // a tab still running the pre-0.4 content script sends none
         conversation_id: m.conversation_id,
         previous_assistant_text: m.previous_assistant_text,
       },
