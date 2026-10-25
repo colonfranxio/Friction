@@ -36,3 +36,17 @@ The API can optionally use [Moss](https://docs.moss.dev) to connect a student's 
 - **Logs:** `[moss] {"state":"ready"|"retrieved"|"fallback",...}` with candidate node IDs and timings. No prompts, student IDs or credentials.
 - **Live evidence (paid; private port, in-memory store):** `pnpm --filter @friction/api moss:live` → `apps/api/harness/results/<timestamp>-<sha>/moss-live.json`.
 - **Limits:** no accuracy gain shown on the 8-skill seed course ([docs/moss-live-results.md](docs/moss-live-results.md)). A permanently hung native call pauses Moss preparation (the API keeps serving). See [docs/moss-implementation-handoff.md](docs/moss-implementation-handoff.md) and [docs/checkpoints/MOSS-integration.md](docs/checkpoints/MOSS-integration.md).
+
+### Windows ARM64 (for example, Snapdragon laptops)
+
+The pinned Moss native core ships a Windows **x64** binary, with no Windows ARM64 binary. Under ARM64 Node, it can fail with `Cannot find native binding` and repeated `[moss]` fallback/unavailable logs. The API continues serving through its existing classifier, without Moss retrieval.
+
+Use portable **Windows x64 Node of the same version**, running under Windows emulation. Stop the existing Friction servers, extract x64 Node, then run this in PowerShell from the repository root, replacing the example directory with your extracted path:
+
+```powershell
+$env:Path = "C:\path\to\node-v24.19.0-win-x64;$env:Path"
+node -p process.arch   # must print x64
+pnpm install --frozen-lockfile
+```
+
+Use that x64 Node environment for **every** Friction command, including builds, the API and dashboard. Repeat the PATH step and architecture check in each new terminal. After reinstalling native dependencies for x64, do not run those builds or servers under ARM64 Node; switching architecture requires reinstalling the matching dependencies. No lockfile edit is needed: it already includes `@moss-js/moss-core-win32-x64-msvc`.
