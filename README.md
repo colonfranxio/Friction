@@ -6,6 +6,7 @@ An extension plus dashboard that makes AI tools teach instead of tell. It adjust
 - **Build plan and ownership:** [PLAN.md](PLAN.md)
 - **Contracts:** [docs/contracts.md](docs/contracts.md) · **Screens:** [docs/ui-layouts.md](docs/ui-layouts.md)
 - **Agent prompts:** [docs/agents/](docs/agents/)
+- **Judges:** [installation and walkthrough](docs/JUDGE-GUIDE.md) · [submission/hosting checklist](docs/SUBMISSION-SETUP.md)
 
 ## Quickstart
 ```bash

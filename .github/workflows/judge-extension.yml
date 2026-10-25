@@ -1,0 +1,39 @@
+name: Package judge extension
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @friction/extension typecheck
+      - run: pnpm --filter @friction/extension test
+      - run: pnpm build:ext
+      - name: Bundle extension and setup guide
+        shell: bash
+        run: |
+          mkdir -p judge-package/extension judge-package/docs judge-package/fixtures
+          cp -R apps/extension/dist/. judge-package/extension/
+          cp docs/JUDGE-GUIDE.md docs/SUBMISSION-SETUP.md docs/DEVPOST-DRAFT.md judge-package/docs/
+          cp fixtures/elementary-syllabus.md fixtures/elementary-syllabus.pdf judge-package/fixtures/
+          cp README.md judge-package/README.md
+          git rev-parse HEAD > judge-package/SOURCE-COMMIT.txt
+          zip -r friction-extension.zip judge-package
+          sha256sum friction-extension.zip > friction-extension.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: friction-judge-extension-${{ github.sha }}
+          path: |
+            friction-extension.zip
+            friction-extension.zip.sha256
+          if-no-files-found: error
