@@ -1,7 +1,7 @@
 # Moss integration checkpoint (E)
 
 Branch `moss-integration`. Plan: [moss-implementation-handoff.md](../moss-implementation-handoff.md). Reference: experiment `8f8fe63`.
-**Not merged to main or `claude-skill-tree`.** Waiting for the human's release decision.
+**Released to main on 2026-10-24 at the human's direction** (fast-forward from `moss-integration`, Moss **off by default**). Not merged into `claude-skill-tree`. See [MOSS-release.md](MOSS-release.md).
 
 ## Provenance
 
