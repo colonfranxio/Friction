@@ -201,7 +201,7 @@ export interface HeartbeatRequest {
 }
 
 export interface DemoResetRequest {
-  /** Reset just this student to seed state. Omit with full=true to reset everything. */
+  /** Reset this student: seed states restored, active uploaded-course states L1/unpaused. Omit with full=true to reset everything. */
   student_id?: UUID;
   /** Rebuild the whole store from the seed (drops parsed trees and logs). */
   full?: boolean;

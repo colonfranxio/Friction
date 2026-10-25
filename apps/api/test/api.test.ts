@@ -4,9 +4,11 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   CONTRACT_VERSION,
+  DEFAULT_BYPASS_QUOTA,
   DEMO_PROMPTS,
   FRICTION_OPEN,
   SEED_IDS,
+  buildSeed,
   fakeEvaluate,
   fakeIntelligence,
   type EvaluateInput,
@@ -607,6 +609,56 @@ describe('parse', () => {
     const r = await t.call('POST', '/trees/parse', { kind: 'text', text: 'anything' });
     expect(r.body).toEqual({ tree_id: SEED_IDS.tree, cached: true });
     expect(level(t, N.useEffect)).toBe(1);
+  });
+
+  it('per-student reset after a live upload keeps the uploaded course usable and leaves other students alone', async () => {
+    const parsed: ParsedTree = {
+      title: 'Algebra',
+      pillars: ['Basics'],
+      nodes: [
+        { key: 'a', pillar: 'Basics', concept_name: 'Variables', mastery_criteria: 'm', required_blooms_level: 2, size: 'major', icon: 'function', keywords: ['variable'], depends_on: [] },
+        { key: 'b', pillar: 'Basics', concept_name: 'Equations', mastery_criteria: 'm', required_blooms_level: 2, size: 'minor', icon: 'function', keywords: ['equation'], depends_on: ['a'] },
+      ],
+    };
+    const t = makeApp({ demoMatches: false, intel: { ...fakeIntelligence, parseSyllabus: async () => parsed } });
+    const tree = (await t.call('POST', '/trees/parse', { kind: 'text', text: 'my own syllabus', title: 'Algebra' })).body.tree_id;
+    const nodes = t.store.db.nodes.filter((n) => n.tree_id === tree);
+    const variables = nodes.find((n) => n.concept_name === 'Variables')!;
+    // Progress on the uploaded course, plus a pause and a spent bypass, then a per-student reset.
+    t.store.db.states.find((s) => s.student_id === S && s.node_id === variables.id)!.current_blooms_level = 3;
+    t.store.db.states.find((s) => s.student_id === S && s.node_id === nodes[1].id)!.paused = true;
+    const other = t.store.db.users.find((u) => u.role === 'student' && u.id !== S)!;
+    const otherBefore = JSON.stringify(t.store.db.states.filter((s) => s.student_id === other.id));
+    t.store.db.users.find((u) => u.id === S)!.bypass_quota = 0;
+    const reset = await t.call('POST', '/demo/reset', { student_id: S });
+    expect(reset.status).toBe(200);
+    // Still on the uploaded course, every concept back at L1 and unpaused, quota restored.
+    const student = await t.call('GET', `/students/${S}`);
+    expect(student.body.tree_id).toBe(tree);
+    const active = student.body.states.filter((s: any) => nodes.some((n) => n.id === s.node_id));
+    expect(active).toHaveLength(2);
+    expect(active.every((s: any) => s.current_blooms_level === 1 && !s.paused)).toBe(true);
+    expect(student.body.user.bypass_quota).toBe(DEFAULT_BYPASS_QUOTA);
+    // Seed-course states for the student are still the seed (unchanged contract), with no duplicates.
+    const mine = t.store.db.states.filter((s) => s.student_id === S);
+    expect(new Set(mine.map((s) => s.node_id)).size).toBe(mine.length);
+    expect(mine.filter((s) => !nodes.some((n) => n.id === s.node_id))).toEqual(buildSeed().states.filter((s) => s.student_id === S));
+    // Another student's progress is untouched.
+    expect(JSON.stringify(t.store.db.states.filter((s) => s.student_id === other.id))).toBe(otherBefore);
+    // Intercept on the uploaded course works after the reset.
+    const r = await intercept(t, 'what is a variable in algebra?');
+    expect(r.status).toBe(200);
+    expect(r.body.node_id).toBe(variables.id);
+    expect(r.body.level).toBe(1);
+  });
+
+  it('per-student reset on the seed course still restores the seed states', async () => {
+    const t = makeApp({ demoMatches: true });
+    await intercept(t, DEMO_PROMPTS.question);
+    await intercept(t, DEMO_PROMPTS.correctAnswer);
+    expect(level(t, N.useEffect)).toBe(4);
+    await t.call('POST', '/demo/reset', { student_id: S });
+    expect(t.store.db.states.filter((s) => s.student_id === S)).toEqual(buildSeed().states.filter((s) => s.student_id === S));
   });
 
   it('live path builds a validated tree, drops cyclic/dangling edges, and moves the demo student', async () => {

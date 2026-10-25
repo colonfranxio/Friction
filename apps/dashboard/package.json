@@ -14,7 +14,8 @@
     "test:browser:polish": "tsx test/polish.browser.ts",
     "test:browser:v4": "tsx test/v4.browser.ts",
     "test:browser:editing": "tsx test/editing.browser.ts",
-    "test:browser:visual": "tsx test/visual.browser.ts"
+    "test:browser:visual": "tsx test/visual.browser.ts",
+    "test:browser:embed": "tsx test/embed.browser.ts"
   },
   "dependencies": {
     "@friction/shared": "workspace:^",

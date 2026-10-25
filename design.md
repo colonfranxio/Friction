@@ -48,4 +48,4 @@ The popup, on-page pill and side-panel shell share the card identity, typography
 
 Keep existing consent, offline, API-readiness, chat and draft safeguards. UI styling does not change bypass scope: certified prompt bypass affects one intended send; legacy concept bypass is labelled as pause-until-reset. If quota is spent but the intended send becomes unsafe, preserve the current draft, report “not sent” and offer Copy question. Never imply that a failed resend completed.
 
-The side panel loads the configured Student view. The separate map-only embed remains B's feature until explicitly integrated; this visual merge does not certify its delivery. Refer to [UI layouts](docs/ui-layouts.md) §2, §5 and §6 for the surface details.
+The side panel loads the configured `/student/:id?embed=1` view: a read-only live map with click-to-open details. Close or Escape dismisses the details and returns focus to the concept card. The full Student route is unchanged. Refer to [UI layouts](docs/ui-layouts.md) §2, §5 and §6 for the surface details.
