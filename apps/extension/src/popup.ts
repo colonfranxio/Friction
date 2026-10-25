@@ -40,7 +40,7 @@ async function render() {
   const what = s.prompt_bypass ? 'message' : 'concept';
   btn.textContent = quota === null ? `Bypass this ${what}` : `Bypass this ${what} (${quota} left)`;
   $('bypass-note').textContent = s.prompt_bypass
-    ? 'Re-sends your last message to Claude without friction. Uses one bypass and notifies your teacher.'
+    ? 'Re-sends your last message to the chat without friction. Uses one bypass and notifies your teacher.'
     : 'Re-sends your last message without friction and pauses friction on this concept until reset. Uses one bypass and notifies your teacher.';
   btn.disabled = !s.online || !s.enabled || !last?.node_id || s.paused || quota === 0;
 }

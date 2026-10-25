@@ -34,4 +34,20 @@ describe('stripFrictionBlocks', () => {
     expect(stripFrictionBlocks(document.body)).toBe(2);
     expect(document.body.textContent).toBe('AB');
   });
+
+  it("removes the block from ChatGPT- and Gemini-style user bubbles too (no site-specific selectors)", () => {
+    document.body.innerHTML = `
+      <div data-message-author-role="user"><div class="whitespace-pre-wrap">Why does my loop rerun?
+
+${BLOCK}</div></div>
+      <user-query><div class="query-text"><p class="query-text-line">Why does my loop rerun?</p><p class="query-text-line">${BLOCK}</p></div></user-query>`;
+    expect(stripFrictionBlocks(document.body)).toBe(2);
+    expect(document.body.textContent).not.toContain("friction");
+    expect(document.body.textContent).not.toContain("Socratic");
+  });
+
+  it("never edits a Quill (Gemini) composer either", () => {
+    document.body.innerHTML = `<rich-textarea><div class="ql-editor" contenteditable="true"><p>draft ${BLOCK}</p></div></rich-textarea>`;
+    expect(stripFrictionBlocks(document.body)).toBe(0);
+  });
 });

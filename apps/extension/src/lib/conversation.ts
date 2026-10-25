@@ -1,7 +1,7 @@
 /**
  * A stable conversation id for every send, including the first message of a new chat.
  *
- * claude.ai only puts the chat's UUID in the URL after the first message, so a new chat used to send
+ * Chat sites (claude.ai, ChatGPT, Gemini) only put the chat's id in the URL after the first message, so a new chat used to send
  * `conversation_id: null`. The API then grades against the latest open check question from ANY chat
  * (contracts §4.1), so asking the same question in a second new chat counted as an answer.
  *
@@ -58,7 +58,7 @@ export function createConversationTracker(deps: {
   };
 
   /**
-   * Id given to a new chat's first message, waiting for claude.ai to assign the real uuid.
+   * Id given to a new chat's first message, waiting for the site to assign the real id.
    * state: idle (nothing confirmed), sending (a send is in flight), sent (confirmed at sentAt).
    * uuid: the fresh uuid the URL turned into while the send was still in flight.
    */

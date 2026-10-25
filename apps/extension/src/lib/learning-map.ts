@@ -1,7 +1,7 @@
 /**
- * Learning map in Chrome's side panel: the student's live skill tree next to claude.ai.
+ * Learning map in Chrome's side panel: the student's live skill tree next to the AI chat.
  * It frames the dashboard's Student page (`/student/:id?embed=1`; C's compact embed view when available,
- * otherwise the full Student page). Nothing is drawn inside claude.ai's own page.
+ * otherwise the full Student page). Nothing is drawn inside the chat site's own page.
  *
  * Pure logic + a small controller with injected dependencies so every rule is unit-testable:
  *  - consent off  → "Friction is off", no iframe, no network request at all

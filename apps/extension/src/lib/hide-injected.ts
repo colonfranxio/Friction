@@ -1,5 +1,5 @@
 /**
- * Hides the ⟦friction⟧…⟦/friction⟧ block wherever claude.ai renders it (e.g. user bubbles after a reload).
+ * Hides the ⟦friction⟧…⟦/friction⟧ block wherever the chat site renders it (e.g. user bubbles after a reload).
  * Works on text nodes, so it handles a block split across several nodes/paragraphs.
  * Never touches editable areas (the composer) or our own badge.
  */

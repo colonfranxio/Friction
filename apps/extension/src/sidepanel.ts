@@ -1,4 +1,4 @@
-/** Side panel page: the student's live learning map next to claude.ai. Logic lives in lib/learning-map.ts. */
+/** Side panel page: the student's live learning map next to the AI chat. Logic lives in lib/learning-map.ts. */
 import { startLearningMap, type MapView } from './lib/learning-map';
 import { getSettings } from './lib/storage';
 

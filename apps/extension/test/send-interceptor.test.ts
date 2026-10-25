@@ -71,6 +71,17 @@ describe('send interceptor', () => {
     expect(page.sent[0]).toBe(norm(INJECTED));
   });
 
+  it('the page replaces the composer and Send nodes (SPA chat switch, as ChatGPT/Gemini do): the new ones are intercepted too', async () => {
+    const { spy } = install(async () => injected);
+    enter(page.composer);
+    await vi.waitFor(() => expect(page.sent).toHaveLength(1));
+    const next = fakeClaude(); // brand-new elements; nothing may hold the old ones
+    next.button.click();
+    await vi.waitFor(() => expect(next.sent).toHaveLength(1));
+    expect(next.sent[0]).toBe(norm(INJECTED));
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
   it('passthrough: sends the original text unchanged', async () => {
     const { modes } = install(async () => ({ outcome: { passthrough: true, reason: 'no_match' }, concept_name: null }));
     enter(page.composer);
@@ -218,6 +229,15 @@ describe('bypass: one prompt without friction', () => {
     expect(await ic.sendUnmodified(RAW)).toBe('sent');
     expect(page.sent).toEqual([norm(RAW)]);
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('sendUnmodified uses the current composer after the page replaced it (SPA chat switch)', async () => {
+    const { ic } = installWith();
+    const next = fakeClaude();
+    next.composer.innerHTML = '<p></p>';
+    expect(await ic.sendUnmodified(RAW)).toBe('sent');
+    expect(next.sent).toEqual([norm(RAW)]);
+    expect(page.sent).toEqual([]);
   });
 
   it('sendUnmodified never overwrites a different draft', async () => {

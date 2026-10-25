@@ -1,4 +1,4 @@
-/** On-page status pill (ui-layouts §6). Shadow DOM so claude.ai's CSS can't touch it. Only the Bypass button takes clicks. */
+/** On-page status pill (ui-layouts §6). Shadow DOM so the chat site's CSS can't touch it. Only the Bypass button takes clicks. */
 import { LEVEL_LABELS, type BloomLevel } from '@friction/shared';
 
 export type BadgeState =

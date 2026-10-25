@@ -123,3 +123,43 @@ describe('conversation ids', () => {
     expect(t.idForSend()).toBe(first);
   });
 });
+
+// Other sites put the chat id elsewhere in the URL; the tracker must only depend on idFromPath.
+describe.each([
+  { site: 'ChatGPT-style', newChat: '/', chat: `/c/${U1}`, other: `/c/${U2}`, idFromPath: (p: string) => /\/c\/([0-9a-f-]{36})(?:[/?#]|$)/.exec(p)?.[1] ?? null },
+  { site: 'Gemini-style', newChat: '/app', chat: '/app/0a1b2c3d4e5f6a7b', other: '/app/ffffeeeeddddcccc', idFromPath: (p: string) => /\/app\/([0-9a-f]{12,})(?:[/?#]|$)/.exec(p)?.[1] ?? null },
+])('conversation ids on $site paths', ({ newChat, chat, other, idFromPath }) => {
+  function make() {
+    let path = newChat;
+    let n = 0;
+    const t = createConversationTracker({ idFromPath, getPath: () => path, newId: () => `gen-${++n}`, store: memoryStore() });
+    return { t, go: (p: string) => ((path = p), t.onPath(p)) };
+  }
+
+  it('first turn: the id the chat gets after its first send is aliased to the generated one', () => {
+    const { t, go } = make();
+    const first = t.idForSend();
+    go(chat);
+    t.endSend(true);
+    expect(t.currentId()).toBe(first);
+    expect(t.idForSend()).toBe(first);
+  });
+
+  it('also when the URL changes after the send is confirmed', () => {
+    const { t, go } = make();
+    const first = t.idForSend();
+    t.endSend(true);
+    go(chat);
+    expect(t.currentId()).toBe(first);
+  });
+
+  it('switching to another existing chat gives that chat its own id', () => {
+    const { t, go } = make();
+    const first = t.idForSend();
+    go(chat);
+    t.endSend(true);
+    go(other);
+    expect(t.currentId()).not.toBe(first);
+    expect(t.idForSend()).toBe(idFromPath(other));
+  });
+});

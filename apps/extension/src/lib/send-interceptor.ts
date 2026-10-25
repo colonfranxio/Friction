@@ -1,5 +1,5 @@
 /**
- * Holds the user's send on claude.ai, asks Friction for the injected prompt, rewrites the
+ * Holds the user's send on the AI chat site, asks Friction for the injected prompt, rewrites the
  * composer, then sends. Never blocks sending: any failure or timeout sends the original text.
  *
  * DOM operations are injected (`site`) so this is testable in happy-dom.
@@ -190,7 +190,7 @@ export function installSendInterceptor(deps: InterceptorDeps): SendInterceptor {
     hold(e);
   };
 
-  // Window capture phase runs before claude.ai's own handlers (ProseMirror keymap, React root).
+  // Window capture phase runs before the site's own handlers (ProseMirror keymap, React root).
   win.addEventListener('keydown', onKeyDown, true);
   win.addEventListener('click', onClick, true);
   const uninstall = () => {
