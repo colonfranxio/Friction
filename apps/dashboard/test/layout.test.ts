@@ -26,6 +26,17 @@ describe('skill tree presentation', () => {
     }
     expect(syllabusOrder(bundle).map((n) => n.id)).toHaveLength(bundle.nodes.length);
   });
+  it('wraps a level wider than the window onto extra full-size lines, keeping levels in order', () => {
+    const { bundle } = fixture();
+    const placed = layoutTree(bundle, 1);
+    const ys = placed.map((n) => n.position.y);
+    expect(new Set(ys).size).toBe(placed.length); // one card per line
+    for (const node of placed) expect(node.position.x).toBe(-NODE_WIDTH / 2); // centred
+    for (const edge of bundle.edges) expect(placed.find((n) => n.id === edge.parent_node_id)!.position.y).toBeLessThan(placed.find((n) => n.id === edge.child_node_id)!.position.y);
+    const two = layoutTree(bundle, 2);
+    for (const y of new Set(two.map((n) => n.position.y))) expect(two.filter((n) => n.position.y === y).length).toBeLessThanOrEqual(2);
+    expect(layoutTree(bundle, Infinity).map((n) => n.position)).toEqual(layoutTree(bundle).map((n) => n.position));
+  });
   it('reflects a live promotion and unlocks prerequisites without treating bypasses as mastery', () => {
     const { bundle, students } = fixture();
     const alex = students.find((s) => s.user.id === SEED_IDS.demoStudent)!;
