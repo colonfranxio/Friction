@@ -4,7 +4,7 @@ Branch `moss-integration`. Syllabus: [fixtures/elementary-syllabus.md](../fixtur
 
 ## Setup (once per recording)
 
-1. `.env`: `USE_REAL_INTELLIGENCE=1`, `USE_MOSS_RETRIEVAL=1`, `DEMO_MODE=1`, Claude and Moss credentials.
+1. `.env`: `USE_REAL_INTELLIGENCE=1`, `DEMO_MODE=1`, Claude and Moss credentials. Moss is on by default (don't set `USE_MOSS_RETRIEVAL=0`).
 2. `pnpm dev:api`, then `pnpm dev:dash`. Wait for `[moss] {"state":"ready",...}` in the API terminal.
 3. Dashboard **Reset** (a full reset removes earlier uploads).
 4. Upload the syllabus: drag in [fixtures/elementary-syllabus.pdf](../fixtures/elementary-syllabus.pdf) (or paste the `.md` text). The live parse takes **12–18s**, so cut that in the edit.

@@ -30,7 +30,7 @@ Works on **Windows, macOS and Linux** (Node ≥ 22.9). All commands are `pnpm` s
 
 The API can optionally use [Moss](https://docs.moss.dev) to connect a student's everyday wording to the concepts in their course. When a prompt matches **no keywords**, Moss suggests up to 3 course concepts to the existing Claude classifier. Claude makes the final choice from the full concept list, and can choose none. The backend still sets the assistance level, and only quiz grading changes mastery.
 
-- **Off by default.** Enable with `USE_REAL_INTELLIGENCE=1`, `USE_MOSS_RETRIEVAL=1`, `MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY` in `.env`, then restart. Credentials alone don't enable it. To roll back, set `USE_MOSS_RETRIEVAL=0` and restart.
+- **On by default** whenever the API runs with real intelligence (`USE_REAL_INTELLIGENCE=1`) and `MOSS_PROJECT_ID`/`MOSS_PROJECT_KEY` are set. Without credentials, or in fake mode, the API runs without Moss. To turn it off, set `USE_MOSS_RETRIEVAL=0` and restart.
 - **Behavior:** the API serves immediately and indexes up to two active courses in the background (about 1.5–2s each). Edits are detected within about 1s, and stale queries fall back immediately. Cold, stale, failed or slow (>200ms) retrieval uses the existing classifier. Keyword matches and pending quiz answers never call Moss.
 - **Indexed data:** concept name, mastery criteria and keywords only. No student histories, transcripts or grades.
 - **Logs:** `[moss] {"state":"ready"|"retrieved"|"fallback",...}` with candidate node IDs and timings. No prompts, student IDs or credentials.

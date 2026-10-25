@@ -36,17 +36,38 @@ describe('Moss runtime wiring', () => {
     await result.close();
   });
 
-  it.each([{}, { MOSS_PROJECT_ID: 'test', MOSS_PROJECT_KEY: 'test' }, { USE_MOSS_RETRIEVAL: '1' }])(
-    'disabled or incomplete configuration never constructs a native adapter (%j)', async (env) => {
-      const factory = vi.fn(intelligence.mossFromEnv);
-      const create = vi.fn(() => fakeIntelligence);
-      const result = await loadIntelligence(true, { store: createJsonStore(null), env, trace() {},
-        load: async () => ({ ...intelligence, createIntelligence: create, mossFromEnv: factory }) });
-      result.start();
-      expect(factory).not.toHaveBeenCalled();
-      expect(create).toHaveBeenCalledWith();
-      await result.close();
-    });
+  it.each([
+    [{}, 'credentials'],
+    [{ USE_MOSS_RETRIEVAL: '1' }, 'credentials'],
+    [{ USE_MOSS_RETRIEVAL: '0', MOSS_PROJECT_ID: 'test', MOSS_PROJECT_KEY: 'test' }, 'flag'],
+    [{ USE_MOSS_RETRIEVAL: 'false', MOSS_PROJECT_ID: 'test', MOSS_PROJECT_KEY: 'test' }, 'flag'],
+  ] as const)('opt-out or missing credentials never constructs a native adapter (%j)', async (env, reason) => {
+    const factory = vi.fn(intelligence.mossFromEnv);
+    const create = vi.fn(() => fakeIntelligence);
+    const traces: RetrievalTrace[] = [];
+    const result = await loadIntelligence(true, { store: createJsonStore(null), env, trace: (e) => traces.push(e),
+      load: async () => ({ ...intelligence, createIntelligence: create, mossFromEnv: factory }) });
+    result.start();
+    expect(factory).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledWith();
+    expect(traces).toEqual([{ state: 'disabled', reason }]);
+    await result.close();
+  });
+
+  it('real mode with credentials enables Moss by default (no flag needed)', async () => {
+    const i = index();
+    const factory = vi.fn(() => i as unknown as intelligence.MossCurriculumRetriever);
+    const create = vi.fn(() => fakeIntelligence);
+    const traces: RetrievalTrace[] = [];
+    const result = await loadIntelligence(true, { store: createJsonStore(null), trace: (e) => traces.push(e),
+      env: { MOSS_PROJECT_ID: 'test', MOSS_PROJECT_KEY: 'test' },
+      load: async () => ({ ...intelligence, createIntelligence: create, mossFromEnv: factory }) });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ curriculumRetriever: expect.anything() }));
+    result.start();
+    await vi.waitFor(() => expect(traces.some((e) => e.state === 'ready')).toBe(true));
+    expect(factory).toHaveBeenCalled();
+    await result.close();
+  });
 
   it('cold calls fall back; background preparation makes canonical hints available', async () => {
     const t = setup();

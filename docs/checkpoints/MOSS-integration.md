@@ -1,7 +1,7 @@
 # Moss integration checkpoint (E)
 
 Branch `moss-integration`. Plan: [moss-implementation-handoff.md](../moss-implementation-handoff.md). Reference: experiment `8f8fe63`.
-**Released to main on 2026-10-24 at the human's direction** (fast-forward from `moss-integration`, Moss **off by default**). Not merged into `claude-skill-tree`. See [MOSS-release.md](MOSS-release.md).
+**Released to main on 2026-10-24 at the human's direction** (fast-forward from `moss-integration`). **Moss is on by default** (human decision, same day) whenever real intelligence and Moss credentials are present; `USE_MOSS_RETRIEVAL=0` opts out. Not merged into `claude-skill-tree`. See [MOSS-release.md](MOSS-release.md).
 
 ## Provenance
 

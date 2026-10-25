@@ -125,7 +125,7 @@ To start from a clean store, stop the server and delete `apps/api/data/db.json` 
 
 Branch `agent/moss-platform` (base `moss-integration` `6427c24` = B-ready + lockfile). Source: `apps/api/**` adapted from experiment `8f8fe63`. The base's API code equals the reference's base, so no newer API fixes were overwritten. The separate v4 cancellation/token work is **not** included.
 
-**Mode:** off by default. On only with `USE_REAL_INTELLIGENCE=1` + `USE_MOSS_RETRIEVAL=1` + both Moss credentials. Fake mode never loads intelligence or the SDK.
+**Mode:** ~~off by default~~ **on by default since 2026-10-24 (human decision)**: real intelligence + both Moss credentials enable it; `USE_MOSS_RETRIEVAL=0`/`false` disables it. Fake mode never loads intelligence or the SDK.
 
 **Review of reference against handoff Step 3:**
 1. Fake/disabled/incomplete config never constructs an adapter (tests). PASS.
