@@ -182,3 +182,39 @@ Native SDK `@moss-js/moss@1.21.0` is an optionalDependency, imported dynamically
 
 **Verify:** `pnpm --filter @friction/intelligence typecheck` · `pnpm --filter @friction/intelligence test` → 8 files, 65 tests PASS. Live comparison (paid, optional): `pnpm --filter @friction/intelligence moss:trial`.
 **Needs E:** root lockfile entry for `@moss-js/moss` (package.json changed; lockfile not edited on this branch).
+
+## PANEL READY FINAL (demo readiness, B)
+
+Branch `feature/learning-map`, baseline main `655f42d`, contract v4 (no contract change). Mode: fake (private mock), not real Claude.
+
+**Reconciliation:** main merged in. The canvas is now main's concept cards in a fixed-scale vertical scroll with frontier support. My old pillar-rail vertical mode (`layoutVertical`, `PillarRail`, the `vertical` prop) is removed, not restored. Extension conflicts resolved to main, which already holds every safety fix plus the panel shell, so `git diff origin/main -- apps/extension` is empty.
+
+**Changed vs main:**
+- `App.tsx`: the `?embed=1` route.
+- `EmbedPage.tsx`: map only, with a click detail card. Escape or Close dismisses it and returns focus to the card.
+- `embed.css`: concept-card tokens.
+- `test/embed.browser.ts` and the `test:browser:embed` script.
+
+**Evidence:**
+- `pnpm typecheck` clean.
+- `pnpm -r test`: 302 tests pass (shared 26, dashboard 9, intelligence 65, extension 109, api 93).
+- Dashboard build and `pnpm build:ext` OK.
+- `demo.browser.ts` PASS.
+- `test:browser:embed` PASS against a private mock on :8791 and dashboard on :5175:
+  - 360/390/420px with a five-card row, checked by real card bounds.
+  - No horizontal overflow.
+  - Detail card fits and is readable; Escape/Close and focus return work.
+  - No TopBar in the embed; the full Student route is unchanged.
+  - Unknown student shows Retry.
+  - Live mastery: graded via `/intercept` on the same backend, the card turns gold and the detail reads "Mastered · L4 · 4/4" with one page load (SSE, no reload).
+- Checker (Sonnet 5.5, medium): PASS, no blockers; nit fixed.
+
+**Run it:** `DASHBOARD_TEST_URL=<dash> DASHBOARD_TEST_API=<private mock> pnpm --filter @friction/dashboard test:browser:embed` (resets that mock's data).
+
+**Open human/live checks:**
+- Real MV3 `sidePanel.open` and the iframe in Chrome.
+- Consent unload in a real browser.
+- Logged-in claude.ai gold-live with real Claude.
+- These are D/E Phase 3. Simulated evidence only so far.
+
+**Parked:** multi-site (`feature/multi-site`, CP0+CP1), per the human; outside the critical path.

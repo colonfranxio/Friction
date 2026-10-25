@@ -41,7 +41,7 @@ export function EmbedPage() {
     {error && <div className="error-banner" role="alert"><span>Reconnecting… {error}</span><button onClick={retry}>Try again</button></div>}
     <SkillTreeCanvas bundle={data.bundle} students={data.students} studentId={studentId} onSelect={setSelected} />
     {node && status && <section className="embed-detail" aria-live="polite">
-      <button className="icon-button embed-close" onClick={close} aria-label="Close">×</button>
+      <button type="button" className="icon-button embed-close" onClick={close} aria-label="Close">×</button>
       <span className={`embed-status ${status}`}>{STATUS[status]} · {levelLabel(levels[node.id] ?? 1)} · {levels[node.id] ?? 1}/{node.required_blooms_level}</span>
       <h2>{node.concept_name}</h2>
       <p>{node.mastery_criteria}</p>
