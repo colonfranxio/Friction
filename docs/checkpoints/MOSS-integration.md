@@ -103,3 +103,13 @@ Non-blocking findings, documented as harness follow-ups (no code change after re
 - On the human's merge decision: merge `moss-integration` → main (or a release candidate), then rerun the checklist above at the merge SHA. That's frozen install, typecheck, tests, both builds, both verify scripts, and smoke with Moss off and then on.
 - If combining with `claude-skill-tree`, reconcile on a dedicated candidate branch first.
 - Keep `experiment/moss-retrieval` as the historical reference only. Do not merge it.
+
+## Update: A v4 merged into moss-integration (`cd0eb24`)
+
+Merged main + A API READY v4 (`a999095`, via `integrate/a-v4`) cleanly. Re-verified in a clean clone at `cd0eb24`:
+- **Basics:** typecheck PASS. `pnpm test` PASS, 238 tests (api 91 = A 72 + Moss 19; intelligence 65).
+- **Stream tools:** `verify-chat-abort` and `verify-stream-failure` both **PASS**. The earlier stream-failure FAIL above is resolved by A's v4 code.
+- **v4 smoke:** `--require-v4` with real Claude and **Moss on** passes. `[moss] ready` and `retrieved` were observed in the server log.
+- **`moss:live`:** all steps PASS. Artifact `apps/api/harness/results/2026-10-24T23-59-10-616Z-cd0eb24/`.
+
+Details: [A-v4-reintegration.md](A-v4-reintegration.md).
