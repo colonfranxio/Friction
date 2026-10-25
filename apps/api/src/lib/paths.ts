@@ -16,5 +16,6 @@ export function findRepoRoot(): string {
 
 /** apps/api/data/db.json, resolved from the repo root. */
 export function defaultDbPath(): string {
+  if (process.env.DATABASE_PATH) return resolve(process.env.DATABASE_PATH);
   return join(findRepoRoot(), 'apps', 'api', 'data', 'db.json');
 }

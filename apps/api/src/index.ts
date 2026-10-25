@@ -6,18 +6,22 @@ import { loadConfig } from './env';
 import { loadIntelligence } from './intelligence';
 import { defaultDbPath } from './lib/paths';
 import { createJsonStore } from './store/json-store';
+import { createPublicDemo, PublicLedger } from './public-demo';
 
 // A failed background promise must never take the demo down.
 process.on('unhandledRejection', (reason) => console.error('[api] unhandled rejection:', reason));
 process.on('uncaughtException', (err) => console.error('[api] uncaught exception:', err));
 
 const config = loadConfig();
+const publicMode = process.env.PUBLIC_DEMO === '1';
+if (publicMode) config.demo = false;
+if (publicMode && (!process.env.PUBLIC_LEDGER_PATH || !config.allowedOrigins?.length)) throw new Error('PUBLIC_DEMO requires PUBLIC_LEDGER_PATH on persistent disk and ALLOWED_ORIGINS.');
 if (config.useRealIntelligence && !process.env.ANTHROPIC_API_KEY) {
   console.warn('[api] USE_REAL_INTELLIGENCE=1 but ANTHROPIC_API_KEY is not set (add it to .env). Model calls will fail with llm_error.');
 }
 const dbPath = defaultDbPath();
 const store = createJsonStore(dbPath);
-const intelligence = await loadIntelligence(config.useRealIntelligence, { store });
+const intelligence = await loadIntelligence(publicMode ? false : config.useRealIntelligence, { store });
 const intel = intelligence.intel;
 const ctx = createCtx({
   config,
@@ -25,7 +29,8 @@ const ctx = createCtx({
   intelligenceMode: config.useRealIntelligence ? 'real' : 'fake',
   store,
 });
-const app = createApp(ctx);
+const publicDemo = publicMode ? await createPublicDemo(config, { ledger: new PublicLedger(process.env.PUBLIC_LEDGER_PATH!) }) : null;
+const app = publicDemo?.app ?? createApp(ctx);
 intelligence.start();
 
 // No hostname: binds dual-stack so http://127.0.0.1:<port> works on Windows too.
@@ -38,7 +43,7 @@ const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
       `  ${base}`,
       `  health  ${base}/health`,
       `  events  ${base}/events?tree_id=<tree id>`,
-      `  mode    intelligence=${ctx.intelligenceMode}  demo=${config.demo ? 'on' : 'off'}  budget=${config.interceptBudgetMs}ms`,
+      `  mode    ${publicMode ? 'public-guest' : 'local'} intelligence=${ctx.intelligenceMode}  demo=${config.demo ? 'on' : 'off'}  budget=${config.interceptBudgetMs}ms`,
       `  store   ${dbPath}`,
       '',
     ].join('\n'),
@@ -55,6 +60,7 @@ server.on('error', (err: NodeJS.ErrnoException) => {
 });
 
 async function shutdown() {
+  if (publicDemo) await Promise.race([publicDemo.close(), new Promise((resolve) => setTimeout(resolve, 2000))]);
   // close() stops Moss polling synchronously. Persistence is never cut short; only native
   // disposal, which may hang and cannot be cancelled, is capped.
   const closing = intelligence.close().catch(() => {});

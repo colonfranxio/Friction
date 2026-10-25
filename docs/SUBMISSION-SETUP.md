@@ -8,6 +8,8 @@ Prepared: [judge guide](JUDGE-GUIDE.md), [Devpost copy and video plan](DEVPOST-D
 
 ## 1. A — public API access and limits, before public deployment
 
+**Implementation update:** E has taken A's assignment and implemented an opt-in isolated guest gateway. Use [PUBLIC-API-HANDOFF](PUBLIC-API-HANDOFF.md) for the exact interface, Render configuration, enforced limits and C/D follow-up. The items below are the original requirements; hosted/live acceptance remains open. Public sessions are ephemeral by design; their persistent usage ledger is separate from local student data. No persistent public student history is claimed.
+
 Work on a separate API branch; E reviews/merges main. Coordinate shared types with E and guest settings with C/D. Keep local demo behavior intact.
 
 - Specify and implement a guest session that owns its own student/course/progress. Enforce isolation server-side on every read, edit, event stream, intercept, chat, bypass and reset. A random student ID in a URL alone is not access control. Use fake/private stores for tests proving guest A cannot inspect/reset/modify guest B.

@@ -27,7 +27,7 @@ export function createApp(ctx: Ctx): Hono {
     cors({
       origin: (origin) => {
         if (ctx.config.demo) return '*';
-        if (origin && (DEV_ORIGINS.has(origin) || origin.startsWith('chrome-extension://'))) return origin;
+        if (origin && (DEV_ORIGINS.has(origin) || ctx.config.allowedOrigins?.includes(origin) || origin.startsWith('chrome-extension://'))) return origin;
         return null;
       },
       allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],

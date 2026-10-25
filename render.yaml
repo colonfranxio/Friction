@@ -1,0 +1,42 @@
+# Import as a Blueprint only after setting the exact dashboard origin and secrets.
+services:
+  - type: web
+    name: friction-api
+    runtime: node
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile
+    startCommand: pnpm --filter @friction/api start
+    healthCheckPath: /health
+    numInstances: 1
+    autoDeployTrigger: "off"
+    disk:
+      name: friction-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: PUBLIC_DEMO
+        value: "1"
+      - key: PUBLIC_LEDGER_PATH
+        value: /var/data/public-usage.json
+      - key: DATABASE_PATH
+        value: /var/data/local-db.json
+      - key: DEMO_MODE
+        value: "0"
+      - key: USE_REAL_INTELLIGENCE
+        value: "1"
+      - key: USE_MOSS_RETRIEVAL
+        value: "0"
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: MODEL_PARSE
+        sync: false
+      - key: MODEL_GRADE
+        sync: false
+      - key: MODEL_CHAT
+        sync: false
+      - key: MODEL_CLASSIFY
+        sync: false
