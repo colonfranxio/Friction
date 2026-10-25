@@ -7,6 +7,22 @@
 - Current checkpoint: C READY v4, mock-backed correctness/acceptance complete; real API READY and E's exclusive live acceptance still pending
 - Last updated: 2026-10-24
 
+## DASHBOARD DEMO READY re-verified on main `35f01d5` (2026-10-24, run by Agent B acting as C with E's permission)
+- **Why:** the earlier report tested main `655f42d`, before A's reset fix (`ab34e32`) and B's final map (`259cc3a`) were merged.
+- **Branch and mode:** main `35f01d5` merged into `agent/dashboard`. There are no dashboard source changes; the only diff from main is this file. Everything ran on B's private pair: mock API :8791 (fake intelligence) and dashboard :5175, run serially. C's reserved :8788 and :5173 were not touched.
+- **Results:**
+  - frozen install, workspace typecheck PASS
+  - root tests 316 PASS: shared 26, dashboard 9, intelligence 65, extension 109, API 95, scripts 12
+  - dashboard build and `build:ext` PASS
+  - All seven browser suites PASS: demo, editing, polish (including reduced motion), v4, resilience, embed and visual.
+    - The visual suite hardcodes :8788/:5173, so it ran from a temporary copy pointed at :8791/:5175. Its assertions were unchanged and the copy was deleted.
+  - Evidence: `%TEMP%\c-evidence-35f01d5\`. No tracked screenshots changed.
+- **Narrow fitting, checked by real card bounds** (five-card root row fixture):
+  - Educator and Student at 390px, and the sandbox map at 1280px: 12/12 cards inside the window, no page overflow, no page errors.
+  - **Readability defect is still open:** cards render 46–49px wide at 390px and 84–90px in the sandbox map. `proposal/narrow-wrap` (`42f4b4f`) remains unmerged by the human's choice.
+- **Intentional removals kept:** module rename on the canvas, saved-position drag and canvas zoom.
+- **Open:** real-API teacher upload and live acceptance are Phase 3 (D/E/human). The walkthrough is still deferred.
+
 ## DASHBOARD DEMO READY (demo-readiness task C, 2026-10-24): tested SHA main `655f42d`, at the human's direct request
 - **Branch and mode:** `agent/dashboard` fast-forwarded to main `655f42d`; no dashboard source changes. Private mock (:8788) and private dashboard (:5174) in mock mode, run serially.
 - **Results:**
