@@ -8,6 +8,16 @@ An extension plus dashboard that makes AI tools teach instead of tell. It adjust
 - **Agent prompts:** [docs/agents/](docs/agents/)
 - **Judges:** [installation and walkthrough](docs/JUDGE-GUIDE.md) · [submission/hosting checklist](docs/SUBMISSION-SETUP.md)
 
+## For hackathon judges: try the extension
+
+**The Chrome extension is the main student experience; the sandbox is optional.** Start with the teacher skill tree, then try Friction directly on claude.ai. Desktop Chrome 120+, a Claude account and a running local Friction API are required. Hosting/Vercel is optional for this submission path.
+
+- [Download the prebuilt extension ZIP](https://github.com/colonfranxio/Friction/raw/refs/heads/main/releases/friction-extension.zip) · [SHA-256 checksum](releases/friction-extension.zip.sha256).
+- [Follow the teacher → extension walkthrough](docs/JUDGE-GUIDE.md).
+- **[Watch the demo video](https://www.youtube.com/watch?v=ZA6RmlfIPj0).** [Video review checklist](docs/DEMO-VIDEO.md).
+
+Extract the ZIP and load its `friction/extension` folder through Chrome's **Load unpacked**. No Node installation is needed to load this prebuilt extension. Running its backend locally still requires the source checkout, Node/pnpm, and your own Anthropic API credentials (or an organizer-managed backend on your demo computer). The ZIP contains no backend or API keys. There is no public hosted API in this setup. See the real-mode setup below; the mock quickstart uses fake intelligence and is not the full AI demo.
+
 ## Quickstart
 ```bash
 npm i -g pnpm@9          # or: corepack enable (macOS/Linux)
@@ -25,7 +35,7 @@ You need desktop Google Chrome and a Claude account. This build supports **claud
 
 ### Download
 
-If your organizer gives you a built extension ZIP, download and extract it (Windows: right-click → **Extract All**). Find the extracted folder containing `manifest.json`, `content.js` and `background.js`.
+Download the [prebuilt extension ZIP](https://github.com/colonfranxio/Friction/raw/refs/heads/main/releases/friction-extension.zip) and extract it (Windows: right-click → **Extract All**). Its `friction/extension` folder contains `manifest.json`, `content.js` and `background.js`.
 
 Otherwise, download the source from [GitHub](https://github.com/colonfranxio/Friction) using **Code → Download ZIP**, extract it, and open a terminal in the extracted repository folder containing `package.json`. Install Node ≥ 22.9 and pnpm 9, then build:
 
@@ -47,7 +57,9 @@ The extension folder is now `apps/extension/dist`. Windows ARM/Snapdragon users 
 
 ### Start the local services, if you are running the demo yourself
 
-Use the repository folder and your existing `.env` from the organizer (real intelligence needs the API key and model settings from `.env.example`; never share those secrets). Keep these running in two separate terminals:
+Download/extract or clone the repository and install Node/pnpm as above. In the repository root, run `pnpm install --frozen-lockfile`. Copy `.env.example` to `.env` (`Copy-Item .env.example .env` in PowerShell, `cp .env.example .env` on macOS/Linux), unless you already have a configured `.env`. Never overwrite an existing environment/database just to try the demo.
+
+In `.env`, set `USE_REAL_INTELLIGENCE=1`, `DEMO_MODE=0` and your `ANTHROPIC_API_KEY`; retain the `MODEL_*` settings only if your provider account supports those models. Set `PUBLIC_DEMO=0` for this local path and `VITE_API_URL=http://127.0.0.1:8787`. Optional Moss needs its own credentials. Model calls incur provider charges. Keep secrets out of Chrome settings and Git. Keep these running in two separate terminals from the repository root:
 
 ```text
 pnpm dev:api
@@ -63,7 +75,7 @@ Both must use the same backend configuration. If someone else manages the servic
 
 Open `http://127.0.0.1:8787/health` in your browser. If it does not respond, start the API or ask your organizer for help. Check the extension's API URL, leave the server terminal open, and refresh Claude. Offline requests pass through to Claude without tutoring. An online prompt outside the loaded course may also receive no friction.
 
-After an update, rebuild with `pnpm build:ext` (or extract the new built ZIP), click **Reload** on Friction at `chrome://extensions`, and refresh every open Claude tab. Keep the loaded extension folder in place. A detailed demo walkthrough will follow once the final UI is accepted.
+After an update, rebuild with `pnpm build:ext` (or extract the new built ZIP), click **Reload** on Friction at `chrome://extensions`, and refresh every open Claude tab. Keep the loaded extension folder in place. Follow the [judge walkthrough](docs/JUDGE-GUIDE.md) for the extension-first flow.
 
 | Path | What | Owner |
 |---|---|---|

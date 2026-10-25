@@ -2,9 +2,11 @@
 
 ## Current state
 
-The human has Vercel; Render signup remains to do. No public dashboard/API, GitHub release asset or video URL has been published by this work. GitHub release operations are blocked here by the workspace's invalid `GH_TOKEN`; git push works. Do not send account credentials in chat.
+**Submission choice:** the human chose an extension-first repository/video submission; hosted Try it access is optional. [Demo video](https://www.youtube.com/watch?v=ZA6RmlfIPj0) is complete per the human. The README and committed prebuilt ZIP support local judge setup. Sections below describe optional hosting, not a requirement for the local submission.
 
-Prepared: [judge guide](JUDGE-GUIDE.md), root `vercel.json` for dashboard build and SPA deep links, and a manual GitHub Actions packaging workflow. These are deployment inputs, not evidence that deployment has passed. The Devpost draft was removed from main; prepare submission copy and video separately.
+The human has Vercel; Render signup remains to do. No public dashboard/API or GitHub release asset has been published by this work. The extension ZIP is instead committed under releases/ for direct repository download, and the video link is in the README. GitHub release operations are blocked here by the workspace's invalid `GH_TOKEN`; git push works. Do not send account credentials in chat.
+
+Prepared: [judge guide](JUDGE-GUIDE.md), root `vercel.json` for dashboard build and SPA deep links, and a manual GitHub Actions packaging workflow. These are deployment inputs, not evidence that deployment has passed. The Devpost draft was removed from main; prepare final submission copy separately and use the completed video linked above.
 
 ## 1. A — public API access and limits, before public deployment
 
@@ -50,4 +52,4 @@ Branch separately; coordinate with B before changing active feature files. Allow
 
 On the credentialed Windows machine, pull final main under x64 Node, preserve existing environment/data, run `pnpm harness` serially (fresh L1–L3 compliance and ignore-friction behavior are outstanding), run three real-Claude smoke passes and verify logged-in extension-first acceptance. B reports a successful human opt-out/Bypass check on claude.ai; that does not replace full harness or final hosted-build acceptance. Test a new judge from another computer: no local servers, personal API key or development tool installation should be needed for the hosted path.
 
-Then complete two timed rehearsals, record/upload the video and backup, and fill official Devpost requirements. Attach a real demo URL, public release download, source link and walkthrough link. Never call the deployment ready based only on a green build or health response.
+The human reports the video is complete. Verify its signed-out playback and final-build accuracy, retain a backup, and fill official Devpost requirements. Attach a real demo URL, public release download, source link and walkthrough link. Never call the deployment ready based only on a green build or health response.
