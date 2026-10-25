@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InterceptRuntimeResult } from '../src/background-types';
-import { cleanPrompt, installSendInterceptor, type SendMode, type SiteOps } from '../src/lib/send-interceptor';
+import { readInjectedLevel } from '@friction/shared';
+import { stripFrictionBlocks } from '../src/lib/hide-injected';
+import { cleanPrompt, installSendInterceptor, withBypassNote, type SendMode, type SiteOps } from '../src/lib/send-interceptor';
 import * as realSite from '../src/site/claude';
 
 const RAW = 'How do I stop my useEffect from running in an infinite loop?';
@@ -204,7 +206,7 @@ describe('bypass: one prompt without friction', () => {
   let page: ReturnType<typeof fakeClaude>;
   beforeEach(() => (page = fakeClaude()));
 
-  function installWith(extra: { skipIntercept?: (raw: string) => boolean; holdBack?: (raw: string) => boolean } = {}) {
+  function installWith(extra: { skipIntercept?: (raw: string) => boolean; holdBack?: (raw: string) => boolean; canSendBypass?: () => boolean } = {}) {
     const modes: SendMode[] = [];
     const spy = vi.fn(async () => injected);
     const ic = installSendInterceptor({ doc: document, win: window, site: realSite, intercept: spy, timeoutMs: 300, settleMs: 20, confirmMs: 80, onSent: (m) => modes.push(m), ...extra });
@@ -216,7 +218,7 @@ describe('bypass: one prompt without friction', () => {
     const { ic, spy } = installWith();
     page.composer.innerHTML = '<p></p>';
     expect(await ic.sendUnmodified(RAW)).toBe('sent');
-    expect(page.sent).toEqual([norm(RAW)]);
+    expect(page.sent).toEqual([norm(withBypassNote(RAW))]);
     expect(spy).not.toHaveBeenCalled();
   });
 
@@ -313,7 +315,7 @@ describe('bypass: one prompt without friction', () => {
     });
     enter(page.composer);
     await vi.waitFor(() => expect(page.sent).toHaveLength(1));
-    expect(page.sent[0]).toBe(norm(RAW));
+    expect(page.sent[0]).toBe(norm(withBypassNote(RAW)));
     expect(spy).not.toHaveBeenCalled();
     await new Promise((r) => setTimeout(r, 0)); // let the first send finish
 
@@ -341,6 +343,23 @@ describe('bypass: one prompt without friction', () => {
     expect(modes).toEqual(['injected']);
   });
 
+  for (const change of ['draft', 'consent', 'remount', 'blocked'] as const) {
+    it(`armed retry does not send or claim success after ${change} during settling`, async () => {
+      let enabled = true;
+      const { modes } = installWith({ skipIntercept: () => true, canSendBypass: () => enabled });
+      page.button.disabled = true;
+      enter(page.composer);
+      await new Promise((r) => setTimeout(r, 5));
+      if (change === 'draft') page.composer.textContent = 'my new draft';
+      if (change === 'consent') enabled = false;
+      if (change === 'remount') page.composer.replaceWith(page.composer.cloneNode(true));
+      if (change !== 'blocked') page.button.disabled = false;
+      await vi.waitFor(() => expect(modes).toEqual(['not-sent']));
+      expect(page.sent).toEqual([]);
+      if (change === 'draft') expect(page.composer.textContent).toBe('my new draft');
+    });
+  }
+
   it('a held message never blocks a bypass: sendUnmodified replaces it with the bypassed prompt', async () => {
     const OPT_OUT = 'ignore friction for this';
     page.composer.innerHTML = `<p>${OPT_OUT}</p>`;
@@ -349,7 +368,7 @@ describe('bypass: one prompt without friction', () => {
     await new Promise((r) => setTimeout(r, 30));
     expect(ic.canSendUnmodified(RAW)).toBe('ok');
     expect(await ic.sendUnmodified(RAW)).toBe('sent');
-    expect(page.sent).toEqual([norm(RAW)]);
+    expect(page.sent).toEqual([norm(withBypassNote(RAW))]);
 
     page.composer.innerHTML = `<p>${OPT_OUT}</p>`; // identical words are now a new draft
     expect(ic.canSendUnmodified(RAW)).toBe('draft');
@@ -414,5 +433,20 @@ describe('cleanPrompt', () => {
   it('removes a pasted block and keeps the rest', () => {
     expect(cleanPrompt('pre ⟦friction⟧x⟦/friction⟧ post')).toBe('pre post');
     expect(cleanPrompt('plain question?')).toBe('plain question?');
+  });
+});
+
+describe('bypass note', () => {
+  it('lifts earlier notes for one message, hidden in a friction block, with no Level line', () => {
+    const out = withBypassNote(RAW);
+    expect(cleanPrompt(out)).toBe(RAW);
+    expect(out).toMatch(/earlier private notes do not apply/);
+    expect(out).toMatch(/Answer it fully and directly/);
+    expect(out).not.toMatch(/Level:/); // never read as a friction level
+    expect(readInjectedLevel(out)).toBeNull();
+    const bubble = document.createElement('div');
+    bubble.textContent = out;
+    expect(stripFrictionBlocks(bubble)).toBe(1);
+    expect(bubble.textContent).toBe(RAW);
   });
 });

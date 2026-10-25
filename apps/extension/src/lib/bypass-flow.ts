@@ -123,6 +123,7 @@ export function createBypassFlow(deps: {
     /** A message went out (the interceptor's onSent, any mode except 'not-sent'). */
     noteSent() {
       sends++;
+      armed = null;
     },
     getArmed: () => armed,
     /** The chat on screen changed (or may have): drop the target and armed text if they belong to another chat. */
@@ -133,11 +134,10 @@ export function createBypassFlow(deps: {
       }
       if (armed && armed.conv !== conv) armed = null;
     },
-    /** For the interceptor: true = send `raw` unmodified (the armed bypassed prompt, same chat, not expired). Consumes it. */
+    /** Retry authorization lasts until a confirmed send, expiry, consent change or chat change. */
     skipIntercept(raw: string): boolean {
-      if (armed && (now() > armed.until || armed.conv !== deps.currentConversation())) armed = null;
+      if (armed && (!deps.isEnabled() || now() > armed.until || armed.conv !== deps.currentConversation())) armed = null;
       if (!armed || raw !== armed.text.trim()) return false;
-      armed = null;
       return true;
     },
   };

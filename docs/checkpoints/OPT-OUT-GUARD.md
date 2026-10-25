@@ -12,3 +12,13 @@ Local checks: workspace typecheck, all 336 tests before the additional draft-saf
 Live harness attempted with `pnpm --filter @friction/intelligence harness levels`; it stopped with `MODEL_CHAT is not set`. This environment has no `.env` or Anthropic credential, and prior live result files were preserved. No live-model or logged-in Claude success is claimed.
 
 On the credentialed demo machine, pull final main, retain x64 Node and existing environment/database, rebuild/reload the extension and refresh Claude. Run the full live harness, including L1–L3, plus an explicit ignore-friction turn. Verify first-send hold, second-send guidance and actual Bypass quota/resend behavior in Claude. These remain open alongside the final smoke/rehearsal gates.
+
+## Bypass-note addendum (`a72c949`)
+
+Bypass resends now include a hidden, per-message instruction lifting earlier tutoring notes and asking for a full answer without a check question. The block has no `Level:` line. Local assertions exercise the actual shared level reader and chat-block hiding helper. This remains a same-role model instruction, so live compliance is unverified.
+
+The merge preserves held-draft safety. Review also found the armed retry's new asynchronous rewrite needed final composer, URL, draft, consent and button checks. Those checks now prevent sending changed drafts; ignored sends report `not-sent` and do not increment the confirmed-send counter. Retry authorization persists until a confirmed send, expiry, consent revocation or chat change. Added race regressions cover draft edits, consent revocation, composer replacement and a blocked send button.
+
+Final local verification: all 134 extension tests, extension typecheck and the extension build passed.
+
+Live gate: after an L1 reply in logged-in Claude, click Bypass and confirm a complete answer without a check question, hidden note text, one quota decrement, and normal tutoring on a later unbypassed message. Rebuild/reload the final extension before testing; no live acceptance is claimed here.

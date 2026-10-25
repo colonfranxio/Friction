@@ -84,6 +84,7 @@ const interceptor = installSendInterceptor({
   site,
   timeoutMs: EXTENSION_TIMEOUT_MS,
   skipIntercept: (raw) => bypass.skipIntercept(raw),
+  canSendBypass: () => enabled,
   // "Ignore friction for this" while this chat has friction: Claude would obey, so hold it and offer Bypass.
   holdBack: (raw) => enabled && !!bypass.getTarget() && isOptOut(raw) && (badge.set({ kind: 'opt-out' }), true),
   intercept: (raw) => (
