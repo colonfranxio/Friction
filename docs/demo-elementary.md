@@ -18,7 +18,7 @@ Full Playwright run of the dashboard (`b728e46`): every beat PASS. Ask about the
 
 | Beat | Input | Observed |
 |---|---|---|
-| Upload | Drag [fixtures/elementary-syllabus.pdf](../fixtures/elementary-syllabus.pdf) into **Upload syllabus** | Live Claude parse in 12–18s, 8 concepts in 3 parts; student view and sandbox switch to it. Moss re-indexes in about 0.5s. |
+| Upload | Drag [fixtures/elementary-syllabus.pdf](../fixtures/elementary-syllabus.pdf) into **Upload syllabus** | Live Claude parse in 12–18s, 8 concepts in 3 parts; student view and sandbox switch to it. Moss re-indexes in about 0.5–2s. |
 | Ask (new sandbox chat) | "If I eat 3 slices of a pizza cut into 8, what do the two numbers in 3/8 mean?" | `[moss] retrieved candidates:3` in about 6ms → **What a Fraction Is, L1 · Socratic**, quiz attached. Guiding questions, no answer given. |
 | Answer (same chat) | "The 8 means the pizza was cut into 8 equal slices, so that is how many pieces make the whole pizza. The 3 means I ate 3 of those equal slices." | Graded `correct` → L4. The node turns **green live in educator, student and sandbox views**, and its 3 dependent concepts **unlock** (the tree grows). |
 | Same question, new chat | (same as Ask) | L4 · Normal, full explanation, no quiz. |

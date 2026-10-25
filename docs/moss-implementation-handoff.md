@@ -1,5 +1,7 @@
 # Moss sponsor integration: execution plan
 
+> **Executed and released (2026-10-24).** Moss is merged to main and is **on by default** when real intelligence and Moss credentials are present (human decision), which supersedes the "off by default" and "credentials alone never enable it" rules below. Current state: [checkpoints/MOSS-release.md](checkpoints/MOSS-release.md).
+
 Accepted direction: reuse the existing Moss curriculum-retrieval experiment with minimal stack changes. Sponsor-track usage is a valid product goal; an accuracy improvement is not a prerequisite. Preserve honest claims and existing learning behavior.
 
 ## Scope and branch rules

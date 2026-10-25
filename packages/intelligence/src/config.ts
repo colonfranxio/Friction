@@ -14,7 +14,7 @@ export interface IntelligenceOptions {
   client?: Anthropic;
   /** Override model IDs. Default: MODEL_* env vars. */
   models?: Partial<Models>;
-  /** Experimental context assist. Absent in normal API startup; prewarm outside requests. */
+  /** Optional curriculum retriever (Moss). The API supplies it in real mode when Moss credentials exist; prewarm outside requests. */
   curriculumRetriever?: CurriculumRetriever;
 }
 
