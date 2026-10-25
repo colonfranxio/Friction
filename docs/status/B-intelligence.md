@@ -10,6 +10,8 @@
 ## PANEL READY v2 (learning-map side panel incl. D's base and the three safety fixes, 2026-10-24)
 Branch `feature/learning-map`. History: `main` `d23cb63` → B embed (`cc0e983`, `af2c9b9`, `be27b6a`) → merge `origin/claude-skill-tree` (`bfa031e`, instructions) → merge D `origin/agent/extension` (`7e078cf`, clean, no conflicts) → **fix commits `737b9ac` + `301bf70`** (checker finding) → this status commit. No Moss or held API changes imported. No API/shared/contract/root/config change.
 
+**Panel UI simplified (human request, after v2):** the embed is now **map only**: the live map fills the panel, and clicking a node opens a small card with its status, level (`L2 · Scaffolder · 2/3`), name and mastery criteria (× or a click on the map closes it). Removed: name, progress count, Now learning, Next up and the Show map toggle (the map already shows mastery and levels). This deliberately replaces the spec's Next up/summary layout; `test/embed.test.ts` (Next up rules) was deleted with the feature. Checked against the running real API at 360px/420px: 14 nodes, no horizontal overflow, no summary/TopBar, node click opens and closes the card. Dashboard typecheck/test (9)/build green. Not re-run through the checker (UI-only change).
+
 **Changed paths in the fix commit (all `apps/extension/`):** `src/lib/bypass-flow.ts` (new), `src/content.ts`, `src/lib/send-interceptor.ts`, `src/lib/conversation.ts`, `src/lib/badge.ts`, `src/lib/messages.ts`, `src/popup.ts`, `popup.html`, tests `test/bypass-flow.test.ts` (new), `test/conversation.test.ts`, `test/send-interceptor.test.ts`.
 
 **Blockers fixed (LEARNING-MAP-B-HANDOFF "D fixes required"):**
