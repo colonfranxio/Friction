@@ -190,7 +190,7 @@ export function SandboxPage() {
             <div className="chat-tools">{demo && <button onClick={() => { void reset(); }} disabled={locked}><RotateCcw size={13} />Reset demo</button>}<button onClick={newChat} disabled={resetBusy}><Plus size={14} />New chat</button></div>
           </div>
           <div className="chat-messages" role="log" aria-label="Conversation" aria-live="polite">
-            {!messages.length && <div className="chat-welcome"><span className="welcome-icon"><MessageCircle size={30} /></span><h2>Start with a little curiosity.</h2><p>A question is a good place to begin.</p><button onClick={() => writeDraft('How do I stop my useEffect from running in an infinite loop?')}>How do I fix an infinite useEffect loop? ↗</button></div>}
+            {!messages.length && <div className="chat-welcome"><span className="welcome-icon"><MessageCircle size={30} /></span><h2>Start with a little curiosity.</h2><p>A question is a good place to begin.</p></div>}
             {messages.map((message) => <article key={message.id} className={`chat-bubble ${message.role}`} data-reply-status={message.status}>
               <span className="bubble-author">{message.role === 'user' ? 'You' : 'Friction'}</span>
               <ChatContent text={message.content || (message.status === 'interrupted' ? 'No reply delivered.' : 'Thinking…')} />
