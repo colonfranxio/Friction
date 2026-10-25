@@ -6,6 +6,44 @@
 - Current checkpoint: **D READY** (old-server gate resolved, see below). CP1/CP2 done; CP3 hardening done.
 - Last updated: 2026-10-24
 
+## Demo readiness, Phase 1: verification prep (2026-10-24, at the human's direct request)
+- **Baseline:** `agent/extension` fast-forwarded to main `655f42d`; no extension source changes. B's safety changes are preserved as they are on main.
+- **Verified:**
+  - extension typecheck PASS, 109 tests PASS, build PASS
+  - Certified external extension/API tests against A's fixed API (`ab34e32`, real API code with fake intelligence on an isolated store, :8791): with `FRICTION_API_READY_SHA=ab34e32c6d96193a9bff223c063479450bdd4b70` **19/19 PASS**; with an empty SHA (legacy gate) **18 PASS, 1 skipped** (the one-prompt case is gated off, as intended).
+  - Built from main and loaded unpacked in Chrome for Testing: the service worker starts; the popup is "Online" against the real API (:8787) with ticket ×3, Open learning map and Copy question present; icons 16/32/48/128 are served; the side panel loads the dashboard map. No page errors.
+- **Finding for E:** on main the side panel frames the full Student page (TopBar and all) because `EmbedPage` is not on main yet. It is fixed when E merges `feature/learning-map` (B's PANEL READY FINAL `259cc3a`).
+- **Not verified here (Phase 3, logged-in claude.ai on the demo machine):** everything in the checklist below. DOM stubs and a headless profile are not evidence for these.
+
+### Phase 3 live-check checklist (D + E + human; exact final build; one exclusive backend window)
+1. **Setup:** load the exact final `dist`, reload the claude.ai tab, accept consent. In the popup check:
+   - student ID, API URL, dashboard URL and approved ready SHA match the backend
+   - the status says Online
+   - the pill reads "Friction · ready"
+2. **First send:**
+   - The useEffect question gets L1 and the injected text is hidden in the rendered message.
+   - The pill shows a violet card, "L1 Socratic · <concept>", and a Bypass ticket.
+   - The reply ends with a check question.
+3. **Answer:** the correct answer turns the card gold live in the teacher page, the student page and the side panel, with no reload.
+4. **New chat:** the same concept gets L4 ("no friction", gold mark), with no Bypass shown.
+5. **Bypass (approved prompt scope):**
+   - exactly one resend, and the quota drops by one
+   - the teacher toast appears
+   - the pill says "bypassed · N left"
+   - legacy concept pause is not shown as a one-prompt bypass
+6. **Bypass races:**
+   - Navigate or type a new draft while bypassing: the quota is spent but nothing is sent, and the popup shows Copy question with the original text.
+   - The first send in a brand-new chat (UUID assigned after send) targets the right chat.
+7. **Consent revoked mid-session:** no intercept, the pill says "Friction paused", the side panel unloads the map.
+8. **Side panel:** `sidePanel.open` from the popup button; the compact embed (after B's merge) opens on the frontier; clicking a card shows details.
+9. **Multi-tab:** two claude.ai tabs keep independent chat targets, and a bypass only resends in the tab it came from.
+10. **Offline and recovery:**
+    - Stop the API: the pill says "Friction offline" and prompts pass through untouched.
+    - Restart the API: the next send recovers.
+    - The service worker is idle-killed and then restarts.
+11. **Extension reload:** the open tab shows "Friction updated · reload this tab"; after the reload everything works.
+12. **Privacy:** teacher pages show no raw student prompt text.
+
 ## Concept-card restyle (2026-10-24, at the human's direct request)
 - Commits on `agent/extension`: `b3a2365` and the icon follow-up. Spec and handoff are in `docs/design/CONCEPT-CARDS.md` on branch `design/concept-cards`.
 - **Restyled:**
