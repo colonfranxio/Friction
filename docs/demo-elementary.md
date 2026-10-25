@@ -1,6 +1,6 @@
 # Demo runbook: elementary fractions + Moss
 
-Branch `moss-integration`. Syllabus: [fixtures/elementary-syllabus.md](../fixtures/elementary-syllabus.md) (Grade 5 fractions). Unlike the React demo syllabus, it is **not cached**: Claude parses it live, so "Claude builds the tree" is literally true.
+Use the verified main release; the flow table below is historical dashboard evidence, not final logged-in extension acceptance. Syllabus: [fixtures/elementary-syllabus.md](../fixtures/elementary-syllabus.md) (Grade 5 fractions). Unlike the React demo syllabus, it is **not cached**: Claude parses it live, so "Claude builds the tree" is literally true.
 
 ## Setup (once per recording)
 
@@ -10,7 +10,7 @@ Branch `moss-integration`. Syllabus: [fixtures/elementary-syllabus.md](../fixtur
 4. Upload the syllabus: drag in [fixtures/elementary-syllabus.pdf](../fixtures/elementary-syllabus.pdf) (or paste the `.md` text). The live parse takes **12–18s**, so cut that in the edit.
 5. Wait about 3s after the tree appears. The API log shows a new `warming` then `ready` revision for the uploaded course.
 
-Don't use the API's student-only reset (`POST /demo/reset {student_id}`) after an upload. It drops the uploaded course's progress (known A bug). The dashboard's Reset is a full reset and is safe.
+A's student-only reset fix is now integrated and regression-verified: it retains the uploaded course and recreates its states at L1/unpaused. Dashboard Reset remains a full reset. For the complete teacher → extension/student rehearsal, follow [demo-readiness tasks](DEMO-READINESS-TASKS.md) Phase3; fresh live acceptance and recordings remain open.
 
 ## Verified flow (real browser, real API, real Claude, Moss on; 2026-10-24)
 

@@ -1,12 +1,14 @@
 # Demo readiness: assignments and execution order
 
-**All agents: read this before starting.** Baseline: main `52c41ac`. The teacher creates the skill tree first; the student then uses the **claude.ai extension with the live learning map**. The sandbox is a secondary regression/fallback surface. This document supersedes older demo order, ownership and branch assignments where they conflict. Preserve the concept-card design and the integrated safety fixes. No new model provider, database migration, unrelated feature or prompt tuning is required.
+**All agents: read this before starting.** Original assignment baseline: main `52c41ac`.
+
+**Progress update:** A `ab34e32` and B `259cc3a` are integrated and verified in [DEMO-READY-INTEGRATION](checkpoints/DEMO-READY-INTEGRATION.md). The reset fix and final map implementation are complete; do not rebuild them. Continue Phase3 live acceptance/rehearsals and Phase4 hosting preparation. Technical/injected passes do not certify the human demo. The teacher creates the skill tree first; the student then uses the **claude.ai extension with the live learning map**. The sandbox is a secondary regression/fallback surface. This document supersedes older demo order, ownership and branch assignments where they conflict. Preserve the concept-card design and the integrated safety fixes. No new model provider, database migration, unrelated feature or prompt tuning is required.
 
 ## Current state
 
-- Main includes Moss, corrected v4 stream/token behavior, concept cards and extension shell/icons, B's focused safety fixes and C's narrow-screen fit. Last integrated checks: 314 tests, six dashboard browser suites, builds, stream tools, v4 fake-backed smoke and 19 certified extension/API checks passed.
-- B's final map-only feature is still separate (`feature/learning-map`, last observed `bc4997e`). It was based on the older canvas; it needs reconciliation with main, not a blind merge.
-- A's uploaded-course per-student reset defect is open. Non-demo upload currently moves Alex only, not the whole class.
+- Main includes Moss, corrected v4 stream/token behavior, concept cards and extension shell/icons, B's focused safety fixes and C's narrow-screen fit. Current integrated checks: 316 tests, seven dashboard browser suites (including embed), builds, stream tools, v4 fake-backed smoke and 19 certified extension/API checks passed.
+- B's final map-only panel (`259cc3a`) is integrated on the current concept-card canvas with detail Escape/Close/focus and narrow/live browser checks. The separate narrow-wrap proposal and multi-site work are not included.
+- A's uploaded-course per-student reset defect is fixed (`ab34e32`) with active-course/intercept/isolation regressions. Non-demo upload still moves Alex only, not the whole class.
 - Fresh real-model/Chrome acceptance on the combined final revision, two rehearsals and recording remain open. This cloud instance has no Claude/Moss credentials; existing live reports are historical evidence.
 - Hosting is not chosen. Public access with usage limits and isolated visitor progress is the agreed target. Vercel dashboard + a long-running backend is a candidate, not a deployed or approved hosting account. Current extension hosts/URL validation support local HTTP only.
 
@@ -22,7 +24,7 @@
 
 **Branch:** `agent/platform`. **Owned:** `apps/api/**`, A status. Coordinate any shared/root contract needs with E before overlapping changes.
 
-Required local-demo fix:
+Required local-demo fix — completed; details retained for regression reference:
 
 1. Fix `POST /demo/reset {student_id}` after a non-cached syllabus upload. It currently preserves the active uploaded tree but swaps in seed-tree states, leaving no state for the active concepts.
 2. Recreate/reset that student's active-course states to L1/unpaused; preserve the active tree and other students/data. Retain intended quota/log/bypass/token cleanup and full/seed reset behavior. Resolve inactive-state retention against the existing contract with E rather than silently changing it.

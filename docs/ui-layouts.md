@@ -135,7 +135,7 @@ Mastery flips to gold with confined confetti, and unlocked children turn face up
 - Bypass is a teal ticket: label plus separate ×N stub, remaining quota and teacher-notification text. The readiness gate selects honest prompt-only versus pause-until-reset wording. Preserve 409 and offline errors.
 - Copy question is available when a paid bypass cannot safely resend because the user changed chat/draft/consent/send state. Do not claim successful delivery; never overwrite their new draft.
 - Open learning map opens Chrome's side panel directly from the click gesture; the toolbar popup stays the default action. Settings retain Student ID, API URL, approved API READY SHA and separate Dashboard URL. The dashboard and extension must use the same backend/store for live mastery.
-- The panel shell inherits this palette and frames the Student route, with consent-off and unreachable/Retry states. Compact embed/map-only implementation is tracked separately under B; do not claim that feature is merged merely because the shell is present.
+- The panel inherits this palette and frames `/student/:id?embed=1`: the live map alone, with click-to-open status/level/criteria details. Close or Escape returns focus to the concept card. Consent-off, unreachable/Retry and compact API-error states remain. The full Student route is unchanged.
 
 ## 6. On-page claude.ai pill
 
