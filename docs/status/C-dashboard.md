@@ -4,7 +4,7 @@
 
 - Contract version confirmed: 4
 - Plan confirmed: v5, latest remaining-work brief and CONTRACT READY v4 read; merged origin/main 836784c including a11c16a
-- Current checkpoint: C READY v4, mock-backed correctness/acceptance complete; real API READY and E's exclusive live acceptance still pending
+- Current checkpoint: DASHBOARD DEMO READY re-verified on main `35f01d5` (mock/fake); live acceptance is Phase 3 (D/E/human)
 - Last updated: 2026-10-24
 
 ## DASHBOARD DEMO READY re-verified on main `35f01d5` (2026-10-24, run by Agent B acting as C with E's permission)
